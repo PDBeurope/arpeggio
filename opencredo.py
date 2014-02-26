@@ -176,6 +176,7 @@ def points_on_sphere(n):
 
 def is_hbond(donor, acceptor):
     '''
+    Feed me BioPython atoms.
     '''
     
     for hydrogen_coord in donor.h_coords:
@@ -192,6 +193,7 @@ def is_hbond(donor, acceptor):
 
 def is_weak_hbond(donor, acceptor):
     '''
+    Feed me BioPython atoms.
     '''
     
     for hydrogen_coord in donor.h_coords:
@@ -227,6 +229,20 @@ def is_halogen_weak_hbond(donor, halogen, ob_mol):
     
     return 0
 
+def is_xbond(donor, acceptor, ob_mol):
+    '''
+    Feed me BioPython atoms and the OpenBabel molecule.
+    '''
+    
+    # `nbr` WILL BE A BIOPYTHON ATOM
+    # ... HOPEFULLY
+    nbr = ob_to_bio[get_single_bond_neighbour(ob_mol.GetAtomById(bio_to_ob[donor])).GetId()]
+    theta = get_angle(nbr.coord, donor.coord, acceptor.coord)
+    
+    if (theta >= CONTACT_TYPES['xbond']['angle theta 1 rad']):
+        return 1
+    
+    return 0
 
 ########
 # MAIN #
@@ -686,16 +702,48 @@ Dependencies:
                     SIFt[6] = is_halogen_weak_hbond(atom_bgn, atom_end, mol)
                     
                 # XBOND
+                if distance <= sum_vdw_radii + VDW_COMP_FACTOR:
+                    
+                    if 'xbond donor' in atom_bgn.atom_types and 'xbond acceptor' in atom_end.atom_types:
+                        SIFt[7] = is_xbond(atom_bgn, atom_end, mol)
+                    
+                    elif 'xbond donor' in atom_end.atom_types and 'xbond acceptor' in atom_bgn.atom_types:
+                        SIFt[7] = is_xbond(atom_end, atom_bgn, mol)
                 
                 # IONIC
-                
+                if distance <= contact_types['ionic']['distance']:
+                    
+                    if 'pos ionisable' in atom_bgn.atom_types and 'neg ionisable' in atom_end.atom_types:
+                        SIFt[8] = 1
+                    
+                    elif 'neg ionisable' in atom_bgn.atom_types and 'pos ionisable' in atom_end.atom_types:
+                        SIFt[8] = 1
+                    
                 # METAL COMPLEX
-                
-                # AROMATIC
-                
-                # HYDROPHOBIC
+                if distance <= contact_types['metal']['distance']:
+                    
+                    if 'hbond acceptor' in atom_bgn.atom_types and atom_end.is_metal:
+                        SIFt[9] = 1
+                        
+                    elif 'hbond acceptor' in atom_end.atom_types and atom_bgn.is_metal:
+                        SIFt[9] = 1
                 
                 # CARBONYL
+                if distance <= contact_types['carbonyl']['distance']:
+                    
+                    if 'carbonyl oxygen' in atom_bgn.atom_types and 'carbonyl carbon' in atom_end.atom_types:
+                        SIFt[12] = 1
+                        
+                    elif 'carbonyl oxygen' in atom_end.atom_types and 'carbonyl carbon' in atom_bgn.atom_types:
+                        SIFt[12] = 1
+                        
+                # AROMATIC
+                if 'aromatic' in atom_bgn.atom_types and 'aromatic' in atom_end.atom_types and distance <= CONTACT_TYPES['aromatic']['distance']:
+                    SIFt[10] = 1
+                
+                # HYDROPHOBIC
+                if 'hydrophobe' in atom_bgn.atom_types and 'hydrophobe' in atom_end.atom_types and distance <= CONTACT_TYPES['hydrophobic']['distance']:
+                    SIFt[11] = 1
                 
     # RING-RING INTERACTIONS
     
