@@ -39,7 +39,7 @@ from scipy.spatial.distance import cdist
 # CONSTANTS #
 #############
 
-from config import DEFAULT_SIFT, ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, CONTACT_TYPES_DIST_MAX
+from config import DEFAULT_SIFT, ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, HALOGENS, CONTACT_TYPES_DIST_MAX
 
 ###########
 # CLASSES #
@@ -190,6 +190,44 @@ def is_hbond(donor, acceptor):
     
     return 0
 
+def is_weak_hbond(donor, acceptor):
+    '''
+    '''
+    
+    for hydrogen_coord in donor.h_coords:
+        
+        h_dist = np.linalg.norm(hydrogen_coord - acceptor.coord)
+        
+        if h_dist <= VDW_RADII['H'] + acceptor.vdw_radius + VDW_COMP_FACTOR:
+            
+            if get_angle(donor.coord, hydrogen_coord, acceptor.coord) >= CONTACT_TYPES['weak hbond']['angle_rad']:
+                
+                return 1
+    
+    return 0
+
+def is_halogen_weak_hbond(donor, halogen, ob_mol):
+    '''
+    Feed me BioPython atoms and the OpenBabel molecule.
+    '''
+    
+    # `nbr` WILL BE A BIOPYTHON ATOM
+    # ... HOPEFULLY
+    nbr = ob_to_bio[get_single_bond_neighbour(ob_mol.GetAtomById(bio_to_ob[halogen])).GetId()]
+    
+    for hydrogen_coord in donor.h_coords:
+        
+        h_dist = np.linalg.norm(halogen.coord - hydrogen_coord)
+        
+        if h_dist <= VDW_RADII['H'] + halogen.vdw_radius + VDW_COMP_FACTOR:
+            
+            if CONTACT_TYPES['weak hbond']['cx angle min rad'] <= get_angle(nbr.coord, halogen.coord, hydrogen_coord) <= CONTACT_TYPES['weak hbond']['cx angle max rad']:
+                
+                return 1
+    
+    return 0
+
+
 ########
 # MAIN #
 ########
@@ -317,6 +355,12 @@ Dependencies:
             atom.is_metal = True
         else:
             atom.is_metal = False
+        
+        # DETECT HALOGENS
+        if atom.element.upper() in HALOGENS:
+            atom.is_halogen = True
+        else:
+            atom.is_halogen = False
     
     # ATOM TYPING VIA OPENBABEL
     # ITERATE OVER ATOM TYPE SMARTS DEFINITIONS
@@ -625,6 +669,22 @@ Dependencies:
                     
                 # WEAK HBOND
                 
+                # ATOM_BGN IS ACCEPTOR, ATOM_END IS CARBON
+                if 'hbond acceptor' in atom_bgn.atom_types and 'weak hbond donor' in atom_end.atom_types:
+                    SIFt[6] = is_weak_hbond(atom_end, atom_bgn)
+                
+                # ATOM_BGN IS CARBON, ATOM_END IS ACCEPTOR
+                elif 'weak hbond donor' in atom_bgn.atom_types and 'hbond acceptor' in atom_end.atom_types:
+                    SIFt[6] = is_weak_hbond(atom_bgn, atom_end)
+                    
+                # ATOM_BGN IS HALOGEN WEAK ACCEPTOR
+                elif 'weak hbond acceptor' in atom_bgn.atom_types and atom_bgn.is_halogen and ('hbond donor' in atom_end.atom_types or 'weak hbond donor' in atom_end.atom_types):
+                    SIFt[6] = is_halogen_weak_hbond(atom_end, atom_bgn, mol)
+                
+                # ATOM END IS HALOGEN WEAK ACCEPTOR
+                elif 'weak hbond acceptor' in atom_end.atom_types and atom_end.is_halogen and ('hbond donor' in atom_bgn.atom_types or 'weak hbond donor' in atom_bgn.atom_types):
+                    SIFt[6] = is_halogen_weak_hbond(atom_bgn, atom_end, mol)
+                    
                 # XBOND
                 
                 # IONIC
