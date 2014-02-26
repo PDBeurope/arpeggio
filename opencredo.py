@@ -829,7 +829,7 @@ Dependencies:
                 dihedral = abs(ring_ring_angle(ring, ring2, True, True))
                 theta = abs(ring_angle(ring, theta_point, True, True))
                 
-                logging.info('Dihedral = {}     Theta = {}'.format(dihedral, theta))
+                #logging.info('Dihedral = {}     Theta = {}'.format(dihedral, theta))
                 
                 int_type = ''
                 
@@ -854,10 +854,19 @@ Dependencies:
                 if dihedral > 60.0 and dihedral <= 90.0 and theta <= 90.0 :
                     int_type = 'EF'
                     
-                # TODO: WRITE RING INTERACTION TO FILE
+                # WRITE RING INTERACTION TO FILE
+                output = [
+                    ring['ring_id'],
+                    list(ring['center']),
+                    ring2['ring_id'],
+                    list(ring2['center']),
+                    int_type
+                ]
+                
+                fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
         
-    # ATOM-RING INTERACTIONS
-    with open(pdb_filename.replace('.pdb', '.ari'), 'wb') as fo:
+    # RINGS AND ATOM-RING INTERACTIONS
+    with open(pdb_filename.replace('.pdb', '.ari'), 'wb') as fo, open(pdb_filename.replace('.pdb', '.rings'), 'wb') as ring_fo:
         for ring in s.rings:
             
             ring_key = ring
@@ -887,12 +896,31 @@ Dependencies:
                 if not potential_interactions:
                     continue
                 
+                # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
+                #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
+                #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
                 theta = abs(ring_angle(ring, atom.coord, True, True))
                 
                 if theta <= 30.0:
                     
-                    logging.info('Atom: <{}>     Theta = {}'.format(atom.get_full_id(), theta))
+                    #logging.info('Atom: <{}>     Theta = {}'.format(atom.get_full_id(), theta))
                     
-                    # TODO: WRITE ATOM-RING INTERACTION TO FILE
+                    # WRITE ATOM-RING INTERACTION TO FILE
+                    output = [
+                        make_pymol_string(atom),
+                        ring['ring_id'],
+                        list(ring['center']),
+                        sorted(list(potential_interactions))
+                    ]
+                    
+                    fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
+            
+            # WRITE RING OUT TO RING FILE
+            output = [
+                ring['ring_id'],
+                list(ring['center'])
+            ]
+            
+            ring_fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
     
     logging.info('Program End. Maximum memory usage was {}.'.format(max_mem_usage()))
