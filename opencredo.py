@@ -15,25 +15,20 @@
 
 import argparse
 import logging
-import math
+#import math
 import operator
 import resource
 import sys
-import time
 
 from collections import OrderedDict
-from itertools import product
 
 import numpy as np
 
-from Bio.PDB import PDBIO
+#from Bio.PDB import PDBIO
 from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB import NeighborSearch
 
 import openbabel as ob
-
-from scipy.spatial.distance import pdist
-from scipy.spatial.distance import cdist
 
 #############
 # CONSTANTS #
