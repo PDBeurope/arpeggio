@@ -50,6 +50,33 @@ class OBBioMatchError(Exception):
     def __init__(self):
         logging.error('An OpenBabel atom could not be matched to a BioPython counterpart.')
 
+#############
+# FUNCTIONS #
+#############
+
+def make_pymol_string(atom):
+    '''
+    Feed me a BioPython atom.
+    
+    See `http://pymol.sourceforge.net/newman/user/S0220commands.html`.
+    
+    chain-identifier/resi-identifier/name-identifier
+    '''
+    
+    chain = atom.get_parent().get_parent()
+    residue = atom.get_parent()
+    
+    res_num = residue.id[1]
+    
+    # ADD INSERTION CODE IF NEED BE
+    if residue.id[2] != ' ':
+        res_num = str(res_num) + residue.id[2]
+    
+    macro =  '{}/{}/{}'.format(chain.id,
+                               res_num,
+                               atom.name)
+    
+    return macro
 
 def get_single_bond_neighbour(ob_atom):
     '''
@@ -764,7 +791,8 @@ Dependencies:
                 if 'hydrophobe' in atom_bgn.atom_types and 'hydrophobe' in atom_end.atom_types and distance <= CONTACT_TYPES['hydrophobic']['distance']:
                     SIFt[11] = 1
             
-            # TODO: WRITE OUT SIFT TO FILE
+            # WRITE OUT SIFT TO FILE
+            fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt])))
         
         logging.info('Calculated pairwise contacts.')
         
