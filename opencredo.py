@@ -54,6 +54,107 @@ class OBBioMatchError(Exception):
 # FUNCTIONS #
 #############
 
+def selection_parser(selection_list, atom_list):
+    '''
+    Selection syntax:
+    
+    /<chain_id>/<res_num>[<ins_code>]/<atom_name>
+    
+    Other formats will be rejected, for now.
+    You can omit fields as long as the number of `/` is correct.
+    
+    Selections are additive, so if you select chain A with /A//,
+    adding /A/91/C23 won't make any difference.
+    '''
+    
+    final_atom_list = set([])
+    
+    for selection in selection_list:
+        
+        #selection_dict = {
+        #    'chain': None,
+        #    'residue_number': None,
+        #    'atom_name': None
+        #}
+        
+        chain = None
+        residue_number = None
+        insertion_code = ' '
+        #residue_range = None # TODO
+        atom_name = None
+        
+        current_atom_list = atom_list[:]
+        
+        original_selection = selection
+        selection = selection.strip()
+        
+        if selection.startswith('/'):
+            
+            selection = selection.lstrip('/').split('/')
+            
+            #print selection
+            
+            if len(selection) != 3:
+                raise SelectionError(original_selection)
+            
+            # CHAIN
+            if selection[0]:
+                chain = selection[0]
+            
+            # RESIDUE AND INS CODE
+            if selection[1]:
+                
+                if selection[1].isdigit():
+                    
+                    # JUST THE RESNUM
+                    residue_number = int(selection[1])
+                    
+                elif selection[1].isalnum():
+                    
+                    # CHECK FOR VALID RESNUM+INSCODE
+                    if selection[1][-1].isalpha() and selection[1][:-1].isdigit():
+                        
+                        residue_number = int(selection[1][:-1])
+                        insertion_code = selection[1][-1]
+                        
+                    else:
+                        raise SelectionError(original_selection)
+                        
+                else:
+                    raise SelectionError(original_selection)
+            
+            # ATOM NAME
+            if selection[2]:
+                
+                if not selection[2].isalnum():
+                    raise SelectionError(original_selection)
+                else:
+                    atom_name = selection[2]
+            
+            # NOW MAKE THE SELECTION WITH BIOPYTHON
+            if chain:
+                current_atom_list = [x for x in current_atom_list if x.get_parent().get_parent().id == chain]
+                
+            if residue_number:
+                current_atom_list = [x for x in current_atom_list if x.get_parent().id[1] == residue_number and x.get_parent().id[2] == insertion_code]
+                
+            if atom_name:
+                current_atom_list = [x for x in current_atom_list if x.name == atom_name]
+                
+            for selected_atom in current_atom_list:
+                final_atom_list.add(selected_atom)
+            
+        else:
+            raise SelectionError(original_selection)
+    
+    final_atom_list = list(final_atom_list)
+    
+    if len(final_atom_list) == 0:
+        logging.error('Selection was empty.')
+        sys.exit()
+    
+    return list(final_atom_list)
+
 def make_pymol_string(atom):
     '''
     Feed me a BioPython atom.
@@ -314,6 +415,12 @@ Dependencies:
 ''', formatter_class=argparse.RawTextHelpFormatter)
     
     parser.add_argument('pdb', type=str, help='Path to the PDB file to be analysed.')
+    
+    selection_group = parser.add_mutually_exclusive_group(required=False)
+    selection_group.add_argument('-s', '--selection', type=str, nargs='+', help='Select the "ligand" for interactions, using selection syntax: /<chain_id>/<res_num>[<ins_code>]/<atom_name> . Fields can be omitted.')
+    selection_group.add_argument('-sf', '--selection-file', type=str, help='Selections as above, but listed in a file.')
+
+    
     parser.add_argument('-wh', '--write-hydrogenated', action='store_true', help='Write a PDB file including the added hydrogen coordinates.')
     parser.add_argument('-mh', '--minimise-hydrogens', action='store_true', help='Energy minimise OpenBabel added hydrogens.')
     parser.add_argument('-ms', '--minimisation-steps', type=int, default=50, help='Number of hydrogen minimisation steps to perform.')
@@ -588,6 +695,46 @@ Dependencies:
     
     logging.info('Completed NeighborSearch.')
     
+    # ADD "LIGAND" SELECTION (SUBSET OF ATOMS) FROM
+    # WITHIN THE ENTITY FOR CONTACT CALCULATION
+    selection = e[:]
+    
+    if args.selection:
+        selection = selection_parser(args.selection, e)
+    
+    elif args.selection_file:
+        with open(args.selection_file, 'rb') as fo:
+            selection = selection_parser([line for line in fo], e)
+    
+    if len(selection) == 0:
+        
+        logging.error('Selection was empty.')
+        sys.exit()
+    
+    logging.info('Made selection.')
+    
+    selection_set = set(selection)
+    
+    if args.selection:
+    
+        # EXPAND THE SELECTION TO INCLUDE THE BINDING SITE
+        selection_plus = set(selection)
+        
+        for atom_bgn, atom_end in ns.search_all(6.0):
+            
+            if atom_bgn in selection_set or atom_end in selection_set:
+                selection_plus.add(atom_bgn)
+                selection_plus.add(atom_end)
+        
+        selection_plus = list(selection_plus)
+        
+        logging.info('Expanded to binding site.')
+        
+        # NEW NEIGHBOURSEARCH
+        ns = NeighborSearch(selection_plus)
+        
+        logging.info('Completed new NeighbourSearch.')
+    
     #if not args.consider_all:
     #    # CALCULATE PER-ATOM SOLVENT ACCESSIBILITY
     #    #
@@ -660,6 +807,13 @@ Dependencies:
             #11: HYDROPHOBIC
             #12: CARBONYL
             
+            # IGNORE CONTACTS THAT EITHER:
+            # - DON'T INVOLVE THE SELECTION
+            # - DON'T INVOLVE WATER
+            if not (atom_bgn in selection_set or atom_end in selection_set):
+                if not ('W' in atom_bgn.get_full_id()[3][0] or 'W' in atom_end.get_full_id()[3][0]):
+                    continue
+            
             sum_cov_radii = atom_bgn.cov_radius + atom_end.cov_radius
             sum_vdw_radii = atom_bgn.vdw_radius + atom_end.vdw_radius
             
@@ -708,11 +862,11 @@ Dependencies:
                 # HBOND
                 
                 # NO NEED TO USE HYDROGENS FOR WATERS
-                if 'W' in atom_bgn.get_full_id()[3][0]:
+                if 'W' in atom_bgn.get_full_id()[3][0] and distance <= (sum_vdw_radii + VDW_COMP_FACTOR):
                     if 'hbond acceptor' in atom_end.atom_types or 'hbond donor' in atom_end.atom_types:
                         SIFt[5] = 1
                 
-                elif 'W' in atom_end.get_full_id()[3][0]:
+                elif 'W' in atom_end.get_full_id()[3][0] and distance <= (sum_vdw_radii + VDW_COMP_FACTOR):
                     if 'hbond acceptor' in atom_bgn.atom_types or 'hbond donor' in atom_bgn.atom_types:
                         SIFt[5] = 1
                 
