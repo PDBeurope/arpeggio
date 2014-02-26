@@ -149,28 +149,51 @@ def ring_angle(ring, point_coords, degrees=False, signed=False):
 
         # RETURN DEGREES
         return rad * 180 / np.pi
+    
+def ring_ring_angle(ring, ring2, degrees=False, signed=False):
+    '''
+    Adapted from CREDO: `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
+    
+    `ring` and `ring2` should be a dict with Numpy array 'center' and 'normal' attributes.
+    '''
+    
+    cosangle = np.dot(ring['normal'], ring2['normal']) / (np.linalg.norm(ring['normal']) * np.linalg.norm(ring2['normal']))
 
-# GOLDEN SECTION SPIRAL
-# THANK YOU BOSCOH!
-# http://boscoh.com/protein/calculating-the-solvent-accessible-surface-area-asa.html
-# http://boscoh.com/protein/asapy.html
-def points_on_sphere(n):
-    pts = np.empty((int(n), 3))
-    n = float(n)
-    
-    inc = math.pi * (3 - math.sqrt(5))
-    off = 2 / n
-    
-    for k in range(0, int(n)):
-        
-        y = k * off - 1 + (off / 2)
-        r = math.sqrt(1 - y*y)
-        phi = k * inc
-        pts[k][0] = math.cos(phi) * r
-        pts[k][1] = y
-        pts[k][2] = math.sin(phi) * r
-        
-    return pts
+    # GET THE ANGLE AS RADIANS
+    rad = np.arccos(cosangle)
+
+    if not degrees: return rad
+
+    # CONVERT RADIANS INTO DEGREES
+    else:
+
+        # CONVERT INTO A SIGNED ANGLE
+        if signed: rad = rad -np.pi if rad > np.pi / 2 else rad
+
+        # RETURN DEGREES
+        return rad * 180 / np.pi
+
+## GOLDEN SECTION SPIRAL
+## THANK YOU BOSCOH!
+## http://boscoh.com/protein/calculating-the-solvent-accessible-surface-area-asa.html
+## http://boscoh.com/protein/asapy.html
+#def points_on_sphere(n):
+#    pts = np.empty((int(n), 3))
+#    n = float(n)
+#    
+#    inc = math.pi * (3 - math.sqrt(5))
+#    off = 2 / n
+#    
+#    for k in range(0, int(n)):
+#        
+#        y = k * off - 1 + (off / 2)
+#        r = math.sqrt(1 - y*y)
+#        phi = k * inc
+#        pts[k][0] = math.cos(phi) * r
+#        pts[k][1] = y
+#        pts[k][2] = math.sin(phi) * r
+#        
+#    return pts
 
 # CONTACT FUNCTIONS
 
@@ -185,7 +208,7 @@ def is_hbond(donor, acceptor):
         
         if h_dist <= VDW_RADII['H'] + acceptor.vdw_radius + VDW_COMP_FACTOR:
             
-            if get_angle(donor.coord, hydrogen_coord, acceptor.coord) >= CONTACT_TYPES['hbond']['angle_rad']:
+            if get_angle(donor.coord, hydrogen_coord, acceptor.coord) >= CONTACT_TYPES['hbond']['angle rad']:
                 
                 return 1
     
@@ -202,7 +225,7 @@ def is_weak_hbond(donor, acceptor):
         
         if h_dist <= VDW_RADII['H'] + acceptor.vdw_radius + VDW_COMP_FACTOR:
             
-            if get_angle(donor.coord, hydrogen_coord, acceptor.coord) >= CONTACT_TYPES['weak hbond']['angle_rad']:
+            if get_angle(donor.coord, hydrogen_coord, acceptor.coord) >= CONTACT_TYPES['weak hbond']['angle rad']:
                 
                 return 1
     
@@ -277,11 +300,11 @@ Dependencies:
     parser.add_argument('-mm', '--minimisation-method', type=str, choices=('DistanceGeometry', 'SteepestDescent', 'ConjugateGradients'), default='ConjugateGradients', help='Choose the method to minimise hydrogens with. ConjugateGradients is recommended.')
     parser.add_argument('-co', '--vdw-comp', type=float, default=0.1, help='Compensation factor for VdW radii dependent interaction types.')    
     parser.add_argument('-i', '--interacting', type=float, default=5.0, help='Distance cutoff for grid points to be \'interacting\' with the entity.')
-    parser.add_argument('-sr', '--solvent_radius', type=float, default=1.4, help='Radius of solvent probe for accessibility calculations.')
-    parser.add_argument('-ssp', '--solvent-sphere-points', type=int, default=960, help='Number of points to use for solvent shell spheres for accessibility calculations.')
-    parser.add_argument('-st', '--sasa-threshold', type=float, default=1.0, help='Floating point solvent accessible surface area threshold (squared Angstroms) for considering an atom as \'accessible\' or not.')
-    parser.add_argument('-ca', '--consider-all', action='store_true', help='Consider all entity/selection atoms, not just solvent accessible ones. If this is set, SASAs won\'t be calculated.')
-    parser.add_argument('-spdb', '--sasa-pdb', action='store_true', help='Store a PDB with atom b-factors set based on boolean solvent accessibility.')
+    #parser.add_argument('-sr', '--solvent_radius', type=float, default=1.4, help='Radius of solvent probe for accessibility calculations.')
+    #parser.add_argument('-ssp', '--solvent-sphere-points', type=int, default=960, help='Number of points to use for solvent shell spheres for accessibility calculations.')
+    #parser.add_argument('-st', '--sasa-threshold', type=float, default=1.0, help='Floating point solvent accessible surface area threshold (squared Angstroms) for considering an atom as \'accessible\' or not.')
+    #parser.add_argument('-ca', '--consider-all', action='store_true', help='Consider all entity/selection atoms, not just solvent accessible ones. If this is set, SASAs won\'t be calculated.')
+    #parser.add_argument('-spdb', '--sasa-pdb', action='store_true', help='Store a PDB with atom b-factors set based on boolean solvent accessibility.')
     parser.add_argument('-v', '--verbose', action='store_true', help='Be chatty.')
  
     args = parser.parse_args()
@@ -290,9 +313,9 @@ Dependencies:
     
     VDW_COMP_FACTOR = args.vdw_comp
     INTERACTING_THRESHOLD = args.interacting
-    SOLVENT_RADIUS = args.solvent_radius
-    NUM_SOLVENT_SPHERE_POINTS = args.solvent_sphere_points
-    SASA_THRESHOLD = args.sasa_threshold
+    #SOLVENT_RADIUS = args.solvent_radius
+    #NUM_SOLVENT_SPHERE_POINTS = args.solvent_sphere_points
+    #SASA_THRESHOLD = args.sasa_threshold
     
     # LOGGING
     if args.verbose:
@@ -429,7 +452,8 @@ Dependencies:
         normal_opp = np.array([normal_opp.GetX(), normal_opp.GetY(), normal_opp.GetZ()])
         
         # STORE RING
-        s.rings[e] = {'center': center,
+        s.rings[e] = {'ring_id': e,
+                      'center': center,
                       'normal': normal,
                       'normal_opp': normal_opp}
     
@@ -543,57 +567,57 @@ Dependencies:
     
     logging.info('Completed NeighborSearch.')
     
-    if not args.consider_all:
-        # CALCULATE PER-ATOM SOLVENT ACCESSIBILITY
-        #
-        # Using the Shrake-Rupley Algorithm.
-        # - http://en.wikipedia.org/wiki/Accessible_surface_area
-        # - http://boscoh.com/protein/calculating-the-solvent-accessible-surface-area-asa.html
-        # - http://www.xsi-blog.com/archives/115 (Golden Section Spiral)
-        
-        # GENERATE SPHERES FOR ATOM SOLVATION
-        # USING THE GOLDEN SECTION SPIRAL ALGORITHM
-        gss = points_on_sphere(NUM_SOLVENT_SPHERE_POINTS)
-        
-        # CONSTANT FOR CONVERTING FROM SPHERE POINTS TO AREA
-        const = 4.0 * np.pi / len(gss)
-        
-        # LOOP THROUGH ATOMS OF ENTITY OF INTEREST
-        for atom in e:
-            atom.num_accessible_points = 0
-            
-            # GET NEARBY ATOMS
-            atom.neighbours = ns.search(atom.coord, 5.0) # NEARBY ATOM DISTANCE HARD-CODED FOR NOW, SHOULDN'T NEED TO BE CHANGED
-            
-            # ATOM RADII FOR SASA PURPOSES
-            radius = atom.vdw_radius + SOLVENT_RADIUS
-            neighbour_radii = np.array([x.vdw_radius + SOLVENT_RADIUS for x in atom.neighbours])
-            
-            # TRANSLATE THE SOLVENT SPHERE TO SURROUND THE ATOM
-            atom.solvent_sphere = gss[:] * radius + atom.coord
-            
-            # CALCULATE A DISTANCE MATRIX OF SPHERE POINTS TO NEIGHBOUR ATOMS
-            # ESSENTIALLY A 2D ARRAY: NEIGHBOURS ALONG X-AXIS, POINTS ALONG Y-AXIS
-            # THUS EACH ELEMENT IS AN ARRAY FOR A POINT, IN WHICH EACH ELEMENT IS A DISTANCE TO A NEIGHBOUR
-            n_dm = cdist(atom.solvent_sphere, np.array([x.coord for x in atom.neighbours]))
-            
-            # SUBTRACT THE NEIGHBOUR RADII FROM THEIR DISTANCE TO EACH POINT
-            # NEGATIVE NUMBERS IN A SUB-ARRAY INDICATE INACCESSIBILITY
-            # THEREFORE IF ANY OF THE 'ROW' VALUES ARE NEGATIVE, THE POINT IS NOT ACCESSIBLE
-            n_dm_sub = n_dm - neighbour_radii
-            
-            # USE NUMPY ANY TO REDUCE EACH POINT ROW TO ONE TRUE OR FALSE VALUE
-            # THEN SUM THESE TO GET THE NUMBER OF INACCESSIBLE POINTS
-            # THEN TAKE THAT SUM AWAY FROM THE TOTAL NUMBER OF POINTS TO GET THE NUMBER OF ACCESSIBLE POINTS
-            atom.num_accessible_points = NUM_SOLVENT_SPHERE_POINTS - sum(np.any(n_dm_sub < 0.0, axis=1))
-            
-            # CONVERT THE NUMBER OF ACCESSIBLE POINTS TO ACCESSIBILITY IN A^2
-            atom.area = const * atom.num_accessible_points * radius * radius
-            
-            # BOOLEANISE THE ACCESSBILITY
-            atom.is_accessible = atom.area > SASA_THRESHOLD
-        
-        logging.info('Calculated per-atom SASA.')
+    #if not args.consider_all:
+    #    # CALCULATE PER-ATOM SOLVENT ACCESSIBILITY
+    #    #
+    #    # Using the Shrake-Rupley Algorithm.
+    #    # - http://en.wikipedia.org/wiki/Accessible_surface_area
+    #    # - http://boscoh.com/protein/calculating-the-solvent-accessible-surface-area-asa.html
+    #    # - http://www.xsi-blog.com/archives/115 (Golden Section Spiral)
+    #    
+    #    # GENERATE SPHERES FOR ATOM SOLVATION
+    #    # USING THE GOLDEN SECTION SPIRAL ALGORITHM
+    #    gss = points_on_sphere(NUM_SOLVENT_SPHERE_POINTS)
+    #    
+    #    # CONSTANT FOR CONVERTING FROM SPHERE POINTS TO AREA
+    #    const = 4.0 * np.pi / len(gss)
+    #    
+    #    # LOOP THROUGH ATOMS OF ENTITY OF INTEREST
+    #    for atom in e:
+    #        atom.num_accessible_points = 0
+    #        
+    #        # GET NEARBY ATOMS
+    #        atom.neighbours = ns.search(atom.coord, 5.0) # NEARBY ATOM DISTANCE HARD-CODED FOR NOW, SHOULDN'T NEED TO BE CHANGED
+    #        
+    #        # ATOM RADII FOR SASA PURPOSES
+    #        radius = atom.vdw_radius + SOLVENT_RADIUS
+    #        neighbour_radii = np.array([x.vdw_radius + SOLVENT_RADIUS for x in atom.neighbours])
+    #        
+    #        # TRANSLATE THE SOLVENT SPHERE TO SURROUND THE ATOM
+    #        atom.solvent_sphere = gss[:] * radius + atom.coord
+    #        
+    #        # CALCULATE A DISTANCE MATRIX OF SPHERE POINTS TO NEIGHBOUR ATOMS
+    #        # ESSENTIALLY A 2D ARRAY: NEIGHBOURS ALONG X-AXIS, POINTS ALONG Y-AXIS
+    #        # THUS EACH ELEMENT IS AN ARRAY FOR A POINT, IN WHICH EACH ELEMENT IS A DISTANCE TO A NEIGHBOUR
+    #        n_dm = cdist(atom.solvent_sphere, np.array([x.coord for x in atom.neighbours]))
+    #        
+    #        # SUBTRACT THE NEIGHBOUR RADII FROM THEIR DISTANCE TO EACH POINT
+    #        # NEGATIVE NUMBERS IN A SUB-ARRAY INDICATE INACCESSIBILITY
+    #        # THEREFORE IF ANY OF THE 'ROW' VALUES ARE NEGATIVE, THE POINT IS NOT ACCESSIBLE
+    #        n_dm_sub = n_dm - neighbour_radii
+    #        
+    #        # USE NUMPY ANY TO REDUCE EACH POINT ROW TO ONE TRUE OR FALSE VALUE
+    #        # THEN SUM THESE TO GET THE NUMBER OF INACCESSIBLE POINTS
+    #        # THEN TAKE THAT SUM AWAY FROM THE TOTAL NUMBER OF POINTS TO GET THE NUMBER OF ACCESSIBLE POINTS
+    #        atom.num_accessible_points = NUM_SOLVENT_SPHERE_POINTS - sum(np.any(n_dm_sub < 0.0, axis=1))
+    #        
+    #        # CONVERT THE NUMBER OF ACCESSIBLE POINTS TO ACCESSIBILITY IN A^2
+    #        atom.area = const * atom.num_accessible_points * radius * radius
+    #        
+    #        # BOOLEANISE THE ACCESSBILITY
+    #        atom.is_accessible = atom.area > SASA_THRESHOLD
+    #    
+    #    logging.info('Calculated per-atom SASA.')
     
     # CALCULATE PAIRWISE CONTACTS
     with open(pdb_filename.replace('.pdb', '.contacts'), 'wb') as fo:
@@ -639,11 +663,11 @@ Dependencies:
                     break
             
             if is_covalent:
-                sift[1] = 1
+                SIFt[1] = 1
             
             # CLASHES
             elif distance < sum_cov_radii:
-                sift[0] = 1
+                SIFt[0] = 1
                 
             # VDW CLASH
             elif distance < sum_vdw_radii:
@@ -711,7 +735,7 @@ Dependencies:
                         SIFt[7] = is_xbond(atom_end, atom_bgn, mol)
                 
                 # IONIC
-                if distance <= contact_types['ionic']['distance']:
+                if distance <= CONTACT_TYPES['ionic']['distance']:
                     
                     if 'pos ionisable' in atom_bgn.atom_types and 'neg ionisable' in atom_end.atom_types:
                         SIFt[8] = 1
@@ -720,7 +744,7 @@ Dependencies:
                         SIFt[8] = 1
                     
                 # METAL COMPLEX
-                if distance <= contact_types['metal']['distance']:
+                if distance <= CONTACT_TYPES['metal']['distance']:
                     
                     if 'hbond acceptor' in atom_bgn.atom_types and atom_end.is_metal:
                         SIFt[9] = 1
@@ -729,7 +753,7 @@ Dependencies:
                         SIFt[9] = 1
                 
                 # CARBONYL
-                if distance <= contact_types['carbonyl']['distance']:
+                if distance <= CONTACT_TYPES['carbonyl']['distance']:
                     
                     if 'carbonyl oxygen' in atom_bgn.atom_types and 'carbonyl carbon' in atom_end.atom_types:
                         SIFt[12] = 1
@@ -744,9 +768,108 @@ Dependencies:
                 # HYDROPHOBIC
                 if 'hydrophobe' in atom_bgn.atom_types and 'hydrophobe' in atom_end.atom_types and distance <= CONTACT_TYPES['hydrophobic']['distance']:
                     SIFt[11] = 1
-                
+            
+            # TODO: WRITE OUT SIFT TO FILE
+        
+        logging.info('Calculated pairwise contacts.')
+        
     # RING-RING INTERACTIONS
-    
+    # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
+    # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/sql/populate.sql?at=default`
+    # `http://marid.bioc.cam.ac.uk/credo/about`
+    with open(pdb_filename.replace('.pdb', '.ri'), 'wb') as fo:
+        for ring in s.rings:
+            
+            ring_key = ring
+            ring = s.rings[ring]
+            
+            for ring2 in s.rings:
+                
+                ring_key2 = ring2
+                ring2 = s.rings[ring2]
+                
+                # NO SELFIES
+                if ring_key == ring_key2:
+                    continue
+                
+                distance = np.linalg.norm(ring['center'] - ring2['center'])
+                
+                if distance > CONTACT_TYPES['aromatic']['centroid_distance']:
+                    continue
+                
+                theta_point = ring['center'] - ring2['center']
+                #iota_point = ring2['center'] - ring['center']
+                
+                # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
+                #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
+                #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
+                dihedral = abs(ring_ring_angle(ring, ring2, True, True))
+                theta = abs(ring_angle(ring, theta_point, True, True))
+                
+                logging.info('Dihedral = {}     Theta = {}'.format(dihedral, theta))
+                
+                int_type = ''
+                
+                if dihedral <= 30.0 and theta <= 30.0 :
+                    int_type = 'FF'
+                if dihedral <= 30.0 and theta <= 60.0 :
+                    int_type = 'OF'
+                if dihedral <= 30.0 and theta <= 90.0 :
+                    int_type = 'EE'
+
+                if dihedral > 30.0 and dihedral <= 60.0 and theta <= 30.0:
+                    int_type = 'FT'
+                if dihedral > 30.0 and dihedral <= 60.0 and theta <= 60.0 :
+                    int_type = 'OT'
+                if dihedral > 30.0 and dihedral <= 60.0 and theta <= 90.0 :
+                    int_type = 'ET'
+
+                if dihedral > 60.0 and dihedral <= 90.0 and theta <= 30.0 :
+                    int_type = 'FE'
+                if dihedral > 60.0 and dihedral <= 90.0 and theta <= 60.0 :
+                    int_type = 'OE'
+                if dihedral > 60.0 and dihedral <= 90.0 and theta <= 90.0 :
+                    int_type = 'EF'
+                    
+                # TODO: WRITE RING INTERACTION TO FILE
+        
     # ATOM-RING INTERACTIONS
+    with open(pdb_filename.replace('.pdb', '.ari'), 'wb') as fo:
+        for ring in s.rings:
+            
+            ring_key = ring
+            ring = s.rings[ring]
+            
+            for atom in e:
+                
+                distance = np.linalg.norm(atom.coord - ring['center'])
+                
+                if distance > CONTACT_TYPES['aromatic']['atom_aromatic_distance'] or 'aromatic' in atom.atom_types:
+                    continue
+                
+                potential_interactions = set([])
+                
+                if atom.element == 'C' and 'weak hbond donor' in atom.atom_types:
+                    potential_interactions.add('CARBONPI')
+                
+                if 'pos ionisable' in atom.atom_types:
+                    potential_interactions.add('CATIONPI')
+                    
+                if 'hbond donor' in atom.atom_types:
+                    potential_interactions.add('DONORPI')
+                
+                if 'xbond donor' in atom.atom_types:
+                    potential_interactions.add('HALOGENPI')
+                
+                if not potential_interactions:
+                    continue
+                
+                theta = abs(ring_angle(ring, atom.coord, True, True))
+                
+                if theta <= 30.0:
+                    
+                    logging.info('Atom: <{}>     Theta = {}'.format(atom.get_full_id(), theta))
+                    
+                    # TODO: WRITE ATOM-RING INTERACTION TO FILE
     
     logging.info('Program End. Maximum memory usage was {}.'.format(max_mem_usage()))
