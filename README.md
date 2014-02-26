@@ -29,6 +29,8 @@ Running
 
 Use `python opencredo.py -h` for available options.
 
+OpenCREDO doesn't do any checking of your PDB structure. Alternate locations and missing density are not explicitly accounted for and may result in anomalous results. Please use with caution.
+
 Output
 ------
 
