@@ -408,17 +408,18 @@ if __name__ == '__main__':
     # GET CONTACTS
     with open(contacts_filename, 'rb') as fo:
         
-        interactions = []
         used_interaction_types = set([])
-        dist_flag = ''
         
-        for line in fo:
+        for n_lines, line in enumerate(fo):
             
             line = line.strip().split('\t')
             
             atom_bgn = line[0]
             atom_end = line[1]
             SIFt = [int(x) for x in line[2:]]
+            
+            interactions = []
+            dist_flag = ''
             
             # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/contacts.py?at=default`
             # SIFT:
@@ -455,7 +456,7 @@ if __name__ == '__main__':
             
             # VDW_CLASH
             elif SIFt[2]:
-                dist_flag = 'vdw_clash'
+                dist_flag = 'vdwclash'
                 
             # VDW
             elif SIFt[3]:
@@ -470,9 +471,9 @@ if __name__ == '__main__':
             
             # FEATURE CONTACTS
             
+            interaction_type = ''
+            
             for e, interaction in enumerate(SIFt[5:]):
-                
-                interaction_type = ''
                 
                 if interaction:
                     
@@ -501,22 +502,36 @@ if __name__ == '__main__':
                         interaction_type = 'carbonyl'
                     
                     interactions.append((interaction_type, dist_flag))
+                
+            if not interaction_type:
+                interactions.append(('undefined', dist_flag))
             
             for interaction_type, flag in interactions:
                 
                 do('distance {}-{}, {}, {}'.format(interaction_type, flag, atom_bgn, atom_end))
                 used_interaction_types.add((interaction_type, flag))
+            
+            if not n_lines % 500:
+                print 'Drew {} contacts.'.format(n_lines)
+        
+        print 'Drew {} total contacts.'.format(n_lines)
         
         for interaction_type, flag in used_interaction_types:
             
             label = '{}-{}'.format(interaction_type, flag)
             
-            do('color {}, {}'.format(pymol_config[interaction_type][flag], label))
+            do('color {}, {}'.format(pymol_config['dashcolor'][interaction_type][flag], label))
             do('set dash_radius, {}, {}'.format(pymol_config['dashradius'][interaction_type][flag], label))
             do('set dash_gap, {}, {}'.format(pymol_config['dashgap'][interaction_type][flag], label))
             do('set dash_length, {}, {}'.format(pymol_config['dashlength'][interaction_type][flag], label))
     
     do('hide labels')
+    do('util.cbaw')
+    do('show cartoon')
+    do('set cartoon_side_chain_helper, 1')
+    do('hide everything, het')
+    do('show sticks, het')
+    do('show spheres, het')
     
     # UPDATE PYMOL NOW
     do('set defer_update, 0')
