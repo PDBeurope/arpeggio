@@ -308,7 +308,6 @@ using only Open Source dependencies.
 Dependencies:
 - Python (v2.7)
 - Numpy
-- Scipy
 - BioPython (>= v1.60)
 - OpenBabel (with Python bindings)
 
