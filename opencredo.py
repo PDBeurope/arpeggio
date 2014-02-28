@@ -14,6 +14,7 @@
 ###########
 
 import argparse
+import collections
 import logging
 #import math
 import operator
@@ -53,6 +54,19 @@ class OBBioMatchError(Exception):
 #############
 # FUNCTIONS #
 #############
+
+def int2(x):
+    '''
+    Return integer from base 2 number.
+    
+    Can accept a list/tuple of 0s and 1s.
+    '''
+    
+    if isinstance(x, collections.Iterable):
+        x = ''.join([str(k) for k in x])
+        
+    return int(x, 2)
+
 
 def selection_parser(selection_list, atom_list):
     '''
@@ -390,6 +404,37 @@ def is_xbond(donor, acceptor, ob_mol):
     
     return 0
 
+def update_atom_fsift(atom, addition):
+    '''
+    '''
+    
+    atom.actual_fsift = [x | y for x, y in zip(atom.actual_fsift, addition)]
+
+def sift_xnor(sift1, sift2):
+    '''
+    '''
+    
+    out = []
+    
+    for x, y in zip(sift1, sift2):
+        
+        if x and not y: # TF
+            out.append(0)
+        
+        elif not x and not y: # FF
+            out.append(1)
+            
+        elif x and y: # TT
+            out.append(1)
+            
+        elif not x and y: # FT
+            out.append(0)
+        
+        else:
+            raise ValueError('Invalid SIFts for matching: {} and {}'.format(sift1, sift2))
+
+    return out
+
 ########
 # MAIN #
 ########
@@ -560,6 +605,54 @@ Dependencies:
     
     logging.info('Typed atoms.')
     
+    # INITIALISE ATOM FEATURE SIFT AND
+    # DETERMINE ATOM POTENTIAL FEATURE SIFT
+    
+    # 5: 0: HBOND
+    # 6: 1: WEAK_HBOND
+    # 7: 2: HALOGEN_BOND
+    # 8: 3: IONIC
+    # 9: 4: METAL_COMPLEX
+    #10: 5: AROMATIC
+    #11: 6:  HYDROPHOBIC
+    #12: 7: CARBONYL
+    
+    for atom in s_atoms:
+        atom.potential_fsift = [0] * 8
+        atom.actual_fsift = [0] * 8
+        
+        # 0: HBOND
+        if 'hbond acceptor' in atom.atom_types or 'hbond donor' in atom.atom_types:
+            atom.potential_fsift[0] = 1
+        
+        # 1: WEAK HBOND
+        if 'weak hbond acceptor' in atom.atom_types or 'weak hbond donor' in atom.atom_types or 'hbond donor' in atom.atom_types:
+            atom.potential_fsift[1] = 1
+            
+        # 2: HALOGEN BOND
+        if 'xbond acceptor' in atom.atom_types or 'xbond donor' in atom.atom_types:
+            atom.potential_fsift[2] = 1
+        
+        # 3: IONIC
+        if 'pos ionisable' in atom.atom_types or 'neg ionisable' in atom.atom_types:
+            atom.potential_fsift[3] = 1
+        
+        # 4: METAL COMPLEX
+        if 'hbond acceptor' in atom.atom_types or atom.is_metal:
+            atom.potential_fsift[4] = 1
+        
+        # 5: AROMATIC
+        if 'aromatic' in atom.atom_types:
+            atom.potential_fsift[5] = 1
+        
+        # 6: HYDROPHOBIC
+        if 'hydrophobe' in atom.atom_types:
+            atom.potential_fsift[6] = 1
+        
+        # 7: CARBONYL
+        if 'carbonyl oxygen' in atom.atom_types or 'carbonyl carbon' in atom.atom_types:
+            atom.potential_fsift[7] = 1
+    
     # PERCIEVE AROMATIC RINGS
     s.rings = OrderedDict()
     
@@ -715,10 +808,10 @@ Dependencies:
     
     selection_set = set(selection)
     
-    if args.selection:
+    # EXPAND THE SELECTION TO INCLUDE THE BINDING SITE
+    selection_plus = set(selection)
     
-        # EXPAND THE SELECTION TO INCLUDE THE BINDING SITE
-        selection_plus = set(selection)
+    if args.selection:
         
         for atom_bgn, atom_end in ns.search_all(6.0):
             
@@ -944,11 +1037,24 @@ Dependencies:
                 if 'hydrophobe' in atom_bgn.atom_types and 'hydrophobe' in atom_end.atom_types and distance <= CONTACT_TYPES['hydrophobic']['distance']:
                     SIFt[11] = 1
             
-            # WRITE OUT SIFT TO FILE
+            # UPDATE ATOM FEATURE SIFts
+            fsift = SIFt[5:]
+            update_atom_fsift(atom_bgn, fsift)
+            update_atom_fsift(atom_end, fsift)
+            
+            # WRITE OUT CONTACT SIFT TO FILE
             fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt])))
         
         logging.info('Calculated pairwise contacts.')
-        
+    
+    # WRITE OUT SIFT MATCHING
+    # LIGAND AND BINDING SITE (`selection_plus`)
+    with open(pdb_filename.replace('.pdb', '.siftmatch'), 'wb') as fo:
+        for atom in selection_plus:
+            
+            sift_match = sift_xnor(atom.potential_fsift, atom.actual_fsift)
+            fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom)] + sift_match + [int2(sift_match)]])))
+    
     # RING-RING INTERACTIONS
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/sql/populate.sql?at=default`
