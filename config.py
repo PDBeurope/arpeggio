@@ -22,6 +22,18 @@ DEFAULT_SIFT['ring_offset'] = 0
 DEFAULT_SIFT['ring_edge'] = 0
 DEFAULT_SIFT['ring_donor'] = 0 # COVERS CARBONPI, CATIONPI, DONORPI, HALOGENPI
 
+# FEATURE SIFTS
+    # 5: 0: HBOND
+    # 6: 1: WEAK_HBOND
+    # 7: 2: HALOGEN_BOND
+    # 8: 3: IONIC
+    # 9: 4: METAL_COMPLEX
+    #10: 5: AROMATIC
+    #11: 6:  HYDROPHOBIC
+    #12: 7: CARBONYL
+    
+FEATURE_SIFT = ('H-Bond', 'Weak H-Bond', 'Halogen Bond', 'Ionic', 'Metal Complex', 'Aromatic', 'Hydrophobic', 'Carbonyl')
+
 #http://en.wikipedia.org/wiki/Atomic_radii_of_the_elements_(data_page)
 VDW_RADII = {
              'H': 1.2

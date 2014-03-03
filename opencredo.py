@@ -35,7 +35,7 @@ import openbabel as ob
 # CONSTANTS #
 #############
 
-from config import DEFAULT_SIFT, ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, HALOGENS, CONTACT_TYPES_DIST_MAX
+from config import DEFAULT_SIFT, ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT
 
 ###########
 # CLASSES #
@@ -64,9 +64,24 @@ def int2(x):
     
     if isinstance(x, collections.Iterable):
         x = ''.join([str(k) for k in x])
+    else:
+        x = str(x)
         
     return int(x, 2)
 
+def int3(x):
+    '''
+    Return integer from base 3 number.
+    
+    Can accept a list/tuple of 0s, 1s and 2s.
+    '''
+    
+    if isinstance(x, collections.Iterable):
+        x = ''.join([str(k) for k in x])
+    else:
+        x = str(x)
+    
+    return int(x, 3)
 
 def selection_parser(selection_list, atom_list):
     '''
@@ -434,6 +449,60 @@ def sift_xnor(sift1, sift2):
             raise ValueError('Invalid SIFts for matching: {} and {}'.format(sift1, sift2))
 
     return out
+
+def sift_match_base3(sift1, sift2):
+    '''
+    0 = UNMATCHED
+    1 = MATCHED
+    2 = MATCH NOT POSSIBLE
+    
+    Assuming that sift1 is the potential SIFt, and sift2 is the actual SIFt.
+    '''
+    
+    out = []
+    
+    for x, y in zip(sift1, sift2):
+        
+        if x and not y: # TF
+            out.append(0) # UNMATCHED
+        
+        elif not x and not y: # FF
+            out.append(2) # MATCH NOT POSSIBLE
+            
+        elif x and y: # TT
+            out.append(1) # MATCHED
+            
+        elif not x and y: # FT
+            out.append(2) # SHOULD NEVER HAPPEN
+        
+        else:
+            raise ValueError('Invalid SIFts for matching: {} and {}'.format(sift1, sift2))
+
+    return out
+
+def human_sift_match(sift_match, feature_sift=FEATURE_SIFT):
+    '''
+    Takes a base-3 SIFt indicating contact matched-ness and converts it to a human readable form.
+    '''
+    
+    terms = []
+    
+    for e, fp in enumerate(sift_match):
+        
+        if fp == 2: # MATCH NOT POSSIBLE
+            continue
+        
+        elif fp == 1:
+            terms.append('Matched {}'.format(feature_sift[e]))
+        
+        elif fp == 0:
+            terms.append('Unmatched {}'.format(feature_sift[e]))
+        
+        else:
+            raise ValueError
+    
+    terms.sort()
+    return ':'.join(terms)
 
 ########
 # MAIN #
@@ -1052,8 +1121,10 @@ Dependencies:
     with open(pdb_filename.replace('.pdb', '.siftmatch'), 'wb') as fo:
         for atom in selection_plus:
             
-            sift_match = sift_xnor(atom.potential_fsift, atom.actual_fsift)
-            fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom)] + sift_match + [int2(sift_match)]])))
+            sift_match = sift_match_base3(atom.potential_fsift, atom.actual_fsift)
+            human_readable = human_sift_match(sift_match)
+            
+            fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom)] + sift_match + [int3(sift_match)] + [human_readable]])))
     
     # RING-RING INTERACTIONS
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
