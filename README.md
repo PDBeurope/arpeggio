@@ -3,7 +3,7 @@
 Outline
 --------
 
-Arpeggio calculates interatomic contacts based on the rules defined in CREDO. The program will be freely available and require only Open Source dependencies.
+Arpeggio calculates interatomic contacts based on the rules defined in [CREDO](http://marid.bioc.cam.ac.uk/credo). The program will be freely available and require only Open Source dependencies.
 
 Dependencies
 ------------
