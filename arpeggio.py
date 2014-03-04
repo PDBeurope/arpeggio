@@ -419,7 +419,6 @@ Dependencies:
     selection_group = parser.add_mutually_exclusive_group(required=False)
     selection_group.add_argument('-s', '--selection', type=str, nargs='+', help='Select the "ligand" for interactions, using selection syntax: /<chain_id>/<res_num>[<ins_code>]/<atom_name> . Fields can be omitted.')
     selection_group.add_argument('-sf', '--selection-file', type=str, help='Selections as above, but listed in a file.')
-
     
     parser.add_argument('-wh', '--write-hydrogenated', action='store_true', help='Write a PDB file including the added hydrogen coordinates.')
     parser.add_argument('-mh', '--minimise-hydrogens', action='store_true', help='Energy minimise OpenBabel added hydrogens.')
