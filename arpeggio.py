@@ -419,11 +419,20 @@ def is_xbond(donor, acceptor, ob_mol):
     
     return 0
 
-def update_atom_fsift(atom, addition):
+def update_atom_fsift(atom, addition, contact_type='INTER'):
     '''
     '''
     
     atom.actual_fsift = [x | y for x, y in zip(atom.actual_fsift, addition)]
+    
+    if contact_type == 'INTER':
+        atom.actual_fsift_inter_only = [x | y for x, y in zip(atom.actual_fsift_inter_only, addition)]
+    
+    if 'INTRA' in contact_type:
+        atom.actual_fsift_intra_only = [x | y for x, y in zip(atom.actual_fsift_intra_only, addition)]
+        
+    if 'WATER' in contact_type:
+        atom.actual_fsift_water_only = [x | y for x, y in zip(atom.actual_fsift_water_only, addition)]
 
 def sift_xnor(sift1, sift2):
     '''
@@ -689,6 +698,9 @@ Dependencies:
     for atom in s_atoms:
         atom.potential_fsift = [0] * 8
         atom.actual_fsift = [0] * 8
+        atom.actual_fsift_inter_only = [0] * 8
+        atom.actual_fsift_intra_only = [0] * 8
+        atom.actual_fsift_water_only = [0] * 8
         
         # 0: HBOND
         if 'hbond acceptor' in atom.atom_types or 'hbond donor' in atom.atom_types:
@@ -972,9 +984,34 @@ Dependencies:
             # IGNORE CONTACTS THAT EITHER:
             # - DON'T INVOLVE THE SELECTION
             # - DON'T INVOLVE WATER
-            if not (atom_bgn in selection_set or atom_end in selection_set):
-                if not ('W' in atom_bgn.get_full_id()[3][0] or 'W' in atom_end.get_full_id()[3][0]):
-                    continue
+            #if not (atom_bgn in selection_set or atom_end in selection_set):
+            #    if not ('W' in atom_bgn.get_full_id()[3][0] or 'W' in atom_end.get_full_id()[3][0]):
+            #        continue
+            
+            # DETERMINE CONTACT TYPE
+            contact_type = ''
+            
+            if not atom_bgn in selection_set and not atom_end in selection_set:
+                contact_type = 'INTRA_NON_SELECTION'
+                
+            if atom_bgn in selection_set and atom_end in selection_set:
+                contact_type = 'INTRA_SELECTION'
+                
+            if (atom_bgn in selection_set and not atom_end in selection_set) or (atom_end in selection_set and not atom_bgn in selection_set):
+                contact_type = 'INTER'
+                
+            if (atom_bgn in selection_set and 'W' in atom_end.get_full_id()[3][0]) or (atom_end in selection_set and 'W' in atom_bgn.get_full_id()[3][0]):
+                contact_type = 'SELECTION_WATER'
+                
+            if (atom_bgn not in selection_set and 'W' in atom_end.get_full_id()[3][0]) or (atom_end not in selection_set and 'W' in atom_bgn.get_full_id()[3][0]):
+                contact_type = 'NON_SELECTION_WATER'
+                
+            if 'W' in atom_bgn.get_full_id()[3][0] and 'W' in atom_end.get_full_id()[3][0]:
+                contact_type = 'WATER_WATER'
+                
+            if not contact_type:
+                logging.error('Could not assign a contact type for {}:{}'.format(atom_bgn, atom_end))
+                raise
             
             sum_cov_radii = atom_bgn.cov_radius + atom_end.cov_radius
             sum_vdw_radii = atom_bgn.vdw_radius + atom_end.vdw_radius
@@ -987,6 +1024,8 @@ Dependencies:
             # IGNORE INTRA-RESIDUE CONTACTS
             if atom_bgn.get_parent() == atom_end.get_parent():
                 continue
+            
+            #print contact_type
             
             distance = np.linalg.norm(atom_bgn.coord - atom_end.coord)
             
@@ -1108,8 +1147,8 @@ Dependencies:
             
             # UPDATE ATOM FEATURE SIFts
             fsift = SIFt[5:]
-            update_atom_fsift(atom_bgn, fsift)
-            update_atom_fsift(atom_end, fsift)
+            update_atom_fsift(atom_bgn, fsift, contact_type)
+            update_atom_fsift(atom_end, fsift, contact_type)
             
             # WRITE OUT CONTACT SIFT TO FILE
             fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt])))
