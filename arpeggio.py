@@ -1157,13 +1157,27 @@ Dependencies:
     
     # WRITE OUT SIFT MATCHING
     # LIGAND AND BINDING SITE (`selection_plus`)
-    with open(pdb_filename.replace('.pdb', '.siftmatch'), 'wb') as fo:
+    with open(pdb_filename.replace('.pdb', '.siftmatch'), 'wb') as fo, open(pdb_filename.replace('.pdb', '.specific.siftmatch'), 'wb') as specific_fo:
         for atom in selection_plus:
             
-            sift_match = sift_match_base3(atom.potential_fsift, atom.actual_fsift)
+            sift_match = sift_match_base3(atom.potential_fsift, atom.actual_fsift) # WHICH SIFT TO USE?
+            
+            sift_match_inter = sift_match_base3(atom.potential_fsift, atom.actual_fsift_inter_only)
+            sift_match_intra = sift_match_base3(atom.potential_fsift, atom.actual_fsift_intra_only)
+            sift_match_water = sift_match_base3(atom.potential_fsift, atom.actual_fsift_water_only)
+            
             human_readable = human_sift_match(sift_match)
             
+            # SUBJECT TO CHANGE
             fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom)] + sift_match + [int3(sift_match)] + [human_readable]])))
+            
+            specific_fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom)] +
+                                                       sift_match_inter +
+                                                       [human_sift_match(sift_match_inter)] +
+                                                       sift_match_intra +
+                                                       [human_sift_match(sift_match_intra)] +
+                                                       sift_match_water +
+                                                       [human_sift_match(sift_match_water)]])))
     
     # RING-RING INTERACTIONS
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
