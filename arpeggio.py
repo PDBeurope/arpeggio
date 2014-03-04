@@ -399,11 +399,11 @@ if __name__ == '__main__':
     # ARGUMENT PARSING
     parser = argparse.ArgumentParser(description='''
 
-#############
-# OPENCREDO #
-#############
+############
+# ARPEGGIO #
+############
 
-A program for calculating CREDO interactions,
+A program for calculating intermolecular interactions,
 using only Open Source dependencies.
 
 Dependencies:
