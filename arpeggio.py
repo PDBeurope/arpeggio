@@ -14,6 +14,7 @@
 ###########
 
 import argparse
+import collections
 import logging
 #import math
 import operator
@@ -34,7 +35,7 @@ import openbabel as ob
 # CONSTANTS #
 #############
 
-from config import DEFAULT_SIFT, ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, HALOGENS, CONTACT_TYPES_DIST_MAX
+from config import DEFAULT_SIFT, ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT
 
 ###########
 # CLASSES #
@@ -53,6 +54,34 @@ class OBBioMatchError(Exception):
 #############
 # FUNCTIONS #
 #############
+
+def int2(x):
+    '''
+    Return integer from base 2 number.
+    
+    Can accept a list/tuple of 0s and 1s.
+    '''
+    
+    if isinstance(x, collections.Iterable):
+        x = ''.join([str(k) for k in x])
+    else:
+        x = str(x)
+        
+    return int(x, 2)
+
+def int3(x):
+    '''
+    Return integer from base 3 number.
+    
+    Can accept a list/tuple of 0s, 1s and 2s.
+    '''
+    
+    if isinstance(x, collections.Iterable):
+        x = ''.join([str(k) for k in x])
+    else:
+        x = str(x)
+    
+    return int(x, 3)
 
 def selection_parser(selection_list, atom_list):
     '''
@@ -390,6 +419,91 @@ def is_xbond(donor, acceptor, ob_mol):
     
     return 0
 
+def update_atom_fsift(atom, addition):
+    '''
+    '''
+    
+    atom.actual_fsift = [x | y for x, y in zip(atom.actual_fsift, addition)]
+
+def sift_xnor(sift1, sift2):
+    '''
+    '''
+    
+    out = []
+    
+    for x, y in zip(sift1, sift2):
+        
+        if x and not y: # TF
+            out.append(0)
+        
+        elif not x and not y: # FF
+            out.append(1)
+            
+        elif x and y: # TT
+            out.append(1)
+            
+        elif not x and y: # FT
+            out.append(0)
+        
+        else:
+            raise ValueError('Invalid SIFts for matching: {} and {}'.format(sift1, sift2))
+
+    return out
+
+def sift_match_base3(sift1, sift2):
+    '''
+    0 = UNMATCHED
+    1 = MATCHED
+    2 = MATCH NOT POSSIBLE
+    
+    Assuming that sift1 is the potential SIFt, and sift2 is the actual SIFt.
+    '''
+    
+    out = []
+    
+    for x, y in zip(sift1, sift2):
+        
+        if x and not y: # TF
+            out.append(0) # UNMATCHED
+        
+        elif not x and not y: # FF
+            out.append(2) # MATCH NOT POSSIBLE
+            
+        elif x and y: # TT
+            out.append(1) # MATCHED
+            
+        elif not x and y: # FT
+            out.append(2) # SHOULD NEVER HAPPEN
+        
+        else:
+            raise ValueError('Invalid SIFts for matching: {} and {}'.format(sift1, sift2))
+
+    return out
+
+def human_sift_match(sift_match, feature_sift=FEATURE_SIFT):
+    '''
+    Takes a base-3 SIFt indicating contact matched-ness and converts it to a human readable form.
+    '''
+    
+    terms = []
+    
+    for e, fp in enumerate(sift_match):
+        
+        if fp == 2: # MATCH NOT POSSIBLE
+            continue
+        
+        elif fp == 1:
+            terms.append('Matched {}'.format(feature_sift[e]))
+        
+        elif fp == 0:
+            terms.append('Unmatched {}'.format(feature_sift[e]))
+        
+        else:
+            raise ValueError
+    
+    terms.sort()
+    return ':'.join(terms)
+
 ########
 # MAIN #
 ########
@@ -399,11 +513,11 @@ if __name__ == '__main__':
     # ARGUMENT PARSING
     parser = argparse.ArgumentParser(description='''
 
-############
-# ARPEGGIO #
-############
+#############
+# OPENCREDO #
+#############
 
-A program for calculating intermolecular interactions,
+A program for calculating CREDO interactions,
 using only Open Source dependencies.
 
 Dependencies:
@@ -419,6 +533,7 @@ Dependencies:
     selection_group = parser.add_mutually_exclusive_group(required=False)
     selection_group.add_argument('-s', '--selection', type=str, nargs='+', help='Select the "ligand" for interactions, using selection syntax: /<chain_id>/<res_num>[<ins_code>]/<atom_name> . Fields can be omitted.')
     selection_group.add_argument('-sf', '--selection-file', type=str, help='Selections as above, but listed in a file.')
+
     
     parser.add_argument('-wh', '--write-hydrogenated', action='store_true', help='Write a PDB file including the added hydrogen coordinates.')
     parser.add_argument('-mh', '--minimise-hydrogens', action='store_true', help='Energy minimise OpenBabel added hydrogens.')
@@ -558,6 +673,54 @@ Dependencies:
         atom.atom_types.add('hbond donor')
     
     logging.info('Typed atoms.')
+    
+    # INITIALISE ATOM FEATURE SIFT AND
+    # DETERMINE ATOM POTENTIAL FEATURE SIFT
+    
+    # 5: 0: HBOND
+    # 6: 1: WEAK_HBOND
+    # 7: 2: HALOGEN_BOND
+    # 8: 3: IONIC
+    # 9: 4: METAL_COMPLEX
+    #10: 5: AROMATIC
+    #11: 6:  HYDROPHOBIC
+    #12: 7: CARBONYL
+    
+    for atom in s_atoms:
+        atom.potential_fsift = [0] * 8
+        atom.actual_fsift = [0] * 8
+        
+        # 0: HBOND
+        if 'hbond acceptor' in atom.atom_types or 'hbond donor' in atom.atom_types:
+            atom.potential_fsift[0] = 1
+        
+        # 1: WEAK HBOND
+        if 'weak hbond acceptor' in atom.atom_types or 'weak hbond donor' in atom.atom_types or 'hbond donor' in atom.atom_types:
+            atom.potential_fsift[1] = 1
+            
+        # 2: HALOGEN BOND
+        if 'xbond acceptor' in atom.atom_types or 'xbond donor' in atom.atom_types:
+            atom.potential_fsift[2] = 1
+        
+        # 3: IONIC
+        if 'pos ionisable' in atom.atom_types or 'neg ionisable' in atom.atom_types:
+            atom.potential_fsift[3] = 1
+        
+        # 4: METAL COMPLEX
+        if 'hbond acceptor' in atom.atom_types or atom.is_metal:
+            atom.potential_fsift[4] = 1
+        
+        # 5: AROMATIC
+        if 'aromatic' in atom.atom_types:
+            atom.potential_fsift[5] = 1
+        
+        # 6: HYDROPHOBIC
+        if 'hydrophobe' in atom.atom_types:
+            atom.potential_fsift[6] = 1
+        
+        # 7: CARBONYL
+        if 'carbonyl oxygen' in atom.atom_types or 'carbonyl carbon' in atom.atom_types:
+            atom.potential_fsift[7] = 1
     
     # PERCIEVE AROMATIC RINGS
     s.rings = OrderedDict()
@@ -714,10 +877,10 @@ Dependencies:
     
     selection_set = set(selection)
     
-    if args.selection:
+    # EXPAND THE SELECTION TO INCLUDE THE BINDING SITE
+    selection_plus = set(selection)
     
-        # EXPAND THE SELECTION TO INCLUDE THE BINDING SITE
-        selection_plus = set(selection)
+    if args.selection:
         
         for atom_bgn, atom_end in ns.search_all(6.0):
             
@@ -943,11 +1106,26 @@ Dependencies:
                 if 'hydrophobe' in atom_bgn.atom_types and 'hydrophobe' in atom_end.atom_types and distance <= CONTACT_TYPES['hydrophobic']['distance']:
                     SIFt[11] = 1
             
-            # WRITE OUT SIFT TO FILE
+            # UPDATE ATOM FEATURE SIFts
+            fsift = SIFt[5:]
+            update_atom_fsift(atom_bgn, fsift)
+            update_atom_fsift(atom_end, fsift)
+            
+            # WRITE OUT CONTACT SIFT TO FILE
             fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt])))
         
         logging.info('Calculated pairwise contacts.')
-        
+    
+    # WRITE OUT SIFT MATCHING
+    # LIGAND AND BINDING SITE (`selection_plus`)
+    with open(pdb_filename.replace('.pdb', '.siftmatch'), 'wb') as fo:
+        for atom in selection_plus:
+            
+            sift_match = sift_match_base3(atom.potential_fsift, atom.actual_fsift)
+            human_readable = human_sift_match(sift_match)
+            
+            fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom)] + sift_match + [int3(sift_match)] + [human_readable]])))
+    
     # RING-RING INTERACTIONS
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/sql/populate.sql?at=default`
