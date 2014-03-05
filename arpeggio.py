@@ -1255,7 +1255,7 @@ Dependencies:
             ring_key = ring
             ring = s.rings[ring]
             
-            for atom in e:
+            for atom in ns.search(ring['center'], CONTACT_TYPES['aromatic']['atom_aromatic_distance']):
                 
                 distance = np.linalg.norm(atom.coord - ring['center'])
                 
