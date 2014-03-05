@@ -609,7 +609,7 @@ Dependencies:
     # CHECK THAT EACH ATOM HAS A UNIQUE SERIAL NUMBER
     all_serials = [x.serial_number for x in s_atoms]
     
-    if len(x) > len(set(x)):
+    if len(all_serials) > len(set(all_serials)):
         raise AtomSerialError
     
     # MAPPING OB ATOMS TO BIOPYTHON ATOMS AND VICE VERSA
