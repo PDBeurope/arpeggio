@@ -180,7 +180,7 @@ def selection_parser(selection_list, atom_list):
     
     if len(final_atom_list) == 0:
         logging.error('Selection was empty.')
-        sys.exit()
+        sys.exit(1)
     
     return list(final_atom_list)
 
@@ -883,7 +883,7 @@ Dependencies:
     if len(selection) == 0:
         
         logging.error('Selection was empty.')
-        sys.exit()
+        sys.exit(1)
     
     logging.info('Made selection.')
     
