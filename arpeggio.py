@@ -51,6 +51,11 @@ class OBBioMatchError(Exception):
     def __init__(self):
         logging.error('An OpenBabel atom could not be matched to a BioPython counterpart.')
 
+class AtomSerialError(Exception):
+    
+    def __init__(self):
+        logging.error('One or more atom serial numbers are duplicated.')
+
 #############
 # FUNCTIONS #
 #############
@@ -600,6 +605,12 @@ Dependencies:
     ob_conv.ReadFile(mol, pdb_filename)
     
     logging.info('Loaded PDB structure (OpenBabel)')
+    
+    # CHECK THAT EACH ATOM HAS A UNIQUE SERIAL NUMBER
+    all_serials = [x.serial_number for x in s_atoms]
+    
+    if len(x) > len(set(x)):
+        raise AtomSerialError
     
     # MAPPING OB ATOMS TO BIOPYTHON ATOMS AND VICE VERSA
     
