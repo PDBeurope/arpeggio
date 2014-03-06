@@ -527,11 +527,11 @@ if __name__ == '__main__':
     # ARGUMENT PARSING
     parser = argparse.ArgumentParser(description='''
 
-#############
-# OPENCREDO #
-#############
+############
+# ARPEGGIO #
+############
 
-A program for calculating CREDO interactions,
+A program for calculating interactions,
 using only Open Source dependencies.
 
 Dependencies:
@@ -1162,7 +1162,8 @@ Dependencies:
             update_atom_fsift(atom_end, fsift, contact_type)
             
             # WRITE OUT CONTACT SIFT TO FILE
-            fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt])))
+            if contact_type in ('INTER', 'SELECTION_WATER', 'WATER_WATER'):
+                fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt])))
         
         logging.info('Calculated pairwise contacts.')
     
