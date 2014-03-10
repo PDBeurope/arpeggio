@@ -688,7 +688,7 @@ Dependencies:
                     ob_to_bio[atom.GetId()].atom_types.add(atom_type)
                     
     # ALL WATER MOLECULES ARE HYDROGEN BOND DONORS AND ACCEPTORS
-    for atom in (x for x in s_atoms if 'W' in x.get_full_id()[3][0]):
+    for atom in (x for x in s_atoms if x.get_full_id()[3][0] == 'W'):
         atom.atom_types.add('hbond acceptor')
         atom.atom_types.add('hbond donor')
     
@@ -996,7 +996,7 @@ Dependencies:
             # - DON'T INVOLVE THE SELECTION
             # - DON'T INVOLVE WATER
             #if not (atom_bgn in selection_set or atom_end in selection_set):
-            #    if not ('W' in atom_bgn.get_full_id()[3][0] or 'W' in atom_end.get_full_id()[3][0]):
+            #    if not (atom_bgn.get_full_id()[3][0] == 'W' or atom_end.get_full_id()[3][0] == 'W'):
             #        continue
             
             # DETERMINE CONTACT TYPE
@@ -1011,13 +1011,13 @@ Dependencies:
             if (atom_bgn in selection_set and not atom_end in selection_set) or (atom_end in selection_set and not atom_bgn in selection_set):
                 contact_type = 'INTER'
                 
-            if (atom_bgn in selection_set and 'W' in atom_end.get_full_id()[3][0]) or (atom_end in selection_set and 'W' in atom_bgn.get_full_id()[3][0]):
+            if (atom_bgn in selection_set and atom_end.get_full_id()[3][0] == 'W') or (atom_end in selection_set and atom_bgn.get_full_id()[3][0] == 'W'):
                 contact_type = 'SELECTION_WATER'
                 
-            if (atom_bgn not in selection_set and 'W' in atom_end.get_full_id()[3][0]) or (atom_end not in selection_set and 'W' in atom_bgn.get_full_id()[3][0]):
+            if (atom_bgn not in selection_set and atom_end.get_full_id()[3][0] == 'W') or (atom_end not in selection_set and atom_bgn.get_full_id()[3][0] == 'W'):
                 contact_type = 'NON_SELECTION_WATER'
                 
-            if 'W' in atom_bgn.get_full_id()[3][0] and 'W' in atom_end.get_full_id()[3][0]:
+            if atom_bgn.get_full_id()[3][0] == 'W' and atom_end.get_full_id()[3][0] == 'W':
                 contact_type = 'WATER_WATER'
                 
             if not contact_type:
@@ -1074,11 +1074,11 @@ Dependencies:
                 # HBOND
                 
                 # NO NEED TO USE HYDROGENS FOR WATERS
-                if 'W' in atom_bgn.get_full_id()[3][0] and distance <= (sum_vdw_radii + VDW_COMP_FACTOR):
+                if atom_bgn.get_full_id()[3][0] == 'W' and distance <= (sum_vdw_radii + VDW_COMP_FACTOR):
                     if 'hbond acceptor' in atom_end.atom_types or 'hbond donor' in atom_end.atom_types:
                         SIFt[5] = 1
                 
-                elif 'W' in atom_end.get_full_id()[3][0] and distance <= (sum_vdw_radii + VDW_COMP_FACTOR):
+                elif atom_end.get_full_id()[3][0] == 'W' and distance <= (sum_vdw_radii + VDW_COMP_FACTOR):
                     if 'hbond acceptor' in atom_bgn.atom_types or 'hbond donor' in atom_bgn.atom_types:
                         SIFt[5] = 1
                 
@@ -1101,15 +1101,15 @@ Dependencies:
                     SIFt[6] = is_weak_hbond(atom_end, atom_bgn)
                 
                 # ATOM_BGN IS CARBON, ATOM_END IS ACCEPTOR
-                elif 'weak hbond donor' in atom_bgn.atom_types and 'hbond acceptor' in atom_end.atom_types:
+                if 'weak hbond donor' in atom_bgn.atom_types and 'hbond acceptor' in atom_end.atom_types:
                     SIFt[6] = is_weak_hbond(atom_bgn, atom_end)
                     
                 # ATOM_BGN IS HALOGEN WEAK ACCEPTOR
-                elif 'weak hbond acceptor' in atom_bgn.atom_types and atom_bgn.is_halogen and ('hbond donor' in atom_end.atom_types or 'weak hbond donor' in atom_end.atom_types):
+                if 'weak hbond acceptor' in atom_bgn.atom_types and atom_bgn.is_halogen and ('hbond donor' in atom_end.atom_types or 'weak hbond donor' in atom_end.atom_types):
                     SIFt[6] = is_halogen_weak_hbond(atom_end, atom_bgn, mol)
                 
                 # ATOM END IS HALOGEN WEAK ACCEPTOR
-                elif 'weak hbond acceptor' in atom_end.atom_types and atom_end.is_halogen and ('hbond donor' in atom_bgn.atom_types or 'weak hbond donor' in atom_bgn.atom_types):
+                if 'weak hbond acceptor' in atom_end.atom_types and atom_end.is_halogen and ('hbond donor' in atom_bgn.atom_types or 'weak hbond donor' in atom_bgn.atom_types):
                     SIFt[6] = is_halogen_weak_hbond(atom_bgn, atom_end, mol)
                     
                 # XBOND
@@ -1294,7 +1294,7 @@ Dependencies:
                 # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
                 #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
                 #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
-                theta = abs(ring_angle(ring, atom.coord, True, True))
+                theta = abs(ring_angle(ring, atom.coord, True, True)) # CHECK IF `atom.coord` or `ring['center'] - atom.coord`
                 
                 if theta <= 30.0:
                     
