@@ -692,6 +692,11 @@ Dependencies:
         atom.atom_types.add('hbond acceptor')
         atom.atom_types.add('hbond donor')
     
+    with open(pdb_filename.replace('.pdb', '.atomtypes'), 'wb') as fo:
+        for atom in s_atoms:
+            fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom), atom.atom_types]])))
+        
+    
     logging.info('Typed atoms.')
     
     # INITIALISE ATOM FEATURE SIFT AND
@@ -1092,7 +1097,7 @@ Dependencies:
                     # ATOM_END IS DONOR
                     elif 'hbond donor' in atom_end.atom_types and 'hbond acceptor' in atom_bgn.atom_types:
                         
-                        SIFt[5] = is_hbond(atom_bgn, atom_end)
+                        SIFt[5] = is_hbond(atom_end, atom_bgn)
                     
                 # WEAK HBOND
                 
@@ -1162,8 +1167,12 @@ Dependencies:
             update_atom_fsift(atom_end, fsift, contact_type)
             
             # WRITE OUT CONTACT SIFT TO FILE
-            if contact_type in ('INTER', 'SELECTION_WATER', 'WATER_WATER'):
-                fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt])))
+            if args.selection:
+                if contact_type in ('INTER', 'SELECTION_WATER', 'WATER_WATER'):
+                    fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt + [contact_type]])))
+            
+            else:
+                fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt + [contact_type]])))
         
         logging.info('Calculated pairwise contacts.')
     
