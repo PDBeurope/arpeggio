@@ -1,4 +1,5 @@
 import argparse
+import sys
 import xmlrpclib
 
 host='localhost'
@@ -302,25 +303,27 @@ if __name__ == '__main__':
     # ARGUMENT PARSING
     parser = argparse.ArgumentParser(description='''
     
-    #############
-    # OPENCREDO #
-    #############
+    ############
+    # ARPEGGIO #
+    ############
     
     Interaction Viewer
     
-    A program for calculating CREDO interactions,
+    A program for calculating interatomic interactions,
     using only Open Source dependencies.
     
     Dependencies:
     - Python (v2.7)
     - PyMOL, run as `pymol -R` to enable the XML-RPC server.
     
-    **You must have already run your structure with OpenCREDO to generate the required output files**.
+    **You must have already run your structure with Arpeggio to generate the required output files**.
     Be careful about absolute and relative paths, this script might not mind but PyMOL probably will.
     
     ''', formatter_class=argparse.RawTextHelpFormatter)
         
-    parser.add_argument('pdb', type=str, help='Path to the PDB file to be analysed.')    
+    parser.add_argument('pdb', type=str, help='Path to the PDB file to be analysed.')
+    parser.add_argument('-xml', '--xml-rpc', action='store_true', help='Interact with PyMOL by XML-RPC server (`pymol -R`).')
+    parser.add_argument('-s', '--script', action='store_true', help='Output a PyMOL script with the relevant commands.')
     
     args = parser.parse_args()
     
@@ -330,11 +333,30 @@ if __name__ == '__main__':
     ari_filename = pdb_filename.replace('.pdb', '.ari') # ATOM-RING INTERACTIONS
     ri_filename = pdb_filename.replace('.pdb', '.ri') # RING-RING INTERACTIONS
     
-    srv = xmlrpclib.Server('http://{}:{}'.format(host, port))
-    do = srv.do
+    script_filename = pdb_filename.replace('.pdb', '.pml')
+    
+    if args.xml_rpc:
+        srv = xmlrpclib.Server('http://{}:{}'.format(host, port))
+    
+    do = None
+    
+    if args.script:
+        
+        final_output = ''
+        
+        def do(command):
+            
+            global final_output # DON'T FORGET I EXIST!
+            final_output = final_output + command + '\n'
+    
+    elif args.xml_rpc:
+        do = srv.do
+    
+    else:
+        print 'Please select XML-RPC or script output.'
+        sys.exit(1)
     
     # PYMOL SETUP
-    
     do('reinitialize')
 
     # SET PYMOL VARIABLES FOR PRETTIER MOLECULES
@@ -402,6 +424,8 @@ if __name__ == '__main__':
     # LOAD STRUCTURE
     do('load {}'.format(pdb_filename))
     
+    do('select binding_site, None')
+    
     # DEFER UPDATE
     do('set defer_update, 1')
     
@@ -416,7 +440,7 @@ if __name__ == '__main__':
             
             atom_bgn = line[0]
             atom_end = line[1]
-            SIFt = [int(x) for x in line[2:]]
+            SIFt = [int(x) for x in line[2:15]]
             
             interactions = []
             dist_flag = ''
@@ -509,6 +533,13 @@ if __name__ == '__main__':
             for interaction_type, flag in interactions:
                 
                 do('distance {}-{}, {}, {}'.format(interaction_type, flag, atom_bgn, atom_end))
+                
+                do('show sticks, byres {}'.format(atom_bgn))
+                do('show sticks, byres {}'.format(atom_end))
+                
+                do('select binding_site, binding_site + byres {}'.format(atom_bgn))
+                do('select binding_site, binding_site + byres {}'.format(atom_end))
+                
                 used_interaction_types.add((interaction_type, flag))
             
             if not n_lines % 500:
@@ -527,12 +558,18 @@ if __name__ == '__main__':
     
     do('hide labels')
     do('util.cbaw')
+    do('bg_color white')
     do('show cartoon')
     do('set cartoon_side_chain_helper, 1')
+    do('hide lines')
     do('hide everything, het')
     do('show sticks, het')
     do('show spheres, het')
     
     # UPDATE PYMOL NOW
     do('set defer_update, 0')
+    
+    if args.script:
+        with open(script_filename, 'wb') as fo:
+            fo.write(final_output)
         
