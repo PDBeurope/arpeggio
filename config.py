@@ -2,26 +2,6 @@ from collections import OrderedDict
 
 DEFAULT_SIFT = OrderedDict()
 
-DEFAULT_SIFT['proximal'] = 0
-DEFAULT_SIFT['pos_ionic'] = 0
-DEFAULT_SIFT['neg_ionic'] = 0
-DEFAULT_SIFT['carbonyl_o'] = 0
-DEFAULT_SIFT['carbonyl_c'] = 0
-DEFAULT_SIFT['aromatic'] = 0
-DEFAULT_SIFT['hydrophobic'] = 0
-DEFAULT_SIFT['xbond_donor'] = 0
-DEFAULT_SIFT['xbond_acceptor'] = 0
-DEFAULT_SIFT['weak_hbond_donor'] = 0
-DEFAULT_SIFT['weak_hbond_acceptor'] = 0
-DEFAULT_SIFT['hbond_donor'] = 0
-DEFAULT_SIFT['hbond_acceptor'] = 0
-DEFAULT_SIFT['metal_metal'] = 0
-DEFAULT_SIFT['metal_acceptor'] = 0
-DEFAULT_SIFT['ring_face'] = 0
-DEFAULT_SIFT['ring_offset'] = 0
-DEFAULT_SIFT['ring_edge'] = 0
-DEFAULT_SIFT['ring_donor'] = 0 # COVERS CARBONPI, CATIONPI, DONORPI, HALOGENPI
-
 # FEATURE SIFTS
     # 5: 0: HBOND
     # 6: 1: WEAK_HBOND
