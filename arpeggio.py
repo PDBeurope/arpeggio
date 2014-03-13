@@ -663,6 +663,13 @@ Dependencies:
         else:
             atom.is_halogen = False
     
+    # ADD EXPLICIT HYDROGEN COORDS FOR H-BONDING INTERACTIONS
+    # ADDING HYDROGENS DOESN'T SEEM TO INTERFERE WITH ATOM SERIALS (THEY GET ADDED AS 0)
+    # SO WE CAN STILL GET BACK TO THE PERSISTENT BIOPYTHON ATOMS THIS WAY.
+    mol.AddHydrogens()
+    
+    logging.info('Added hydrogens.')
+    
     # ATOM TYPING VIA OPENBABEL
     # ITERATE OVER ATOM TYPE SMARTS DEFINITIONS
     for atom_type, smartsdict in ATOM_TYPES.items():
@@ -694,7 +701,7 @@ Dependencies:
     
     with open(pdb_filename.replace('.pdb', '.atomtypes'), 'wb') as fo:
         for atom in s_atoms:
-            fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom), atom.atom_types]])))
+            fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom), sorted(tuple(atom.atom_types))]])))
         
     
     logging.info('Typed atoms.')
@@ -776,13 +783,6 @@ Dependencies:
                       'normal_opp': normal_opp}
     
     logging.info('Percieved and stored rings.')
-    
-    # ADD EXPLICIT HYDROGEN COORDS FOR H-BONDING INTERACTIONS
-    # ADDING HYDROGENS DOESN'T SEEM TO INTERFERE WITH ATOM SERIALS (THEY GET ADDED AS 0)
-    # SO WE CAN STILL GET BACK TO THE PERSISTENT BIOPYTHON ATOMS THIS WAY.
-    mol.AddHydrogens()
-    
-    logging.info('Added hydrogens.')
     
     # FOR PDB OUTPUT OF OB STRUCTURES
     conv = ob.OBConversion()
