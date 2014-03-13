@@ -575,9 +575,9 @@ Dependencies:
     
     # LOGGING
     if args.verbose:
-        logging.basicConfig(level=logging.INFO, format='%(levelname)s//%(asctime)s//%(message)s', datefmt='%H:%M:%S')
+        logging.basicConfig(level=logging.INFO, format='%(levelname)s//%(asctime)s.%(msecs).03d//%(message)s', datefmt='%H:%M:%S')
     else:
-        logging.basicConfig(level=logging.WARN, format='%(levelname)s//%(asctime)s//%(message)s', datefmt='%H:%M:%S')
+        logging.basicConfig(level=logging.WARN, format='%(levelname)s//%(asctime)s.%(msecs).03d//%(message)s', datefmt='%H:%M:%S')
     
     logging.info('Program begin.')
     
@@ -674,25 +674,40 @@ Dependencies:
     # ITERATE OVER ATOM TYPE SMARTS DEFINITIONS
     for atom_type, smartsdict in ATOM_TYPES.items():
         
+        logging.info('Typing: {}'.format(atom_type))
+        
         # FOR EACH ATOM TYPE SMARTS STRING
         for smarts in smartsdict.values():
+            
+            logging.info('Smarts: {}'.format(smarts))
             
             # GET OPENBABEL ATOM MATCHES TO THE SMARTS PATTERN
             ob_smart = ob.OBSmartsPattern()
             ob_smart.Init(str(smarts))
             
+            logging.info('Initialised for: {}'.format(smarts))
+            
             ob_smart.Match(mol)
+            
+            logging.info('Matched for: {}'.format(smarts))
+            
             matches = [x for x in ob_smart.GetMapList()]
+            
+            logging.info('List comp matches: {}'.format(smarts))
             
             if matches:
                 
                 # REDUCE TO A SINGLE LIST
                 matches = set(reduce(operator.add, matches))
                 
+                logging.info('Set reduce matches: {}'.format(smarts))
+                
                 for match in matches:
                     
                     atom = mol.GetAtom(match)
                     ob_to_bio[atom.GetId()].atom_types.add(atom_type)
+                
+                logging.info('Assigned types: {}'.format(smarts))
                     
     # ALL WATER MOLECULES ARE HYDROGEN BOND DONORS AND ACCEPTORS
     for atom in (x for x in s_atoms if x.get_full_id()[3][0] == 'W'):
