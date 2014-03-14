@@ -30,8 +30,22 @@ pymol_config = {
                 "vdw": "deepsalmon",
                 "proximal": "salmon"
             },
+            
+            "polar":
+            {
+                "vdwclash": "red",
+                "vdw": "deepsalmon",
+                "proximal": "salmon"
+            },
 
             "weakhbond":
+            {
+                "vdwclash": "orange",
+                "vdw": "amber",
+                "proximal": "peach"
+            },
+            
+            "weakpolar":
             {
                 "vdwclash": "orange",
                 "vdw": "amber",
@@ -106,6 +120,20 @@ pymol_config = {
                 "vdw": 0.08,
                 "proximal": 0.04
             },
+            
+            "polar":
+            {
+                "vdwclash": 0.12,
+                "vdw": 0.08,
+                "proximal": 0.04
+            },
+
+            "weakpolar":
+            {
+                "vdwclash": 0.12,
+                "vdw": 0.08,
+                "proximal": 0.04
+            },
 
             "metalcomplex":
             {
@@ -175,6 +203,20 @@ pymol_config = {
                 "vdw": 0.35,
                 "proximal": 0.45
             },
+            
+            "polar":
+            {
+                "vdwclash": 0.25,
+                "vdw": 0.35,
+                "proximal": 0.45
+            },
+
+            "weakpolar":
+            {
+                "vdwclash": 0.25,
+                "vdw": 0.35,
+                "proximal": 0.45
+            },
 
             "metalcomplex":
             {
@@ -239,6 +281,20 @@ pymol_config = {
             },
 
             "weakhbond":
+            {
+                "vdwclash": 0.08,
+                "vdw": 0.06,
+                "proximal": 0.04
+            },
+            
+            "polar":
+            {
+                "vdwclash": 0.08,
+                "vdw": 0.06,
+                "proximal": 0.04
+            },
+
+            "weakpolar":
             {
                 "vdwclash": 0.08,
                 "vdw": 0.06,
@@ -440,7 +496,7 @@ if __name__ == '__main__':
             
             atom_bgn = line[0]
             atom_end = line[1]
-            SIFt = [int(x) for x in line[2:15]]
+            SIFt = [int(x) for x in line[2:17]]
             
             interactions = []
             dist_flag = ''
@@ -524,6 +580,12 @@ if __name__ == '__main__':
                     
                     elif e == 7:
                         interaction_type = 'carbonyl'
+                        
+                    elif e == 8:
+                        interaction_type = 'polar'
+                        
+                    elif e == 9:
+                        interaction_type = 'weakpolar'
                     
                     interactions.append((interaction_type, dist_flag))
                 
