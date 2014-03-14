@@ -429,6 +429,21 @@ def is_xbond(donor, acceptor, ob_mol):
     
     return 0
 
+def update_atom_sift(atom, addition, contact_type='INTER'):
+    '''
+    '''
+    
+    atom.sift = [x or y for x, y in zip(atom.sift, addition)]
+    
+    if contact_type == 'INTER':
+        atom.sift_inter_only = [x or y for x, y in zip(atom.sift_inter_only, addition)]
+    
+    if 'INTRA' in contact_type:
+        atom.sift_intra_only = [x or y for x, y in zip(atom.sift_intra_only, addition)]
+        
+    if 'WATER' in contact_type:
+        atom.sift_water_only = [x or y for x, y in zip(atom.sift_water_only, addition)]
+
 def update_atom_fsift(atom, addition, contact_type='INTER'):
     '''
     '''
@@ -742,6 +757,12 @@ Dependencies:
     # 9: WEAK POLAR - WEAK H-BONDS WITHOUT ANGLES
     
     for atom in s_atoms:
+        
+        atom.sift = [0] * 15
+        atom.sift_inter_only = [0] * 15
+        atom.sift_intra_only = [0] * 15
+        atom.sift_water_only = [0] * 15
+        
         atom.potential_fsift = [0] * 10
         atom.actual_fsift = [0] * 10
         atom.actual_fsift_inter_only = [0] * 10
@@ -1204,6 +1225,10 @@ Dependencies:
                 if 'hydrophobe' in atom_bgn.atom_types and 'hydrophobe' in atom_end.atom_types and distance <= CONTACT_TYPES['hydrophobic']['distance']:
                     SIFt[11] = 1
             
+            # UPDATE ATOM SIFTS
+            update_atom_sift(atom_bgn, SIFt, contact_type)
+            update_atom_sift(atom_end, SIFt, contact_type)
+            
             # UPDATE ATOM FEATURE SIFts
             fsift = SIFt[5:]
             update_atom_fsift(atom_bgn, fsift, contact_type)
@@ -1218,6 +1243,13 @@ Dependencies:
                 fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt + [contact_type]])))
         
         logging.info('Calculated pairwise contacts.')
+    
+    # WRITE OUT PER-ATOM SIFTS
+    with open(pdb_filename.replace('.pdb', '.sift'), 'wb') as fo, open(pdb_filename.replace('.pdb', '.specific.sift'), 'wb') as specific_fo:
+        for atom in selection_plus:
+            
+            fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom)] + atom.sift])))
+            specific_fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom)] + atom.sift_inter_only + atom.sift_intra_only + atom.sift_water_only])))
     
     # WRITE OUT SIFT MATCHING
     # LIGAND AND BINDING SITE (`selection_plus`)
