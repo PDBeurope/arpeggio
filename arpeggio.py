@@ -35,7 +35,7 @@ import openbabel as ob
 # CONSTANTS #
 #############
 
-from config import DEFAULT_SIFT, ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT
+from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT
 
 ###########
 # CLASSES #
@@ -738,12 +738,15 @@ Dependencies:
     #11: 6:  HYDROPHOBIC
     #12: 7: CARBONYL
     
+    # 8: POLAR - H-BONDS WITHOUT ANGLES
+    # 9: WEAK POLAR - WEAK H-BONDS WITHOUT ANGLES
+    
     for atom in s_atoms:
-        atom.potential_fsift = [0] * 8
-        atom.actual_fsift = [0] * 8
-        atom.actual_fsift_inter_only = [0] * 8
-        atom.actual_fsift_intra_only = [0] * 8
-        atom.actual_fsift_water_only = [0] * 8
+        atom.potential_fsift = [0] * 10
+        atom.actual_fsift = [0] * 10
+        atom.actual_fsift_inter_only = [0] * 10
+        atom.actual_fsift_intra_only = [0] * 10
+        atom.actual_fsift_water_only = [0] * 10
         
         # 0: HBOND
         if 'hbond acceptor' in atom.atom_types or 'hbond donor' in atom.atom_types:
@@ -776,6 +779,14 @@ Dependencies:
         # 7: CARBONYL
         if 'carbonyl oxygen' in atom.atom_types or 'carbonyl carbon' in atom.atom_types:
             atom.potential_fsift[7] = 1
+            
+        # 8: POLAR
+        if 'hbond acceptor' in atom.atom_types or 'hbond donor' in atom.atom_types:
+            atom.potential_fsift[8] = 1
+        
+        # 9: WEAK POLAR
+        if 'weak hbond acceptor' in atom.atom_types or 'weak hbond donor' in atom.atom_types or 'hbond donor' in atom.atom_types or 'hbond acceptor' in atom.atom_types or atom.is_halogen:
+            atom.potential_fsift[9] = 1
     
     # PERCIEVE AROMATIC RINGS
     s.rings = OrderedDict()
@@ -1017,6 +1028,9 @@ Dependencies:
             #11: HYDROPHOBIC
             #12: CARBONYL
             
+            #13: POLAR - HBONDS WITHOUT ANGLES
+            #14: WEAK POLAR - WEAK HBONDS WITHOUT ANGLES
+            
             # IGNORE CONTACTS THAT EITHER:
             # - DON'T INVOLVE THE SELECTION
             # - DON'T INVOLVE WATER
@@ -1055,7 +1069,7 @@ Dependencies:
             ob_atom_bgn = mol.GetAtomById(bio_to_ob[atom_bgn])
             ob_atom_end = mol.GetAtomById(bio_to_ob[atom_end])
             
-            SIFt = [0] * 13
+            SIFt = [0] * 15
             
             # IGNORE INTRA-RESIDUE CONTACTS
             if atom_bgn.get_parent() == atom_end.get_parent():
@@ -1102,10 +1116,13 @@ Dependencies:
                 if atom_bgn.get_full_id()[3][0] == 'W' and distance <= (sum_vdw_radii + VDW_COMP_FACTOR):
                     if 'hbond acceptor' in atom_end.atom_types or 'hbond donor' in atom_end.atom_types:
                         SIFt[5] = 1
+                        SIFt[13] = 1
+                        
                 
                 elif atom_end.get_full_id()[3][0] == 'W' and distance <= (sum_vdw_radii + VDW_COMP_FACTOR):
                     if 'hbond acceptor' in atom_bgn.atom_types or 'hbond donor' in atom_bgn.atom_types:
                         SIFt[5] = 1
+                        SIFt[13] = 1
                 
                 else:
                     
@@ -1113,29 +1130,35 @@ Dependencies:
                     if 'hbond donor' in atom_bgn.atom_types and 'hbond acceptor' in atom_end.atom_types:
                         
                         SIFt[5] = is_hbond(atom_bgn, atom_end)
+                        SIFt[13] = 1
                     
                     # ATOM_END IS DONOR
                     elif 'hbond donor' in atom_end.atom_types and 'hbond acceptor' in atom_bgn.atom_types:
                         
                         SIFt[5] = is_hbond(atom_end, atom_bgn)
+                        SIFt[13] = 1
                     
                 # WEAK HBOND
                 
                 # ATOM_BGN IS ACCEPTOR, ATOM_END IS CARBON
                 if 'hbond acceptor' in atom_bgn.atom_types and 'weak hbond donor' in atom_end.atom_types:
                     SIFt[6] = is_weak_hbond(atom_end, atom_bgn)
+                    SIFt[14] = 1
                 
                 # ATOM_BGN IS CARBON, ATOM_END IS ACCEPTOR
                 if 'weak hbond donor' in atom_bgn.atom_types and 'hbond acceptor' in atom_end.atom_types:
                     SIFt[6] = is_weak_hbond(atom_bgn, atom_end)
+                    SIFt[14] = 1
                     
                 # ATOM_BGN IS HALOGEN WEAK ACCEPTOR
                 if 'weak hbond acceptor' in atom_bgn.atom_types and atom_bgn.is_halogen and ('hbond donor' in atom_end.atom_types or 'weak hbond donor' in atom_end.atom_types):
                     SIFt[6] = is_halogen_weak_hbond(atom_end, atom_bgn, mol)
+                    SIFt[14] = 1
                 
                 # ATOM END IS HALOGEN WEAK ACCEPTOR
                 if 'weak hbond acceptor' in atom_end.atom_types and atom_end.is_halogen and ('hbond donor' in atom_bgn.atom_types or 'weak hbond donor' in atom_bgn.atom_types):
                     SIFt[6] = is_halogen_weak_hbond(atom_bgn, atom_end, mol)
+                    SIFt[14] = 1
                     
                 # XBOND
                 if distance <= sum_vdw_radii + VDW_COMP_FACTOR:

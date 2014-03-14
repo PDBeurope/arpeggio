@@ -12,7 +12,10 @@ DEFAULT_SIFT = OrderedDict()
     #11: 6:  HYDROPHOBIC
     #12: 7: CARBONYL
     
-FEATURE_SIFT = ('H-Bond', 'Weak H-Bond', 'Halogen Bond', 'Ionic', 'Metal Complex', 'Aromatic', 'Hydrophobic', 'Carbonyl')
+    #8: POLAR - HBOND WITHOUT ANGLES
+    #9: WEAK POLAR - WEAK HBOND WITHOUT ANGLES
+    
+FEATURE_SIFT = ('H-Bond', 'Weak H-Bond', 'Halogen Bond', 'Ionic', 'Metal Complex', 'Aromatic', 'Hydrophobic', 'Carbonyl', 'Polar', 'Weak Polar')
 
 #http://en.wikipedia.org/wiki/Atomic_radii_of_the_elements_(data_page)
 VDW_RADII = {
