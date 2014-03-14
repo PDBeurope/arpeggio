@@ -55,6 +55,11 @@ class AtomSerialError(Exception):
     
     def __init__(self):
         logging.error('One or more atom serial numbers are duplicated.')
+        
+class SiftMatchError(Exception):
+    
+    def __init__(self):
+        logging.error('Seeing is not believing.')
 
 #############
 # FUNCTIONS #
@@ -428,16 +433,16 @@ def update_atom_fsift(atom, addition, contact_type='INTER'):
     '''
     '''
     
-    atom.actual_fsift = [x | y for x, y in zip(atom.actual_fsift, addition)]
+    atom.actual_fsift = [x or y for x, y in zip(atom.actual_fsift, addition)]
     
     if contact_type == 'INTER':
-        atom.actual_fsift_inter_only = [x | y for x, y in zip(atom.actual_fsift_inter_only, addition)]
+        atom.actual_fsift_inter_only = [x or y for x, y in zip(atom.actual_fsift_inter_only, addition)]
     
     if 'INTRA' in contact_type:
-        atom.actual_fsift_intra_only = [x | y for x, y in zip(atom.actual_fsift_intra_only, addition)]
+        atom.actual_fsift_intra_only = [x or y for x, y in zip(atom.actual_fsift_intra_only, addition)]
         
     if 'WATER' in contact_type:
-        atom.actual_fsift_water_only = [x | y for x, y in zip(atom.actual_fsift_water_only, addition)]
+        atom.actual_fsift_water_only = [x or y for x, y in zip(atom.actual_fsift_water_only, addition)]
 
 def sift_xnor(sift1, sift2):
     '''
@@ -487,7 +492,7 @@ def sift_match_base3(sift1, sift2):
             out.append(1) # MATCHED
             
         elif not x and y: # FT
-            out.append(2) # SHOULD NEVER HAPPEN
+            raise SiftMatchError
         
         else:
             raise ValueError('Invalid SIFts for matching: {} and {}'.format(sift1, sift2))
@@ -745,7 +750,7 @@ Dependencies:
             atom.potential_fsift[0] = 1
         
         # 1: WEAK HBOND
-        if 'weak hbond acceptor' in atom.atom_types or 'weak hbond donor' in atom.atom_types or 'hbond donor' in atom.atom_types:
+        if 'weak hbond acceptor' in atom.atom_types or 'weak hbond donor' in atom.atom_types or 'hbond donor' in atom.atom_types or 'hbond acceptor' in atom.atom_types or atom.is_halogen:
             atom.potential_fsift[1] = 1
             
         # 2: HALOGEN BOND
@@ -1077,7 +1082,7 @@ Dependencies:
                 SIFt[0] = 1
                 
             # VDW CLASH
-            elif distance < sum_vdw_radii:
+            elif distance < sum_vdw_radii + VDW_COMP_FACTOR:
                 SIFt[2] = 1
             
             # VDW
