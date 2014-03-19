@@ -61,6 +61,11 @@ class SiftMatchError(Exception):
     def __init__(self):
         logging.error('Seeing is not believing.')
 
+class SelectionError(Exception):
+    
+    def __init__(self, selection):
+        logging.error('Invalid selector: {}'.format(selection))
+
 #############
 # FUNCTIONS #
 #############
@@ -165,7 +170,7 @@ def selection_parser(selection_list, atom_list):
             # ATOM NAME
             if selection[2]:
                 
-                if not selection[2].isalnum():
+                if not selection[2].isalnum() and "'" not in selection[2]:
                     raise SelectionError(original_selection)
                 else:
                     atom_name = selection[2]
