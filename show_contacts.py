@@ -618,6 +618,58 @@ if __name__ == '__main__':
             do('set dash_gap, {}, {}'.format(pymol_config['dashgap'][interaction_type][flag], label))
             do('set dash_length, {}, {}'.format(pymol_config['dashlength'][interaction_type][flag], label))
     
+    # RING INTERACTIONS
+    
+    # RING CENTROIDS
+    with open(rings_filename, 'rb') as fo:
+        for line in fo:
+            line = line.strip().split('\t')
+            
+            do('pseudoatom ring_centers, pos={}'.format(line[1]))
+    
+    do('hide everything, ring_centers')
+    #do('show spheres, ring_centers')
+    
+    # RING-RING INTERACTIONS
+    with open(ri_filename, 'rb') as fo:
+        for line in fo:
+            line = line.strip().split('\t')
+            
+            do('pseudoatom pt1, pos={}'.format(line[1]))
+            do('pseudoatom pt2, pos={}'.format(line[3]))
+            
+            do('distance ring-{}, pt1, pt2'.format(line[4]))
+            
+            do('delete pt1')
+            do('delete pt2')
+    
+    do('set dash_radius, 0.25, ring-*')
+    do('set dash_gap, 0.1, ring-*')
+    do('color white, ring-*')
+    
+    # ATOM-RING INTERACTIONS
+    with open(ari_filename, 'rb') as fo:
+        for line in fo:
+            line = line.strip().split('\t')
+            
+            do('pseudoatom pt1, pos={}'.format(line[2]))
+            
+            if type(eval(line[3])) == list:
+            
+                for itype in eval(line[3]):
+                    do('distance {}, pt1, {}'.format(itype, line[0]))
+            
+            do('delete pt1')
+    
+    do('set dash_radius, 0.15, *PI')
+    do('set dash_gap, 0.1, *PI')
+    
+    do('color white, CARBONPI')
+    do('color blue, DONORPI')
+    do('color green, HALOGENPI')
+    do('color red, CATIONPI')
+    
+    # PRETTINESS
     do('hide labels')
     do('util.cbaw')
     do('bg_color white')
