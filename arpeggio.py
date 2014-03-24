@@ -1383,7 +1383,7 @@ Dependencies:
                 # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
                 #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
                 #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
-                theta = abs(ring_angle(ring, atom.coord, True, True)) # CHECK IF `atom.coord` or `ring['center'] - atom.coord`
+                theta = abs(ring_angle(ring, ring['center'] - atom.coord, True, True)) # CHECK IF `atom.coord` or `ring['center'] - atom.coord`
                 
                 if theta <= 30.0:
                     
