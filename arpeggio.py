@@ -1317,25 +1317,25 @@ Dependencies:
                 
                 int_type = ''
                 
-                if dihedral <= 30.0 and theta <= 30.0 :
+                if dihedral <= 30.0 and theta <= 30.0:
                     int_type = 'FF'
-                if dihedral <= 30.0 and theta <= 60.0 :
+                elif dihedral <= 30.0 and theta <= 60.0:
                     int_type = 'OF'
-                if dihedral <= 30.0 and theta <= 90.0 :
+                elif dihedral <= 30.0 and theta <= 90.0:
                     int_type = 'EE'
 
-                if dihedral > 30.0 and dihedral <= 60.0 and theta <= 30.0:
+                elif dihedral > 30.0 and dihedral <= 60.0 and theta <= 30.0:
                     int_type = 'FT'
-                if dihedral > 30.0 and dihedral <= 60.0 and theta <= 60.0 :
+                elif dihedral > 30.0 and dihedral <= 60.0 and theta <= 60.0:
                     int_type = 'OT'
-                if dihedral > 30.0 and dihedral <= 60.0 and theta <= 90.0 :
+                elif dihedral > 30.0 and dihedral <= 60.0 and theta <= 90.0:
                     int_type = 'ET'
 
-                if dihedral > 60.0 and dihedral <= 90.0 and theta <= 30.0 :
+                elif dihedral > 60.0 and dihedral <= 90.0 and theta <= 30.0:
                     int_type = 'FE'
-                if dihedral > 60.0 and dihedral <= 90.0 and theta <= 60.0 :
+                elif dihedral > 60.0 and dihedral <= 90.0 and theta <= 60.0:
                     int_type = 'OE'
-                if dihedral > 60.0 and dihedral <= 90.0 and theta <= 90.0 :
+                elif dihedral > 60.0 and dihedral <= 90.0 and theta <= 90.0:
                     int_type = 'EF'
                     
                 # WRITE RING INTERACTION TO FILE
