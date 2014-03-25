@@ -743,8 +743,24 @@ Dependencies:
         for atom in s_atoms:
             fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom), sorted(tuple(atom.atom_types))]])))
         
-    
     logging.info('Typed atoms.')
+    
+    # DETERMINE ATOM VALENCES
+    for ob_atom in ob.OBMolAtomIter(mol):
+        
+        # `http://openbabel.org/api/2.3/classOpenBabel_1_1OBAtom.shtml`
+        # CURRENT NUMBER OF EXPLICIT CONNECTIONS
+        valence = ob_atom.GetValence()
+        
+        # MAXIMUM NUMBER OF CONNECTIONS EXPECTED
+        implicit_valence = ob_atom.GetImplicitValence()
+        
+        bio_atom = ob_to_bio[ob_atom.GetId()]
+        
+        bio_atom.valence = valence
+        bio_atom.implicit_valence = implicit_valence
+    
+    logging.info('Determined atom explicit and implicit valences.')
     
     # INITIALISE ATOM FEATURE SIFT AND
     # DETERMINE ATOM POTENTIAL FEATURE SIFT
