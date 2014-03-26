@@ -35,7 +35,7 @@ import openbabel as ob
 # CONSTANTS #
 #############
 
-from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT
+from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, VALENCE
 
 ###########
 # CLASSES #
@@ -699,40 +699,40 @@ Dependencies:
     # ITERATE OVER ATOM TYPE SMARTS DEFINITIONS
     for atom_type, smartsdict in ATOM_TYPES.items():
         
-        logging.info('Typing: {}'.format(atom_type))
+        #logging.info('Typing: {}'.format(atom_type))
         
         # FOR EACH ATOM TYPE SMARTS STRING
         for smarts in smartsdict.values():
             
-            logging.info('Smarts: {}'.format(smarts))
+            #logging.info('Smarts: {}'.format(smarts))
             
             # GET OPENBABEL ATOM MATCHES TO THE SMARTS PATTERN
             ob_smart = ob.OBSmartsPattern()
             ob_smart.Init(str(smarts))
             
-            logging.info('Initialised for: {}'.format(smarts))
+            #logging.info('Initialised for: {}'.format(smarts))
             
             ob_smart.Match(mol)
             
-            logging.info('Matched for: {}'.format(smarts))
+            #logging.info('Matched for: {}'.format(smarts))
             
             matches = [x for x in ob_smart.GetMapList()]
             
-            logging.info('List comp matches: {}'.format(smarts))
+            #logging.info('List comp matches: {}'.format(smarts))
             
             if matches:
                 
                 # REDUCE TO A SINGLE LIST
                 matches = set(reduce(operator.add, matches))
                 
-                logging.info('Set reduce matches: {}'.format(smarts))
+                #logging.info('Set reduce matches: {}'.format(smarts))
                 
                 for match in matches:
                     
                     atom = mol.GetAtom(match)
                     ob_to_bio[atom.GetId()].atom_types.add(atom_type)
                 
-                logging.info('Assigned types: {}'.format(smarts))
+                #logging.info('Assigned types: {}'.format(smarts))
                     
     # ALL WATER MOLECULES ARE HYDROGEN BOND DONORS AND ACCEPTORS
     for atom in (x for x in s_atoms if x.get_full_id()[3][0] == 'W'):
@@ -745,8 +745,11 @@ Dependencies:
         
     logging.info('Typed atoms.')
     
-    # DETERMINE ATOM VALENCES
+    # DETERMINE ATOM VALENCES AND EXPLICIT HYDROGEN COUNTS
     for ob_atom in ob.OBMolAtomIter(mol):
+        
+        if ob_atom.IsHydrogen():
+            continue
         
         # `http://openbabel.org/api/2.3/classOpenBabel_1_1OBAtom.shtml`
         # CURRENT NUMBER OF EXPLICIT CONNECTIONS
@@ -755,13 +758,30 @@ Dependencies:
         # MAXIMUM NUMBER OF CONNECTIONS EXPECTED
         implicit_valence = ob_atom.GetImplicitValence()
         
+        # BOND ORDER
+        bond_order = ob_atom.BOSum()
+        
+        # NUMBER OF BOUND HYDROGENS
+        num_hydrogens = ob_atom.ExplicitHydrogenCount()
+        
+        # ELEMENT NUMBER
+        atomic_number = ob_atom.GetAtomicNum()
+        
+        # FORMAL CHARGE
+        formal_charge = ob_atom.GetFormalCharge()
+        
         bio_atom = ob_to_bio[ob_atom.GetId()]
         
         bio_atom.valence = valence
         bio_atom.implicit_valence = implicit_valence
+        bio_atom.num_hydrogens = num_hydrogens
+        bio_atom.bond_order = bond_order
+        bio_atom.atomic_number = atomic_number
+        bio_atom.formal_charge = formal_charge
     
-    logging.info('Determined atom explicit and implicit valences.')
+    logging.info('Determined atom explicit and implicit valences, bond orders, atomic numbers, formal charge and number of bound hydrogens.')
     
+    # INITIALISE ATOM FULL SIFT
     # INITIALISE ATOM FEATURE SIFT AND
     # DETERMINE ATOM POTENTIAL FEATURE SIFT
     
@@ -771,28 +791,65 @@ Dependencies:
     # 8: 3: IONIC
     # 9: 4: METAL_COMPLEX
     #10: 5: AROMATIC
-    #11: 6:  HYDROPHOBIC
+    #11: 6: HYDROPHOBIC
     #12: 7: CARBONYL
     
     # 8: POLAR - H-BONDS WITHOUT ANGLES
     # 9: WEAK POLAR - WEAK H-BONDS WITHOUT ANGLES
     
+    # ALSO INITIALISE ATOM NUMBER OF POTENTIAL HBONDS/POLAR
+    # AND NUMBER OF ACTUAL HBONDS/POLAR
+    
     for atom in s_atoms:
         
         atom.sift = [0] * 15
+        
         atom.sift_inter_only = [0] * 15
         atom.sift_intra_only = [0] * 15
         atom.sift_water_only = [0] * 15
         
         atom.potential_fsift = [0] * 10
+        
         atom.actual_fsift = [0] * 10
         atom.actual_fsift_inter_only = [0] * 10
+        
         atom.actual_fsift_intra_only = [0] * 10
         atom.actual_fsift_water_only = [0] * 10
         
+        atom.potential_hbonds = 0
+        atom.potential_polars = 0
+        
+        atom.actual_hbonds = 0
+        atom.actual_polars = 0
+        
+        atom.actual_hbonds_inter_only = 0
+        atom.actual_polars_inter_only = 0
+        
+        atom.actual_hbonds_intra_only = 0
+        atom.actual_polars_intra_only = 0
+        
+        atom.actual_hbonds_water_only = 0
+        atom.actual_polars_water_only = 0
+        
+        # ATOM POTENTIAL FEATURE SIFT
         # 0: HBOND
         if 'hbond acceptor' in atom.atom_types or 'hbond donor' in atom.atom_types:
             atom.potential_fsift[0] = 1
+            
+            if 'hbond acceptor' in atom.atom_types:
+                
+                # NUMBER OF LONE PAIRS
+                lone_pairs = VALENCE[atom.atomic_number] - atom.bond_order - atom.formal_charge
+                
+                if lone_pairs != 0:
+                    lone_pairs = lone_pairs / 2
+                
+                atom.potential_hbonds = atom.potential_hbonds + lone_pairs
+                atom.potential_polars = atom.potential_polars + lone_pairs
+            
+            if 'hbond donor' in atom.atom_types:
+                atom.potential_hbonds = atom.potential_hbonds + atom.num_hydrogens
+                atom.potential_polars = atom.potential_polars + atom.num_hydrogens
         
         # 1: WEAK HBOND
         if 'weak hbond acceptor' in atom.atom_types or 'weak hbond donor' in atom.atom_types or 'hbond donor' in atom.atom_types or 'hbond acceptor' in atom.atom_types or atom.is_halogen:
@@ -829,6 +886,8 @@ Dependencies:
         # 9: WEAK POLAR
         if 'weak hbond acceptor' in atom.atom_types or 'weak hbond donor' in atom.atom_types or 'hbond donor' in atom.atom_types or 'hbond acceptor' in atom.atom_types or atom.is_halogen:
             atom.potential_fsift[9] = 1
+        
+        
     
     # PERCIEVE AROMATIC RINGS
     s.rings = OrderedDict()
@@ -1179,7 +1238,40 @@ Dependencies:
                         
                         SIFt[5] = is_hbond(atom_end, atom_bgn)
                         SIFt[13] = 1
+                        
+                # UPDATE ATOM HBOND/POLAR COUNTS
+                if SIFt[5]:
+                    atom_bgn.actual_hbonds = atom_bgn.actual_hbonds + 1
+                    atom_end.actual_hbonds = atom_end.actual_hbonds + 1
                     
+                    if 'INTRA' in contact_type:
+                        atom_bgn.actual_hbonds_intra_only = atom_bgn.actual_hbonds_intra_only + 1
+                        atom_end.actual_hbonds_intra_only = atom_end.actual_hbonds_intra_only + 1
+                    
+                    elif 'INTER' in contact_type:
+                        atom_bgn.actual_hbonds_inter_only = atom_bgn.actual_hbonds_inter_only + 1
+                        atom_end.actual_hbonds_inter_only = atom_end.actual_hbonds_inter_only + 1
+                    
+                    elif 'WATER' in contact_type:
+                        atom_bgn.actual_hbonds_water_only = atom_bgn.actual_hbonds_water_only + 1
+                        atom_end.actual_hbonds_water_only = atom_end.actual_hbonds_water_only + 1
+                
+                if SIFt[13]:
+                    atom_bgn.actual_polars = atom_bgn.actual_polars + 1
+                    atom_end.actual_polars = atom_end.actual_polars + 1
+                    
+                    if 'INTRA' in contact_type:
+                        atom_bgn.actual_polars_intra_only = atom_bgn.actual_polars_intra_only + 1
+                        atom_end.actual_polars_intra_only = atom_end.actual_polars_intra_only + 1
+                    
+                    elif 'INTER' in contact_type:
+                        atom_bgn.actual_polars_inter_only = atom_bgn.actual_polars_inter_only + 1
+                        atom_end.actual_polars_inter_only = atom_end.actual_polars_inter_only + 1
+                    
+                    elif 'WATER' in contact_type:
+                        atom_bgn.actual_polars_water_only = atom_bgn.actual_polars_water_only + 1
+                        atom_end.actual_polars_water_only = atom_end.actual_polars_water_only + 1
+                
                 # WEAK HBOND
                 
                 # ATOM_BGN IS ACCEPTOR, ATOM_END IS CARBON
