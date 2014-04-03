@@ -587,6 +587,7 @@ Dependencies:
     #parser.add_argument('-st', '--sasa-threshold', type=float, default=1.0, help='Floating point solvent accessible surface area threshold (squared Angstroms) for considering an atom as \'accessible\' or not.')
     #parser.add_argument('-ca', '--consider-all', action='store_true', help='Consider all entity/selection atoms, not just solvent accessible ones. If this is set, SASAs won\'t be calculated.')
     #parser.add_argument('-spdb', '--sasa-pdb', action='store_true', help='Store a PDB with atom b-factors set based on boolean solvent accessibility.')
+    parser.add_argument('-op', '--output-postfix', type=str, help='Custom text to append to output filename (but before .extension).')
     parser.add_argument('-v', '--verbose', action='store_true', help='Be chatty.')
  
     args = parser.parse_args()
@@ -631,6 +632,10 @@ Dependencies:
     ob_conv.ReadFile(mol, pdb_filename)
     
     logging.info('Loaded PDB structure (OpenBabel)')
+    
+    # RENAME FOR OUTPUTS IF REQUESTED
+    if args.output_postfix:
+        pdb_filename = pdb_filename.replace('.pdb', args.output_postfix + '.pdb')
     
     # CHECK THAT EACH ATOM HAS A UNIQUE SERIAL NUMBER
     all_serials = [x.serial_number for x in s_atoms]
