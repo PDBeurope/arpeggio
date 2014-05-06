@@ -1203,7 +1203,7 @@ Dependencies:
                 SIFt[0] = 1
                 
             # VDW CLASH
-            elif distance < sum_vdw_radii + VDW_COMP_FACTOR:
+            elif distance < sum_vdw_radii:
                 SIFt[2] = 1
             
             # VDW
@@ -1393,6 +1393,31 @@ Dependencies:
                                                        [human_sift_match(sift_match_intra)] +
                                                        sift_match_water +
                                                        [human_sift_match(sift_match_water)]])))
+    
+    # WRITE OUT HBONDS/POLAR MATCHING
+    with open(pdb_filename.replace('.pdb', '.polarmatch'), 'wb') as fo, open(pdb_filename.replace('.pdb', '.specific.polarmatch'), 'wb') as specific_fo:
+        for atom in selection_plus:
+            
+            # SUBJECT TO CHANGE
+            fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom)] +
+                                              [atom.potential_hbonds,
+                                               atom.potential_polars,
+                                               atom.actual_hbonds,
+                                               atom.actual_polars]
+                                              ])))
+            
+            specific_fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom)] +
+                                                       [atom.potential_hbonds,
+                                                        atom.potential_polars,
+                                                        atom.actual_hbonds_inter_only,
+                                                        atom.actual_hbonds_intra_only,
+                                                        atom.actual_hbonds_water_only,
+                                                        atom.actual_polars_inter_only,
+                                                        atom.actual_polars_intra_only,
+                                                        atom.actual_polars_water_only
+                                                        ]
+                                                       ])))
+    
     
     # RING-RING INTERACTIONS
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
