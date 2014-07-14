@@ -134,11 +134,11 @@ def selection_parser(selection_list, atom_list):
         original_selection = selection
         selection = selection.strip()
         
-        if selection.startswith('HET:'):
+        if selection.startswith('RESNAME:'):
             
-            selection = selection.replace('HET:', '').strip()
+            selection = selection.replace('RESNAME:', '').strip()
             
-            # HET_IDS ARE MAX LENGTH 3
+            # RESNAMES ARE MAX LENGTH 3
             if len(selection) > 3:
                 raise SelectionError(original_selection)
             
