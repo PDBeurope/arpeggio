@@ -378,18 +378,21 @@ if __name__ == '__main__':
     ''', formatter_class=argparse.RawTextHelpFormatter)
         
     parser.add_argument('pdb', type=str, help='Path to the PDB file to be analysed.')
+    parser.add_argument('-op', type=str, default='', help='The output postfix you used with Arpeggio (if any).')
     parser.add_argument('-xml', '--xml-rpc', action='store_true', help='Interact with PyMOL by XML-RPC server (`pymol -R`).')
     parser.add_argument('-s', '--script', action='store_true', help='Output a PyMOL script with the relevant commands.')
     
     args = parser.parse_args()
     
     pdb_filename = args.pdb
-    contacts_filename = pdb_filename.replace('.pdb', '.contacts')
-    rings_filename = pdb_filename.replace('.pdb', '.rings')
-    ari_filename = pdb_filename.replace('.pdb', '.ari') # ATOM-RING INTERACTIONS
-    ri_filename = pdb_filename.replace('.pdb', '.ri') # RING-RING INTERACTIONS
+    output_postfix = args.op
     
-    script_filename = pdb_filename.replace('.pdb', '.pml')
+    contacts_filename = pdb_filename.replace('.pdb', output_postfix + '.contacts')
+    rings_filename = pdb_filename.replace('.pdb', output_postfix + '.rings')
+    ari_filename = pdb_filename.replace('.pdb', output_postfix + '.ari') # ATOM-RING INTERACTIONS
+    ri_filename = pdb_filename.replace('.pdb', output_postfix + '.ri') # RING-RING INTERACTIONS
+    
+    script_filename = pdb_filename.replace('.pdb', output_postfix + '.pml')
     
     if args.xml_rpc:
         srv = xmlrpclib.Server('http://{}:{}'.format(host, port))
