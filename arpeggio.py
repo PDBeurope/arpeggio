@@ -104,6 +104,8 @@ def selection_parser(selection_list, atom_list):
     
     /<chain_id>/<res_num>[<ins_code>]/<atom_name>
     
+    HET:<het_id>
+    
     Other formats will be rejected, for now.
     You can omit fields as long as the number of `/` is correct.
     
@@ -132,7 +134,20 @@ def selection_parser(selection_list, atom_list):
         original_selection = selection
         selection = selection.strip()
         
-        if selection.startswith('/'):
+        if selection.startswith('HET:'):
+            
+            selection = selection.replace('HET:', '').strip()
+            
+            # HET_IDS ARE MAX LENGTH 3
+            if len(selection) > 3:
+                raise SelectionError(original_selection)
+            
+            current_atom_list = [x for x in current_atom_list if x.get_parent().resname == selection]
+            
+            for selected_atom in current_atom_list:
+                final_atom_list.add(selected_atom)
+            
+        elif selection.startswith('/'):
             
             selection = selection.lstrip('/').split('/')
             
