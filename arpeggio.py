@@ -142,7 +142,7 @@ def selection_parser(selection_list, atom_list):
             if len(selection) > 3:
                 raise SelectionError(original_selection)
             
-            current_atom_list = [x for x in current_atom_list if x.get_parent().resname == selection]
+            current_atom_list = [x for x in current_atom_list if x.get_parent().resname.strip() == selection]
             
             for selected_atom in current_atom_list:
                 final_atom_list.add(selected_atom)
