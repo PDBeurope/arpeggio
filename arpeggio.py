@@ -908,8 +908,6 @@ Dependencies:
         if 'weak hbond acceptor' in atom.atom_types or 'weak hbond donor' in atom.atom_types or 'hbond donor' in atom.atom_types or 'hbond acceptor' in atom.atom_types or atom.is_halogen:
             atom.potential_fsift[9] = 1
         
-        
-    
     # PERCIEVE AROMATIC RINGS
     s.rings = OrderedDict()
     
@@ -1037,6 +1035,36 @@ Dependencies:
     ns = NeighborSearch(e)
     
     logging.info('Completed NeighborSearch.')
+    
+    # ASSIGN AROMATIC RINGS TO RESIDUES
+    for ring_id in s.rings:
+        
+        ring_centroid = s.rings[ring_id]['center']
+        atoms_near_ring = ns.search(ring_centroid, 3.0) # MORE THAN REASONABLE FOR PICKING UP THE RESIDUE THE RING IS IN
+                                                        # UNLESS THERE ARE BIG PROBLEMS IN THE PDB, IN WHICH CASE THE RING
+                                                        # RESIDUE ASSIGNMENT IS THE LEAST OF CONCERNS ;)
+        
+        closest_atom = (None, None) # (ATOM, DISTANCE)
+        
+        for nearby_atom in atoms_near_ring:
+            
+            distance = np.linalg.norm(nearby_atom.coord - ring_centroid)
+            
+            if closest_atom[1] is None or distance < closest_atom[1]:
+                closest_atom = (nearby_atom, distance)
+        
+        if closest_atom[0] is None:
+            
+            logging.warn('Residue assignment was not possible for ring {}.'.format(ring_id))
+            s.rings[ring_id]['residue'] = None
+        
+        else:
+            
+            closest_residue = closest_atom[0].get_parent()
+            s.rings[ring_id]['residue'] = closest_residue
+            s.rings[ring_id]['residue_shortest_distance'] = closest_atom[1]
+    
+    logging.info('Assigned rings to residues.')
     
     # ADD "LIGAND" SELECTION (SUBSET OF ATOMS) FROM
     # WITHIN THE ENTITY FOR CONTACT CALCULATION
