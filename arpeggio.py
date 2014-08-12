@@ -585,7 +585,7 @@ Dependencies:
     parser.add_argument('pdb', type=str, help='Path to the PDB file to be analysed.')
     
     selection_group = parser.add_mutually_exclusive_group(required=False)
-    selection_group.add_argument('-s', '--selection', type=str, nargs='+', help='Select the "ligand" for interactions, using selection syntax: /<chain_id>/<res_num>[<ins_code>]/<atom_name> . Fields can be omitted.')
+    selection_group.add_argument('-s', '--selection', type=str, nargs='+', help='Select the "ligand" for interactions, using selection syntax: /<chain_id>/<res_num>[<ins_code>]/<atom_name> or RESNAME:<het_id>. Fields can be omitted.')
     selection_group.add_argument('-sf', '--selection-file', type=str, help='Selections as above, but listed in a file.')
 
     
