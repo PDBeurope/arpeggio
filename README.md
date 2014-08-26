@@ -31,7 +31,15 @@ Use `python arpeggio.py -h` for available options.
 
 Arpeggio doesn't do any checking of your PDB structure, other than what BioPython does by default. Alternate locations and missing density are not explicitly accounted for and may result in anomalous results. Please use with caution.
 
-Output
-------
+Output Files
+------------
 
-TBA.
+### `*.ari`
+
+Atom-aromatic ring interactions.
+
+| Column | Datatype | Description |
+| ------ | -------- | ----------- |
+| Atom   | `<chain_id>/<res_num><ins_code (stripped)><atom_name>` | Uniquely identifiable atom |
+| Ring ID | integer | Internal number used to identify the aromatic ring |
+| Ring Centroid | list | 3D coordinates of the centre of the ring |
