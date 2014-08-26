@@ -1258,7 +1258,7 @@ Dependencies:
                 SIFt[4] = 1
             
             # FEATURE CONTACTS
-            if not any(SIFt[:2]) and distance < CONTACT_TYPES_DIST_MAX:
+            if not any(SIFt[:2]) and distance <= CONTACT_TYPES_DIST_MAX:
                 
                 # HBOND
                 
@@ -1280,13 +1280,19 @@ Dependencies:
                     if 'hbond donor' in atom_bgn.atom_types and 'hbond acceptor' in atom_end.atom_types:
                         
                         SIFt[5] = is_hbond(atom_bgn, atom_end)
-                        SIFt[13] = 1
+                        
+                        # CHECK DISTANCE FOR POLARS
+                        if distance <= CONTACT_TYPES["hbond"]["polar distance"]:
+                            SIFt[13] = 1
                     
                     # ATOM_END IS DONOR
                     elif 'hbond donor' in atom_end.atom_types and 'hbond acceptor' in atom_bgn.atom_types:
                         
                         SIFt[5] = is_hbond(atom_end, atom_bgn)
-                        SIFt[13] = 1
+                        
+                        # CHECK DISTANCE FOR POLARS
+                        if distance <= CONTACT_TYPES["hbond"]["polar distance"]:
+                            SIFt[13] = 1
                         
                 # UPDATE ATOM HBOND/POLAR COUNTS
                 if SIFt[5]:
@@ -1326,22 +1332,34 @@ Dependencies:
                 # ATOM_BGN IS ACCEPTOR, ATOM_END IS CARBON
                 if 'hbond acceptor' in atom_bgn.atom_types and 'weak hbond donor' in atom_end.atom_types:
                     SIFt[6] = is_weak_hbond(atom_end, atom_bgn)
-                    SIFt[14] = 1
+                    
+                    # CHECK DISTANCE FOR WEAK POLARS
+                    if distance <= CONTACT_TYPES["weak hbond"]["weak polar distance"]:
+                        SIFt[14] = 1
                 
                 # ATOM_BGN IS CARBON, ATOM_END IS ACCEPTOR
                 if 'weak hbond donor' in atom_bgn.atom_types and 'hbond acceptor' in atom_end.atom_types:
                     SIFt[6] = is_weak_hbond(atom_bgn, atom_end)
-                    SIFt[14] = 1
+                    
+                    # CHECK DISTANCE FOR WEAK POLARS
+                    if distance <= CONTACT_TYPES["weak hbond"]["weak polar distance"]:
+                        SIFt[14] = 1
                     
                 # ATOM_BGN IS HALOGEN WEAK ACCEPTOR
                 if 'weak hbond acceptor' in atom_bgn.atom_types and atom_bgn.is_halogen and ('hbond donor' in atom_end.atom_types or 'weak hbond donor' in atom_end.atom_types):
                     SIFt[6] = is_halogen_weak_hbond(atom_end, atom_bgn, mol)
-                    SIFt[14] = 1
+                    
+                    # CHECK DISTANCE FOR WEAK POLARS
+                    if distance <= CONTACT_TYPES["weak hbond"]["weak polar distance"]:
+                        SIFt[14] = 1
                 
                 # ATOM END IS HALOGEN WEAK ACCEPTOR
                 if 'weak hbond acceptor' in atom_end.atom_types and atom_end.is_halogen and ('hbond donor' in atom_bgn.atom_types or 'weak hbond donor' in atom_bgn.atom_types):
                     SIFt[6] = is_halogen_weak_hbond(atom_bgn, atom_end, mol)
-                    SIFt[14] = 1
+                    
+                    # CHECK DISTANCE FOR WEAK POLARS
+                    if distance <= CONTACT_TYPES["weak hbond"]["weak polar distance"]:
+                        SIFt[14] = 1
                     
                 # XBOND
                 if distance <= sum_vdw_radii + VDW_COMP_FACTOR:
@@ -1461,7 +1479,7 @@ Dependencies:
                                                         ]
                                                        ])))
     
-    
+
     # RING-RING INTERACTIONS
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/sql/populate.sql?at=default`

@@ -124,6 +124,7 @@ CONTACT_TYPES = {
         "hbond":
         {
             "distance": 3.9,
+            "polar distance": 3.5,
             "angle rad": 1.57,
             "angle degree": 90.0
         },
@@ -131,6 +132,7 @@ CONTACT_TYPES = {
         "weak hbond":
         {
             "distance": 3.6,
+            "weak polar distance": 3.5,
             "angle rad": 2.27,
             "angle degree": 130.0,
             "cx angle min rad": 0.52,
