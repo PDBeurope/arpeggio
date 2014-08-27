@@ -931,7 +931,17 @@ Dependencies:
         s.rings[e] = {'ring_id': e,
                       'center': center,
                       'normal': normal,
-                      'normal_opp': normal_opp}
+                      'normal_opp': normal_opp,
+                      'atoms': [],
+                      'ob_atom_ids': []}
+        
+        # GET RING ATOMS AND STORE
+        for ob_atom in ob.OBMolAtomIter(mol):
+            
+            if ob_ring.IsMember(ob_atom):
+                
+                s.rings[e]['atoms'].append(ob_to_bio[ob_atom.GetId()])
+                s.rings[e]['ob_atom_ids'].append(ob_atom.GetId())
     
     logging.info('Percieved and stored rings.')
     
@@ -976,7 +986,6 @@ Dependencies:
             #    if not ob_atom.IsHydrogen():
             #        ff.SetFixAtom(ob_atom.GetIdx())
             
-            # TODO: MAKE THIS COMMAND-LINE CHANGABLE
             if args.minimisation_method == 'ConjugateGradients':
                 ff.ConjugateGradients(args.minimisation_steps)
             elif args.minimisation_method == 'SteepestDescent':
@@ -1012,7 +1021,7 @@ Dependencies:
                 
     logging.info('Added hydrogens to BioPython atoms.')
     
-    # CHOOSE ENTITY FOR CATMAP CALCULATION
+    # CHOOSE ENTITY FOR CALCULATION
     # AN ENTITY IS A LIST OF BIOPYTHON ATOMS
     # USING ALL THE BIOPYTHON ATOMS AS E FOR NOW
     e = list(s_atoms)
@@ -1060,9 +1069,16 @@ Dependencies:
         
         else:
             
+            # ASSIGN RING TO RESIDUE, STORE RESIDUE IN THE RING
             closest_residue = closest_atom[0].get_parent()
             s.rings[ring_id]['residue'] = closest_residue
             s.rings[ring_id]['residue_shortest_distance'] = closest_atom[1]
+            
+            # ADD RING ID TO THE RESIDUE AS WELL
+            if not hasattr(closest_residue, 'rings'):
+                closest_residue.rings = []
+            
+            closest_residue.rings.append(ring_id)
     
     logging.info('Assigned rings to residues.')
     
