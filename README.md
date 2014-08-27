@@ -40,7 +40,7 @@ Atom-aromatic ring interactions.
 
 | Column | Datatype | Description |
 | ------ | -------- | ----------- |
-| Atom   | string `<chain_id>/<res_num><ins_code (stripped)><atom_name>` | Uniquely identifies an atom |
+| Atom   | string `<chain_id>/<res_num><ins_code (stripped)>/<atom_name>` | Uniquely identifies an atom |
 | Ring ID | integer | Internal number used to identify the aromatic ring |
 | Ring centroid | list | 3D coordinates of the centre of the ring |
 | Interaction type | list | Type(s) of interaction this atom/ring are making |
@@ -51,7 +51,7 @@ Atom types for all of the atoms for which interactions are calculated for. This 
 
 | Column | Datatype | Description |
 | ------ | -------- | ----------- |
-| Atom   | string `<chain_id>/<res_num><ins_code (stripped)><atom_name>` | Uniquely identifies an atom |
+| Atom   | string `<chain_id>/<res_num><ins_code (stripped)>/<atom_name>` | Uniquely identifies an atom |
 | Atom types | list | All the atom types that this atom possesses |
 
 ### `*.contacts`
@@ -60,8 +60,8 @@ Pairwise contacts between two individual atoms.
 
 | Column | Datatype | Description |
 | ------ | -------- | ----------- |
-| Atom 1 | string `<chain_id>/<res_num><ins_code (stripped)><atom_name>` | Uniquely identifies the first atom in this contact |
-| Atom 2 | string `<chain_id>/<res_num><ins_code (stripped)><atom_name>` | Uniquely identifies the second atom in this contact |
+| Atom 1 | string `<chain_id>/<res_num><ins_code (stripped)>/<atom_name>` | Uniquely identifies the first atom in this contact |
+| Atom 2 | string `<chain_id>/<res_num><ins_code (stripped)>/<atom_name>` | Uniquely identifies the second atom in this contact |
 | Clash | boolean::integer | Denotes if the covalent radii of the two atoms are clashing, i.e. steric clash |
 | Covalent | boolean::integer | Denotes if the two atoms appear to be covalently bonded |
 | VdW Clash | boolean::integer | Denotes if the van der Waals radii of the two atoms are clashing |
