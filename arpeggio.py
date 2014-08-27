@@ -1588,8 +1588,10 @@ Dependencies:
                 # WRITE RING INTERACTION TO FILE
                 output = [
                     ring['ring_id'],
+                    make_pymol_string(ring['residue']),
                     list(ring['center']),
                     ring2['ring_id'],
+                    make_pymol_string(ring2['residue']),
                     list(ring2['center']),
                     int_type,
                     intra_residue_text
@@ -1653,6 +1655,7 @@ Dependencies:
                     output = [
                         make_pymol_string(atom),
                         ring['ring_id'],
+                        make_pymol_string(ring['residue']),
                         list(ring['center']),
                         sorted(list(potential_interactions)),
                         intra_residue_text
@@ -1663,6 +1666,7 @@ Dependencies:
             # WRITE RING OUT TO RING FILE
             output = [
                 ring['ring_id'],
+                make_pymol_string(ring['residue']),
                 list(ring['center'])
             ]
             
