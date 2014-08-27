@@ -628,7 +628,7 @@ if __name__ == '__main__':
         for line in fo:
             line = line.strip().split('\t')
             
-            do('pseudoatom ring_centers, pos={}'.format(line[1]))
+            do('pseudoatom ring_centers, pos={}'.format(line[2]))
     
     do('hide everything, ring_centers')
     #do('show spheres, ring_centers')
@@ -638,10 +638,10 @@ if __name__ == '__main__':
         for line in fo:
             line = line.strip().split('\t')
             
-            do('pseudoatom pt1, pos={}'.format(line[1]))
-            do('pseudoatom pt2, pos={}'.format(line[3]))
+            do('pseudoatom pt1, pos={}'.format(line[2]))
+            do('pseudoatom pt2, pos={}'.format(line[5]))
             
-            do('distance ring-{}, pt1, pt2'.format(line[4]))
+            do('distance ring-{}, pt1, pt2'.format(line[6]))
             
             do('delete pt1')
             do('delete pt2')
@@ -655,11 +655,11 @@ if __name__ == '__main__':
         for line in fo:
             line = line.strip().split('\t')
             
-            do('pseudoatom pt1, pos={}'.format(line[2]))
+            do('pseudoatom pt1, pos={}'.format(line[3]))
             
-            if type(eval(line[3])) == list:
+            if type(eval(line[4])) is list:
             
-                for itype in eval(line[3]):
+                for itype in eval(line[4]):
                     do('distance {}, pt1, {}'.format(itype, line[0]))
             
             do('delete pt1')

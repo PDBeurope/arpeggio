@@ -1576,6 +1576,9 @@ Dependencies:
                     int_type = 'EF'
                 
                 # DON'T COUNT INTRA-RESIDUE EDGE-TO-EDGE RING INTERACTIONS
+                # TO AVOID INTRA-HETEROCYCLE INTERACTIONS
+                # POTENTIALLY A BUG IF TWO RINGS ARE SEPARATED BY A LONG ALIPHATIC CHAIN
+                # AND MAKE A GENUINE INTRA EE INTERACTION, BUT ASSUMING THIS IS RARE
                 if intra_residue and int_type == 'EE':
                     continue
                 
