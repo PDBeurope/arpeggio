@@ -28,6 +28,8 @@ import numpy as np
 #from Bio.PDB import PDBIO
 from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB import NeighborSearch
+from Bio.PDB.Atom import Atom
+from Bio.PDB.Residue import Residue
 
 import openbabel as ob
 
@@ -214,17 +216,29 @@ def selection_parser(selection_list, atom_list):
     
     return list(final_atom_list)
 
-def make_pymol_string(atom):
+def make_pymol_string(entity):
     '''
-    Feed me a BioPython atom:
+    Feed me a BioPython atom or BioPython residue.
     
     See `http://pymol.sourceforge.net/newman/user/S0220commands.html`.
     
     chain-identifier/resi-identifier/name-identifier
+    chain-identifier/resi-identifier/
     '''
     
-    chain = atom.get_parent().get_parent()
-    residue = atom.get_parent()
+    if isinstance(entity, Atom):
+    
+        chain = entity.get_parent().get_parent()
+        residue = entity.get_parent()
+        atom_name = entity.name
+    
+    elif isinstance(entity, Residue):
+        chain = entity.get_parent()
+        residue = entity
+        atom_name = ''
+    
+    else:
+        raise TypeError('Cannot make a PyMOL string from a non-Atom or Residue object.')
     
     res_num = residue.id[1]
     
@@ -234,7 +248,7 @@ def make_pymol_string(atom):
     
     macro =  '{}/{}/{}'.format(chain.id,
                                res_num,
-                               atom.name)
+                               atom_name)
     
     return macro
 
