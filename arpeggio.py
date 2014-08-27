@@ -1099,6 +1099,7 @@ Dependencies:
     # ADD "LIGAND" SELECTION (SUBSET OF ATOMS) FROM
     # WITHIN THE ENTITY FOR CONTACT CALCULATION
     selection = e[:]
+    selection_ring_ids = list(s.rings)
     
     if args.selection:
         selection = selection_parser(args.selection, e)
@@ -1118,6 +1119,7 @@ Dependencies:
     
     # EXPAND THE SELECTION TO INCLUDE THE BINDING SITE
     selection_plus = set(selection)
+    selection_plus_ring_ids = set(selection_ring_ids)
     
     if args.selection:
         
@@ -1130,6 +1132,14 @@ Dependencies:
         selection_plus = list(selection_plus)
         
         logging.info('Expanded to binding site.')
+        
+        # GET LIST OF RESIDUES IN THE SELECTION PLUS BINDING SITE
+        selection_plus_residues = set([x.get_parent() for x in selection_plus])
+        
+        # MAKE A SET OF ALL RING IDS ASSOCIATED WITH THE SELECTION AND BINDING SITE
+        selection_plus_ring_ids = set([x for x in s.rings if s.rings[x]['residue'] in selection_plus_residues])
+        
+        logging.info('Flagged selection rings.')
         
         # NEW NEIGHBOURSEARCH
         ns = NeighborSearch(selection_plus)
@@ -1525,6 +1535,10 @@ Dependencies:
                 ring_key2 = ring2
                 ring2 = s.rings[ring2]
                 
+                # CHECK THAT THE RINGS ARE INVOLVED WITH THE SELECTION OR BINDING SITE
+                if ring_key not in selection_plus_ring_ids or ring_key2 not in selection_plus_ring_ids:
+                    continue
+                
                 # NO SELFIES
                 if ring_key == ring_key2:
                     continue
@@ -1609,7 +1623,15 @@ Dependencies:
             ring_key = ring
             ring = s.rings[ring]
             
+            # CHECK RING IS INVOLVED IN THE SELECTION OR BINDING SITE
+            if ring_key not in selection_plus_ring_ids:
+                continue
+            
             for atom in ns.search(ring['center'], CONTACT_TYPES['aromatic']['atom_aromatic_distance']):
+                
+                # CHECK THAT THE ATOM IS INVOLVED IN THE SELECTION OR BINDING SITE
+                if atom not in selection_plus:
+                    continue
                 
                 distance = np.linalg.norm(atom.coord - ring['center'])
                 
