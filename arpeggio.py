@@ -1515,6 +1515,13 @@ Dependencies:
                 if ring_key == ring_key2:
                     continue
                 
+                # CHECK IF INTERACTION IS WITHIN SAME RESIDUE
+                intra_residue = False
+                
+                if ring.residue == ring2.residue:
+                    intra_residue = True
+                
+                # DETERMINE RING-RING DISTANCE
                 distance = np.linalg.norm(ring['center'] - ring2['center'])
                 
                 if distance > CONTACT_TYPES['aromatic']['centroid_distance']:
@@ -1553,14 +1560,25 @@ Dependencies:
                     int_type = 'OE'
                 elif dihedral > 60.0 and dihedral <= 90.0 and theta <= 90.0:
                     int_type = 'EF'
-                    
+                
+                # DON'T COUNT INTRA-RESIDUE EDGE-TO-EDGE RING INTERACTIONS
+                if intra_residue and int_type == 'EE':
+                    continue
+                
+                # OUTPUT INTRA/INTER RESIDUE AS TEXT RATHER THAN BOOLEAN
+                intra_residue_text = 'INTER_RESIDUE'
+                
+                if intra_residue:
+                    intra_residue_text = 'INTRA_RESIDUE'
+                
                 # WRITE RING INTERACTION TO FILE
                 output = [
                     ring['ring_id'],
                     list(ring['center']),
                     ring2['ring_id'],
                     list(ring2['center']),
-                    int_type
+                    int_type,
+                    intra_residue_text
                 ]
                 
                 fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
