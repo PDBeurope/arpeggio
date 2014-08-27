@@ -1597,6 +1597,12 @@ Dependencies:
                 if distance > CONTACT_TYPES['aromatic']['atom_aromatic_distance'] or 'aromatic' in atom.atom_types:
                     continue
                 
+                # CHECK IF INTRA-RESIDUE
+                intra_residue = False
+                
+                if ring.residue == atom.get_parent():
+                    intra_residue = True
+                
                 potential_interactions = set([])
                 
                 if atom.element == 'C' and 'weak hbond donor' in atom.atom_types:
@@ -1619,6 +1625,12 @@ Dependencies:
                 #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
                 theta = abs(ring_angle(ring, ring['center'] - atom.coord, True, True)) # CHECK IF `atom.coord` or `ring['center'] - atom.coord`
                 
+                # OUTPUT INTRA/INTER RESIDUE AS TEXT RATHER THAN BOOLEAN
+                intra_residue_text = 'INTER_RESIDUE'
+                
+                if intra_residue:
+                    intra_residue_text = 'INTRA_RESIDUE'
+                
                 if theta <= 30.0:
                     
                     #logging.info('Atom: <{}>     Theta = {}'.format(atom.get_full_id(), theta))
@@ -1628,7 +1640,8 @@ Dependencies:
                         make_pymol_string(atom),
                         ring['ring_id'],
                         list(ring['center']),
-                        sorted(list(potential_interactions))
+                        sorted(list(potential_interactions)),
+                        intra_residue_text
                     ]
                     
                     fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
