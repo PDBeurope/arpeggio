@@ -216,7 +216,7 @@ def selection_parser(selection_list, atom_list):
 
 def make_pymol_string(atom):
     '''
-    Feed me a BioPython atom.
+    Feed me a BioPython atom:
     
     See `http://pymol.sourceforge.net/newman/user/S0220commands.html`.
     
@@ -1518,7 +1518,7 @@ Dependencies:
                 # CHECK IF INTERACTION IS WITHIN SAME RESIDUE
                 intra_residue = False
                 
-                if ring.residue == ring2.residue:
+                if ring['residue'] == ring2['residue']:
                     intra_residue = True
                 
                 # DETERMINE RING-RING DISTANCE
@@ -1600,7 +1600,7 @@ Dependencies:
                 # CHECK IF INTRA-RESIDUE
                 intra_residue = False
                 
-                if ring.residue == atom.get_parent():
+                if ring['residue'] == atom.get_parent():
                     intra_residue = True
                 
                 potential_interactions = set([])
