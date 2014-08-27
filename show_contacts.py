@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 import xmlrpclib
 
@@ -385,6 +386,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     pdb_filename = args.pdb
+    
+    # CHANGE TO AN ABSOLUTE PATH
+    pdb_filename = os.path.abspath(pdb_filename)
+    
     output_postfix = args.op
     
     contacts_filename = pdb_filename.replace('.pdb', output_postfix + '.contacts')
@@ -412,7 +417,7 @@ if __name__ == '__main__':
         do = srv.do
     
     else:
-        print 'Please select XML-RPC or script output.'
+        print 'Please select XML-RPC (-xml) or script (-s) output.'
         sys.exit(1)
     
     # PYMOL SETUP
