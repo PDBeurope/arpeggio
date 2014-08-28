@@ -1556,7 +1556,7 @@ Dependencies:
                                                         ]
                                                        ])))
     
-    # RESIDUE INTEGER SIFTS
+    # RESIDUE (INTEGER) SIFTS
     for residue in s.get_residues():
         
         for atom in residue.child_list:
@@ -1573,6 +1573,11 @@ Dependencies:
             if hasattr(atom, 'integer_sift_water_only'):
                 residue.integer_sift_water_only = [x + y for x, y in zip(residue.integer_sift_water_only, atom.integer_sift_water_only)]
         
+        # FLATTEN TO BINARY SIFTS
+        residue.sift = [1 if x else 0 for x in residue.integer_sift]
+        residue.sift_inter_only = [1 if x else 0 for x in residue.integer_sift_inter_only]
+        residue.sift_intra_only = [1 if x else 0 for x in residue.integer_sift_intra_only]
+        residue.sift_water_only = [1 if x else 0 for x in residue.integer_sift_water_only]
 
     # RING-RING INTERACTIONS
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
