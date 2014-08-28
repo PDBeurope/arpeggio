@@ -958,6 +958,13 @@ Dependencies:
         
         # RING-RING SIFTS
         residue.ring_ring_inter_integer_sift = [0] * 9
+        
+        # ATOM-RING SIFTS
+        residue.ring_atom_inter_integer_sift = [0] * 4
+        residue.atom_ring_inter_integer_sift = [0] * 4
+        residue.mc_atom_ring_inter_integer_sift = [0] * 4
+        residue.sc_atom_ring_inter_integer_sift = [0] * 4
+        
     
     # DETECT POLYPEPTIDE RESIDUES
     ppb = PPBuilder()
@@ -1679,11 +1686,12 @@ Dependencies:
                 # ALL 9 RING INTERACTION TYPES
                 # ADDED ONLY FOR THE FIRST RING, AS THE RECIPROCAL INTERACTION
                 # SHOULD BE COVERED FOR THE OTHER RING
+                if contact_type == 'INTER' and not intra_residue:
                 
-                for k, i_type in enumerate(('FF', 'OF', 'EE', 'FT', 'OT', 'ET', 'FE', 'OE', 'EF')):
-                    
-                    if int_type == i_type:
-                        ring['residue'].ring_ring_inter_integer_sift[e] = ring['residue'].ring_ring_inter_integer_sift[e] + 1
+                    for k, i_type in enumerate(('FF', 'OF', 'EE', 'FT', 'OT', 'ET', 'FE', 'OE', 'EF')):
+                        
+                        if int_type == i_type:
+                            ring['residue'].ring_ring_inter_integer_sift[k] = ring['residue'].ring_ring_inter_integer_sift[k] + 1
                 
                 # WRITE RING INTERACTION TO FILE
                 output = [
@@ -1717,6 +1725,7 @@ Dependencies:
                 if atom not in selection_plus:
                     continue
                 
+                # GET DISTANCE AND CHECK IF FAR ENOUGH
                 distance = np.linalg.norm(atom.coord - ring['center'])
                 
                 if distance > CONTACT_TYPES['aromatic']['atom_aromatic_distance'] or 'aromatic' in atom.atom_types:
@@ -1728,6 +1737,19 @@ Dependencies:
                 if ring['residue'] == atom.get_parent():
                     intra_residue = True
                 
+                # DETERMINE CONTACT TYPE
+                contact_type = ''
+                
+                if not ring_key in selection_ring_ids and not atom in selection_set:
+                    contact_type = 'INTRA_NON_SELECTION'
+                    
+                if ring_key in selection_ring_ids and atom in selection_set:
+                    contact_type = 'INTRA_SELECTION'
+                    
+                if (ring_key in selection_ring_ids and not atom in selection_set) or (atom in selection_set and not ring_key in selection_ring_ids):
+                    contact_type = 'INTER'
+                    
+                # DETERMINE INTERACTIONS
                 potential_interactions = set([])
                 
                 if atom.element == 'C' and 'weak hbond donor' in atom.atom_types:
@@ -1745,6 +1767,11 @@ Dependencies:
                 if not potential_interactions:
                     continue
                 
+                if len(potential_interactions) != 1:
+                    logging.warn('More than one atom-ring interaction type for <atom: {}>:<ring: {}>.'.format(make_pymol_string(atom), ring_key))
+                
+                interaction_type = list(potential_interactions)[0]
+                
                 # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
                 #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
                 #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
@@ -1759,6 +1786,24 @@ Dependencies:
                 if theta <= 30.0:
                     
                     #logging.info('Atom: <{}>     Theta = {}'.format(atom.get_full_id(), theta))
+                    
+                    # RESIDUE RING-ATOM SIFT
+                    if contact_type == 'INTER':
+                    
+                        for k, i_type in enumerate(('CARBONPI', 'CATIONPI', 'DONORPI', 'HALOGENPI')):
+                            
+                            if interaction_type == i_type:
+                                
+                                ring['residue'].ring_atom_inter_integer_sift[k] = ring['residue'].ring_atom_inter_integer_sift[k] + 1
+                                atom.get_parent().atom_ring_inter_integer_sift[k] = atom.get_parent().atom_ring_inter_integer_sift[k] + 1
+                                
+                                if atom.get_parent() in polypeptide_residues:
+                                    
+                                    if atom.name in MAINCHAIN_ATOMS:
+                                        atom.get_parent().mc_atom_ring_inter_integer_sift[k] = atom.get_parent().mc_atom_ring_inter_integer_sift[k] + 1
+                                    
+                                    else:
+                                        atom.get_parent().sc_atom_ring_inter_integer_sift[k] = atom.get_parent().sc_atom_ring_inter_integer_sift[k] + 1
                     
                     # WRITE ATOM-RING INTERACTION TO FILE
                     output = [
