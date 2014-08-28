@@ -30,6 +30,8 @@ METALS = set(['LI', 'BE', 'NA', 'MG', 'AL', 'K', 'CA', 'SC', 'TI', 'V', 'CR', 'M
 
 HALOGENS = set(['F', 'CL', 'BR', 'I', 'AT'])
 
+MAINCHAIN_ATOMS = set(['N', 'C', 'CA', 'O', 'OXT'])
+
 # `https://github.com/openbabel/openbabel/blob/master/src/atom.cpp`
 # THE NUMBER OF VALENCE ELECTRONS IN A FREE ATOM
 VALENCE = [0,1,2,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,9,10,

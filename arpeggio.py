@@ -38,7 +38,7 @@ import openbabel as ob
 # CONSTANTS #
 #############
 
-from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, VALENCE
+from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, VALENCE, MAINCHAIN_ATOMS
 
 ###########
 # CLASSES #
@@ -1573,6 +1573,7 @@ Dependencies:
     # TODO: INCLUDE RING INTERACTIONS IN RESIDUE SIFT
     for residue in s.get_residues():
         
+        # WHOLE RESIDUE SIFTS
         for atom in residue.child_list:
             
             if hasattr(atom, 'integer_sift'):
@@ -1592,6 +1593,61 @@ Dependencies:
         residue.sift_inter_only = [1 if x else 0 for x in residue.integer_sift_inter_only]
         residue.sift_intra_only = [1 if x else 0 for x in residue.integer_sift_intra_only]
         residue.sift_water_only = [1 if x else 0 for x in residue.integer_sift_water_only]
+        
+        # MAINCHAIN/SIDECHAIN SIFTS FOR POLYPEPTIDE RESIDUES
+        if residue in polypeptide_residues:
+            
+            residue.mc_integer_sift = [0] * 15
+            residue.sc_integer_sift = [0] * 15
+            
+            residue.mc_integer_sift_inter_only = [0] * 15
+            residue.mc_integer_sift_intra_only = [0] * 15
+            residue.mc_integer_sift_water_only = [0] * 15
+            
+            residue.sc_integer_sift_inter_only = [0] * 15
+            residue.sc_integer_sift_intra_only = [0] * 15
+            residue.sc_integer_sift_water_only = [0] * 15
+            
+            for atom in residue.child_list:
+                
+                if atom.name in MAINCHAIN_ATOMS:
+                    
+                    if hasattr(atom, 'integer_sift'):
+                        residue.mc_integer_sift = [x + y for x, y in zip(residue.mc_integer_sift, atom.integer_sift)]
+                    
+                    if hasattr(atom, 'integer_sift_inter_only'):
+                        residue.mc_integer_sift_inter_only = [x + y for x, y in zip(residue.mc_integer_sift_inter_only, atom.integer_sift_inter_only)]
+                    
+                    if hasattr(atom, 'integer_sift_intra_only'):
+                        residue.mc_integer_sift_intra_only = [x + y for x, y in zip(residue.mc_integer_sift_intra_only, atom.integer_sift_intra_only)]
+                        
+                    if hasattr(atom, 'integer_sift_water_only'):
+                        residue.mc_integer_sift_water_only = [x + y for x, y in zip(residue.mc_integer_sift_water_only, atom.integer_sift_water_only)]
+                
+                else:
+                    
+                    if hasattr(atom, 'integer_sift'):
+                        residue.sc_integer_sift = [x + y for x, y in zip(residue.sc_integer_sift, atom.integer_sift)]
+                    
+                    if hasattr(atom, 'integer_sift_inter_only'):
+                        residue.sc_integer_sift_inter_only = [x + y for x, y in zip(residue.sc_integer_sift_inter_only, atom.integer_sift_inter_only)]
+                    
+                    if hasattr(atom, 'integer_sift_intra_only'):
+                        residue.sc_integer_sift_intra_only = [x + y for x, y in zip(residue.sc_integer_sift_intra_only, atom.integer_sift_intra_only)]
+                        
+                    if hasattr(atom, 'integer_sift_water_only'):
+                        residue.sc_integer_sift_water_only = [x + y for x, y in zip(residue.sc_integer_sift_water_only, atom.integer_sift_water_only)]
+            
+            # FLATTEN TO BINARY SIFTS
+            residue.mc_sift = [1 if x else 0 for x in residue.mc_integer_sift]
+            residue.mc_sift_inter_only = [1 if x else 0 for x in residue.mc_integer_sift_inter_only]
+            residue.mc_sift_intra_only = [1 if x else 0 for x in residue.mc_integer_sift_intra_only]
+            residue.mc_sift_water_only = [1 if x else 0 for x in residue.mc_integer_sift_water_only]
+            
+            residue.sc_sift = [1 if x else 0 for x in residue.sc_integer_sift]
+            residue.sc_sift_inter_only = [1 if x else 0 for x in residue.sc_integer_sift_inter_only]
+            residue.sc_sift_intra_only = [1 if x else 0 for x in residue.sc_integer_sift_intra_only]
+            residue.sc_sift_water_only = [1 if x else 0 for x in residue.sc_integer_sift_water_only]
 
     # RING-RING INTERACTIONS
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
