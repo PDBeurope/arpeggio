@@ -493,6 +493,21 @@ def update_atom_fsift(atom, addition, contact_type='INTER'):
     if 'WATER' in contact_type:
         atom.actual_fsift_water_only = [x or y for x, y in zip(atom.actual_fsift_water_only, addition)]
 
+def update_atom_integer_sift(atom, addition, contact_type='INTER'):
+    '''
+    '''
+    
+    atom.integer_sift = [x + y for x, y in zip(atom.sift, addition)]
+    
+    if contact_type == 'INTER':
+        atom.integer_sift_inter_only = [x + y for x, y in zip(atom.sift_inter_only, addition)]
+    
+    if 'INTRA' in contact_type:
+        atom.integer_sift_intra_only = [x + y for x, y in zip(atom.sift_intra_only, addition)]
+        
+    if 'WATER' in contact_type:
+        atom.integer_sift_water_only = [x + y for x, y in zip(atom.sift_water_only, addition)]
+
 def sift_xnor(sift1, sift2):
     '''
     '''
@@ -837,6 +852,14 @@ Dependencies:
     
     for atom in s_atoms:
         
+        # INTEGER SIFTS
+        atom.integer_sift = [0] * 15
+        
+        atom.integer_sift_inter_only = [0] * 15
+        atom.integer_sift_intra_only = [0] * 15
+        atom.integer_sift_water_only = [0] * 15
+        
+        # BINARY SIFTS
         atom.sift = [0] * 15
         
         atom.sift_inter_only = [0] * 15
@@ -921,7 +944,17 @@ Dependencies:
         # 9: WEAK POLAR
         if 'weak hbond acceptor' in atom.atom_types or 'weak hbond donor' in atom.atom_types or 'hbond donor' in atom.atom_types or 'hbond acceptor' in atom.atom_types or atom.is_halogen:
             atom.potential_fsift[9] = 1
+    
+    # INITIALISE RESIDUE SIFTS
+    for residue in s.get_residues():
         
+        # INTEGER SIFTS
+        residue.integer_sift = [0] * 15
+        
+        residue.integer_sift_inter_only = [0] * 15
+        residue.integer_sift_intra_only = [0] * 15
+        residue.integer_sift_water_only = [0] * 15
+    
     # PERCIEVE AROMATIC RINGS
     s.rings = OrderedDict()
     
@@ -1445,6 +1478,10 @@ Dependencies:
                 if 'hydrophobe' in atom_bgn.atom_types and 'hydrophobe' in atom_end.atom_types and distance <= CONTACT_TYPES['hydrophobic']['distance']:
                     SIFt[11] = 1
             
+            # UPDATE ATOM INTEGER SIFTS
+            update_atom_integer_sift(atom_bgn, SIFt, contact_type)
+            update_atom_integer_sift(atom_end, SIFt, contact_type)
+            
             # UPDATE ATOM SIFTS
             update_atom_sift(atom_bgn, SIFt, contact_type)
             update_atom_sift(atom_end, SIFt, contact_type)
@@ -1519,6 +1556,23 @@ Dependencies:
                                                         ]
                                                        ])))
     
+    # RESIDUE INTEGER SIFTS
+    for residue in s.get_residues():
+        
+        for atom in residue.child_list:
+            
+            if hasattr(atom, 'integer_sift'):
+                residue.integer_sift = [x + y for x, y in zip(residue.integer_sift, atom.integer_sift)]
+            
+            if hasattr(atom, 'integer_sift_inter_only'):
+                residue.integer_sift_inter_only = [x + y for x, y in zip(residue.integer_sift_inter_only, atom.integer_sift_inter_only)]
+            
+            if hasattr(atom, 'integer_sift_intra_only'):
+                residue.integer_sift_intra_only = [x + y for x, y in zip(residue.integer_sift_intra_only, atom.integer_sift_intra_only)]
+                
+            if hasattr(atom, 'integer_sift_water_only'):
+                residue.integer_sift_water_only = [x + y for x, y in zip(residue.integer_sift_water_only, atom.integer_sift_water_only)]
+        
 
     # RING-RING INTERACTIONS
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
