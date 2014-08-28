@@ -1796,18 +1796,20 @@ Dependencies:
                     
                         for k, i_type in enumerate(('CARBONPI', 'CATIONPI', 'DONORPI', 'HALOGENPI')):
                             
-                            if interaction_type == i_type:
+                            for potential_interaction in potential_interactions:
                                 
-                                ring['residue'].ring_atom_inter_integer_sift[k] = ring['residue'].ring_atom_inter_integer_sift[k] + 1
-                                atom.get_parent().atom_ring_inter_integer_sift[k] = atom.get_parent().atom_ring_inter_integer_sift[k] + 1
-                                
-                                if atom.get_parent() in polypeptide_residues:
+                                if potential_interaction == i_type:
                                     
-                                    if atom.name in MAINCHAIN_ATOMS:
-                                        atom.get_parent().mc_atom_ring_inter_integer_sift[k] = atom.get_parent().mc_atom_ring_inter_integer_sift[k] + 1
+                                    ring['residue'].ring_atom_inter_integer_sift[k] = ring['residue'].ring_atom_inter_integer_sift[k] + 1
+                                    atom.get_parent().atom_ring_inter_integer_sift[k] = atom.get_parent().atom_ring_inter_integer_sift[k] + 1
                                     
-                                    else:
-                                        atom.get_parent().sc_atom_ring_inter_integer_sift[k] = atom.get_parent().sc_atom_ring_inter_integer_sift[k] + 1
+                                    if atom.get_parent() in polypeptide_residues:
+                                        
+                                        if atom.name in MAINCHAIN_ATOMS:
+                                            atom.get_parent().mc_atom_ring_inter_integer_sift[k] = atom.get_parent().mc_atom_ring_inter_integer_sift[k] + 1
+                                        
+                                        else:
+                                            atom.get_parent().sc_atom_ring_inter_integer_sift[k] = atom.get_parent().sc_atom_ring_inter_integer_sift[k] + 1
                     
                     # WRITE ATOM-RING INTERACTION TO FILE
                     output = [
