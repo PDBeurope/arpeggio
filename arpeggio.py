@@ -1907,5 +1907,16 @@ Dependencies:
             residue.sc_sift_inter_only = [1 if x else 0 for x in residue.sc_integer_sift_inter_only]
             residue.sc_sift_intra_only = [1 if x else 0 for x in residue.sc_integer_sift_intra_only]
             residue.sc_sift_water_only = [1 if x else 0 for x in residue.sc_integer_sift_water_only]
+        
+        # FLATTEN RING RELATED SIFTS
+        residue.ring_ring_inter_sift = [1 if x else 0 for x in residue.ring_ring_inter_integer_sift]
+        
+        residue.ring_atom_inter_sift = [1 if x else 0 for x in residue.ring_atom_inter_integer_sift]
+        residue.atom_ring_inter_sift = [1 if x else 0 for x in residue.atom_ring_inter_integer_sift]
+        residue.mc_atom_ring_inter_sift = [1 if x else 0 for x in residue.mc_atom_ring_inter_integer_sift]
+        residue.sc_atom_ring_inter_sift = [1 if x else 0 for x in residue.sc_atom_ring_inter_integer_sift]
     
     logging.info('Program End. Maximum memory usage was {}.'.format(max_mem_usage()))
+
+
+
