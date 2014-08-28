@@ -949,6 +949,9 @@ Dependencies:
     # INITIALISE RESIDUE SIFTS
     for residue in s.get_residues():
         
+        # POLYPEPTIDE FLAG
+        residue.is_polypeptide = False
+        
         # INTEGER SIFTS
         residue.integer_sift = [0] * 15
         
@@ -975,6 +978,7 @@ Dependencies:
     for pp in polypeptides:
         for residue in pp:
             polypeptide_residues.add(residue)
+            residue.is_polypeptide = True
     
     # PERCIEVE AROMATIC RINGS
     s.rings = OrderedDict()
@@ -1854,18 +1858,28 @@ Dependencies:
         residue.sift_water_only = [1 if x else 0 for x in residue.integer_sift_water_only]
         
         # MAINCHAIN/SIDECHAIN SIFTS FOR POLYPEPTIDE RESIDUES
+        residue.mc_integer_sift = [0] * 15
+        residue.sc_integer_sift = [0] * 15
+        
+        residue.mc_integer_sift_inter_only = [0] * 15
+        residue.mc_integer_sift_intra_only = [0] * 15
+        residue.mc_integer_sift_water_only = [0] * 15
+        
+        residue.sc_integer_sift_inter_only = [0] * 15
+        residue.sc_integer_sift_intra_only = [0] * 15
+        residue.sc_integer_sift_water_only = [0] * 15
+        
+        residue.mc_sift = [0] * 15
+        residue.mc_sift_inter_only = [0] * 15
+        residue.mc_sift_intra_only = [0] * 15
+        residue.mc_sift_water_only = [0] * 15
+        
+        residue.sc_sift = [0] * 15
+        residue.sc_sift_inter_only = [0] * 15
+        residue.sc_sift_intra_only = [0] * 15
+        residue.sc_sift_water_only = [0] * 15
+        
         if residue in polypeptide_residues:
-            
-            residue.mc_integer_sift = [0] * 15
-            residue.sc_integer_sift = [0] * 15
-            
-            residue.mc_integer_sift_inter_only = [0] * 15
-            residue.mc_integer_sift_intra_only = [0] * 15
-            residue.mc_integer_sift_water_only = [0] * 15
-            
-            residue.sc_integer_sift_inter_only = [0] * 15
-            residue.sc_integer_sift_intra_only = [0] * 15
-            residue.sc_integer_sift_water_only = [0] * 15
             
             for atom in residue.child_list:
                 
@@ -1915,6 +1929,27 @@ Dependencies:
         residue.atom_ring_inter_sift = [1 if x else 0 for x in residue.atom_ring_inter_integer_sift]
         residue.mc_atom_ring_inter_sift = [1 if x else 0 for x in residue.mc_atom_ring_inter_integer_sift]
         residue.sc_atom_ring_inter_sift = [1 if x else 0 for x in residue.sc_atom_ring_inter_integer_sift]
+        
+    with open(pdb_filename.replace('.pdb', '.residue_sifts'), 'wb') as fo:
+        
+        for residue in selection_plus_residues:
+            
+            output_list = [make_pymol_string(residue), residue.is_polypeptide]
+            
+            for sift in (residue.sift, residue.sift_inter_only, residue.sift_intra_only, residue.sift_water_only,
+                         residue.mc_sift, residue.mc_sift_inter_only, residue.mc_sift_intra_only, residue.mc_sift_water_only,
+                         residue.sc_sift, residue.sc_sift_inter_only, residue.sc_sift_intra_only, residue.sc_sift_water_only,
+                         residue.integer_sift, residue.integer_sift_inter_only, residue.integer_sift_intra_only, residue.integer_sift_water_only,
+                         residue.mc_integer_sift, residue.mc_integer_sift_inter_only, residue.mc_integer_sift_intra_only, residue.mc_integer_sift_water_only,
+                         residue.sc_integer_sift, residue.sc_integer_sift_inter_only, residue.sc_integer_sift_intra_only, residue.sc_integer_sift_water_only,
+                         residue.ring_ring_inter_sift, residue.atom_ring_inter_sift, residue.mc_atom_ring_inter_sift, residue.sc_atom_ring_inter_sift,
+                         residue.ring_ring_inter_integer_sift, residue.atom_ring_inter_integer_sift, residue.mc_atom_ring_inter_integer_sift, residue.sc_atom_ring_inter_integer_sift
+                         ):
+                output_list = output_list + sift
+            
+            
+            fo.write('{}\n'.format('\t'.join([str(x) for x in output_list])))
+        
     
     logging.info('Program End. Maximum memory usage was {}.'.format(max_mem_usage()))
 
