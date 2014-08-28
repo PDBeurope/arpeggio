@@ -955,6 +955,9 @@ Dependencies:
         residue.integer_sift_inter_only = [0] * 15
         residue.integer_sift_intra_only = [0] * 15
         residue.integer_sift_water_only = [0] * 15
+        
+        # RING-RING SIFTS
+        residue.ring_ring_inter_integer_sift = [0] * 9
     
     # DETECT POLYPEPTIDE RESIDUES
     ppb = PPBuilder()
@@ -1167,6 +1170,13 @@ Dependencies:
     
     if args.selection:
         
+        # GET LIST OF RESIDUES IN THE SELECTION PLUS BINDING SITE
+        selection_residues = set([x.get_parent() for x in selection])
+        
+        # MAKE A SET OF ALL RING IDS ASSOCIATED WITH THE SELECTION AND BINDING SITE
+        selection_ring_ids = set([x for x in s.rings if s.rings[x]['residue'] in selection_residues])
+        
+        # EXPAND THE SELECTION TO THE BINDING SITE
         for atom_bgn, atom_end in ns.search_all(6.0):
             
             if atom_bgn in selection_set or atom_end in selection_set:
@@ -1566,88 +1576,6 @@ Dependencies:
                                                         atom.actual_polars_water_only
                                                         ]
                                                        ])))
-    
-    # RESIDUE LEVEL OUTPUTS
-    # CALCULATE INTEGER SIFTS, FLATTEN THEM TO BINARY SIFTS
-    # TODO: OUTPUT MC/SC SPECIFIC SIFTS FOR POLYPEPTIDE RESIDUES
-    # TODO: INCLUDE RING INTERACTIONS IN RESIDUE SIFT
-    for residue in s.get_residues():
-        
-        # WHOLE RESIDUE SIFTS
-        for atom in residue.child_list:
-            
-            if hasattr(atom, 'integer_sift'):
-                residue.integer_sift = [x + y for x, y in zip(residue.integer_sift, atom.integer_sift)]
-            
-            if hasattr(atom, 'integer_sift_inter_only'):
-                residue.integer_sift_inter_only = [x + y for x, y in zip(residue.integer_sift_inter_only, atom.integer_sift_inter_only)]
-            
-            if hasattr(atom, 'integer_sift_intra_only'):
-                residue.integer_sift_intra_only = [x + y for x, y in zip(residue.integer_sift_intra_only, atom.integer_sift_intra_only)]
-                
-            if hasattr(atom, 'integer_sift_water_only'):
-                residue.integer_sift_water_only = [x + y for x, y in zip(residue.integer_sift_water_only, atom.integer_sift_water_only)]
-        
-        # FLATTEN TO BINARY SIFTS
-        residue.sift = [1 if x else 0 for x in residue.integer_sift]
-        residue.sift_inter_only = [1 if x else 0 for x in residue.integer_sift_inter_only]
-        residue.sift_intra_only = [1 if x else 0 for x in residue.integer_sift_intra_only]
-        residue.sift_water_only = [1 if x else 0 for x in residue.integer_sift_water_only]
-        
-        # MAINCHAIN/SIDECHAIN SIFTS FOR POLYPEPTIDE RESIDUES
-        if residue in polypeptide_residues:
-            
-            residue.mc_integer_sift = [0] * 15
-            residue.sc_integer_sift = [0] * 15
-            
-            residue.mc_integer_sift_inter_only = [0] * 15
-            residue.mc_integer_sift_intra_only = [0] * 15
-            residue.mc_integer_sift_water_only = [0] * 15
-            
-            residue.sc_integer_sift_inter_only = [0] * 15
-            residue.sc_integer_sift_intra_only = [0] * 15
-            residue.sc_integer_sift_water_only = [0] * 15
-            
-            for atom in residue.child_list:
-                
-                if atom.name in MAINCHAIN_ATOMS:
-                    
-                    if hasattr(atom, 'integer_sift'):
-                        residue.mc_integer_sift = [x + y for x, y in zip(residue.mc_integer_sift, atom.integer_sift)]
-                    
-                    if hasattr(atom, 'integer_sift_inter_only'):
-                        residue.mc_integer_sift_inter_only = [x + y for x, y in zip(residue.mc_integer_sift_inter_only, atom.integer_sift_inter_only)]
-                    
-                    if hasattr(atom, 'integer_sift_intra_only'):
-                        residue.mc_integer_sift_intra_only = [x + y for x, y in zip(residue.mc_integer_sift_intra_only, atom.integer_sift_intra_only)]
-                        
-                    if hasattr(atom, 'integer_sift_water_only'):
-                        residue.mc_integer_sift_water_only = [x + y for x, y in zip(residue.mc_integer_sift_water_only, atom.integer_sift_water_only)]
-                
-                else:
-                    
-                    if hasattr(atom, 'integer_sift'):
-                        residue.sc_integer_sift = [x + y for x, y in zip(residue.sc_integer_sift, atom.integer_sift)]
-                    
-                    if hasattr(atom, 'integer_sift_inter_only'):
-                        residue.sc_integer_sift_inter_only = [x + y for x, y in zip(residue.sc_integer_sift_inter_only, atom.integer_sift_inter_only)]
-                    
-                    if hasattr(atom, 'integer_sift_intra_only'):
-                        residue.sc_integer_sift_intra_only = [x + y for x, y in zip(residue.sc_integer_sift_intra_only, atom.integer_sift_intra_only)]
-                        
-                    if hasattr(atom, 'integer_sift_water_only'):
-                        residue.sc_integer_sift_water_only = [x + y for x, y in zip(residue.sc_integer_sift_water_only, atom.integer_sift_water_only)]
-            
-            # FLATTEN TO BINARY SIFTS
-            residue.mc_sift = [1 if x else 0 for x in residue.mc_integer_sift]
-            residue.mc_sift_inter_only = [1 if x else 0 for x in residue.mc_integer_sift_inter_only]
-            residue.mc_sift_intra_only = [1 if x else 0 for x in residue.mc_integer_sift_intra_only]
-            residue.mc_sift_water_only = [1 if x else 0 for x in residue.mc_integer_sift_water_only]
-            
-            residue.sc_sift = [1 if x else 0 for x in residue.sc_integer_sift]
-            residue.sc_sift_inter_only = [1 if x else 0 for x in residue.sc_integer_sift_inter_only]
-            residue.sc_sift_intra_only = [1 if x else 0 for x in residue.sc_integer_sift_intra_only]
-            residue.sc_sift_water_only = [1 if x else 0 for x in residue.sc_integer_sift_water_only]
 
     # RING-RING INTERACTIONS
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
@@ -1677,6 +1605,18 @@ Dependencies:
                 
                 if ring['residue'] == ring2['residue']:
                     intra_residue = True
+                    
+                # DETERMINE CONTACT TYPE
+                contact_type = ''
+                
+                if not ring_key in selection_ring_ids and not ring_key2 in selection_ring_ids:
+                    contact_type = 'INTRA_NON_SELECTION'
+                    
+                if ring_key in selection_ring_ids and ring_key2 in selection_ring_ids:
+                    contact_type = 'INTRA_SELECTION'
+                    
+                if (ring_key in selection_ring_ids and not ring_key2 in selection_ring_ids) or (ring_key2 in selection_ring_ids and not ring_key in selection_ring_ids):
+                    contact_type = 'INTER'
                 
                 # DETERMINE RING-RING DISTANCE
                 distance = np.linalg.norm(ring['center'] - ring2['center'])
@@ -1731,6 +1671,20 @@ Dependencies:
                 if intra_residue:
                     intra_residue_text = 'INTRA_RESIDUE'
                 
+                # UPDATE RESIDUE RING INTEGER SIFTS
+                
+                # RING-RING INTERACTING SIFT
+                # MUST BE INTER-RESIDUE
+                # MUST BE OF CONTACT TYPE INTER, I.E. BETWEEN SELECTION AND NON-SELECTION
+                # ALL 9 RING INTERACTION TYPES
+                # ADDED ONLY FOR THE FIRST RING, AS THE RECIPROCAL INTERACTION
+                # SHOULD BE COVERED FOR THE OTHER RING
+                
+                for k, i_type in enumerate(('FF', 'OF', 'EE', 'FT', 'OT', 'ET', 'FE', 'OE', 'EF')):
+                    
+                    if int_type == i_type:
+                        ring['residue'].ring_ring_inter_integer_sift[e] = ring['residue'].ring_ring_inter_integer_sift[e] + 1
+                
                 # WRITE RING INTERACTION TO FILE
                 output = [
                     ring['ring_id'],
@@ -1740,7 +1694,8 @@ Dependencies:
                     make_pymol_string(ring2['residue']),
                     list(ring2['center']),
                     int_type,
-                    intra_residue_text
+                    intra_residue_text,
+                    contact_type
                 ]
                 
                 fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
@@ -1825,5 +1780,87 @@ Dependencies:
             ]
             
             ring_fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
+    
+    # RESIDUE LEVEL OUTPUTS
+    # CALCULATE INTEGER SIFTS, FLATTEN THEM TO BINARY SIFTS
+    # TODO: OUTPUT MC/SC SPECIFIC SIFTS FOR POLYPEPTIDE RESIDUES
+    # TODO: INCLUDE RING INTERACTIONS IN RESIDUE SIFT
+    for residue in s.get_residues():
+        
+        # WHOLE RESIDUE SIFTS
+        for atom in residue.child_list:
+            
+            if hasattr(atom, 'integer_sift'):
+                residue.integer_sift = [x + y for x, y in zip(residue.integer_sift, atom.integer_sift)]
+            
+            if hasattr(atom, 'integer_sift_inter_only'):
+                residue.integer_sift_inter_only = [x + y for x, y in zip(residue.integer_sift_inter_only, atom.integer_sift_inter_only)]
+            
+            if hasattr(atom, 'integer_sift_intra_only'):
+                residue.integer_sift_intra_only = [x + y for x, y in zip(residue.integer_sift_intra_only, atom.integer_sift_intra_only)]
+                
+            if hasattr(atom, 'integer_sift_water_only'):
+                residue.integer_sift_water_only = [x + y for x, y in zip(residue.integer_sift_water_only, atom.integer_sift_water_only)]
+        
+        # FLATTEN TO BINARY SIFTS
+        residue.sift = [1 if x else 0 for x in residue.integer_sift]
+        residue.sift_inter_only = [1 if x else 0 for x in residue.integer_sift_inter_only]
+        residue.sift_intra_only = [1 if x else 0 for x in residue.integer_sift_intra_only]
+        residue.sift_water_only = [1 if x else 0 for x in residue.integer_sift_water_only]
+        
+        # MAINCHAIN/SIDECHAIN SIFTS FOR POLYPEPTIDE RESIDUES
+        if residue in polypeptide_residues:
+            
+            residue.mc_integer_sift = [0] * 15
+            residue.sc_integer_sift = [0] * 15
+            
+            residue.mc_integer_sift_inter_only = [0] * 15
+            residue.mc_integer_sift_intra_only = [0] * 15
+            residue.mc_integer_sift_water_only = [0] * 15
+            
+            residue.sc_integer_sift_inter_only = [0] * 15
+            residue.sc_integer_sift_intra_only = [0] * 15
+            residue.sc_integer_sift_water_only = [0] * 15
+            
+            for atom in residue.child_list:
+                
+                if atom.name in MAINCHAIN_ATOMS:
+                    
+                    if hasattr(atom, 'integer_sift'):
+                        residue.mc_integer_sift = [x + y for x, y in zip(residue.mc_integer_sift, atom.integer_sift)]
+                    
+                    if hasattr(atom, 'integer_sift_inter_only'):
+                        residue.mc_integer_sift_inter_only = [x + y for x, y in zip(residue.mc_integer_sift_inter_only, atom.integer_sift_inter_only)]
+                    
+                    if hasattr(atom, 'integer_sift_intra_only'):
+                        residue.mc_integer_sift_intra_only = [x + y for x, y in zip(residue.mc_integer_sift_intra_only, atom.integer_sift_intra_only)]
+                        
+                    if hasattr(atom, 'integer_sift_water_only'):
+                        residue.mc_integer_sift_water_only = [x + y for x, y in zip(residue.mc_integer_sift_water_only, atom.integer_sift_water_only)]
+                
+                else:
+                    
+                    if hasattr(atom, 'integer_sift'):
+                        residue.sc_integer_sift = [x + y for x, y in zip(residue.sc_integer_sift, atom.integer_sift)]
+                    
+                    if hasattr(atom, 'integer_sift_inter_only'):
+                        residue.sc_integer_sift_inter_only = [x + y for x, y in zip(residue.sc_integer_sift_inter_only, atom.integer_sift_inter_only)]
+                    
+                    if hasattr(atom, 'integer_sift_intra_only'):
+                        residue.sc_integer_sift_intra_only = [x + y for x, y in zip(residue.sc_integer_sift_intra_only, atom.integer_sift_intra_only)]
+                        
+                    if hasattr(atom, 'integer_sift_water_only'):
+                        residue.sc_integer_sift_water_only = [x + y for x, y in zip(residue.sc_integer_sift_water_only, atom.integer_sift_water_only)]
+            
+            # FLATTEN TO BINARY SIFTS
+            residue.mc_sift = [1 if x else 0 for x in residue.mc_integer_sift]
+            residue.mc_sift_inter_only = [1 if x else 0 for x in residue.mc_integer_sift_inter_only]
+            residue.mc_sift_intra_only = [1 if x else 0 for x in residue.mc_integer_sift_intra_only]
+            residue.mc_sift_water_only = [1 if x else 0 for x in residue.mc_integer_sift_water_only]
+            
+            residue.sc_sift = [1 if x else 0 for x in residue.sc_integer_sift]
+            residue.sc_sift_inter_only = [1 if x else 0 for x in residue.sc_integer_sift_inter_only]
+            residue.sc_sift_intra_only = [1 if x else 0 for x in residue.sc_integer_sift_intra_only]
+            residue.sc_sift_water_only = [1 if x else 0 for x in residue.sc_integer_sift_water_only]
     
     logging.info('Program End. Maximum memory usage was {}.'.format(max_mem_usage()))
