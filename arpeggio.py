@@ -30,6 +30,7 @@ from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB import NeighborSearch
 from Bio.PDB.Atom import Atom
 from Bio.PDB.Residue import Residue
+from Bio.PDB.Polypeptide import PPBuilder
 
 import openbabel as ob
 
@@ -955,6 +956,16 @@ Dependencies:
         residue.integer_sift_intra_only = [0] * 15
         residue.integer_sift_water_only = [0] * 15
     
+    # DETECT POLYPEPTIDE RESIDUES
+    ppb = PPBuilder()
+    polypeptides = ppb.build_peptides(s, aa_only=False)
+    
+    polypeptide_residues = set([])
+    
+    for pp in polypeptides:
+        for residue in pp:
+            polypeptide_residues.add(residue)
+    
     # PERCIEVE AROMATIC RINGS
     s.rings = OrderedDict()
     
@@ -1556,7 +1567,10 @@ Dependencies:
                                                         ]
                                                        ])))
     
-    # RESIDUE (INTEGER) SIFTS
+    # RESIDUE LEVEL OUTPUTS
+    # CALCULATE INTEGER SIFTS, FLATTEN THEM TO BINARY SIFTS
+    # TODO: OUTPUT MC/SC SPECIFIC SIFTS FOR POLYPEPTIDE RESIDUES
+    # TODO: INCLUDE RING INTERACTIONS IN RESIDUE SIFT
     for residue in s.get_residues():
         
         for atom in residue.child_list:
