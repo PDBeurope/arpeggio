@@ -1264,7 +1264,7 @@ Dependencies:
     #    logging.info('Calculated per-atom SASA.')
     
     # CALCULATE PAIRWISE CONTACTS
-    with open(pdb_filename.replace('.pdb', '.contacts'), 'wb') as fo:
+    with open(pdb_filename.replace('.pdb', '.contacts'), 'wb') as fo, open(pdb_filename.replace('.pdb', '.bs_contacts'), 'wb') as afo:
         for atom_bgn, atom_end in ns.search_all(INTERACTING_THRESHOLD):
            
             # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/contacts.py?at=default`
@@ -1527,6 +1527,8 @@ Dependencies:
             if args.selection:
                 if contact_type in ('INTER', 'SELECTION_WATER', 'WATER_WATER'):
                     fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt + [contact_type]])))
+                
+                afo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt + [contact_type]])))
             
             else:
                 fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt + [contact_type]])))
