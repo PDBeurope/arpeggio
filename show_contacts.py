@@ -693,6 +693,7 @@ if __name__ == '__main__':
     do('hide everything, het')
     do('show sticks, het')
     do('show spheres, het')
+    do('disable undefined-proximal')
     
     # UPDATE PYMOL NOW
     do('set defer_update, 0')
