@@ -382,6 +382,7 @@ if __name__ == '__main__':
     parser.add_argument('-op', type=str, default='', help='The output postfix you used with Arpeggio (if any).')
     parser.add_argument('-xml', '--xml-rpc', action='store_true', help='Interact with PyMOL by XML-RPC server (`pymol -R`).')
     parser.add_argument('-s', '--script', action='store_true', help='Output a PyMOL script with the relevant commands.')
+    parser.add_argument('-bs', '--use-all-binding-site', action='store_true', help='Use all the binding site contacts instead of just the INTER ones. Only works if you used a selection when running Arpeggio.')
     
     args = parser.parse_args()
     
@@ -392,7 +393,12 @@ if __name__ == '__main__':
     
     output_postfix = args.op
     
-    contacts_filename = pdb_filename.replace('.pdb', output_postfix + '.contacts')
+    contacts_extension = '.contacts'
+    
+    if args.use_all_binding_site:
+        contacts_extension = '.bs_contacts'
+    
+    contacts_filename = pdb_filename.replace('.pdb', output_postfix + contacts_extension)
     rings_filename = pdb_filename.replace('.pdb', output_postfix + '.rings')
     ari_filename = pdb_filename.replace('.pdb', output_postfix + '.ari') # ATOM-RING INTERACTIONS
     ri_filename = pdb_filename.replace('.pdb', output_postfix + '.ri') # RING-RING INTERACTIONS
