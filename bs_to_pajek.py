@@ -33,7 +33,7 @@ class Pajek(object):
             # ADD NODE NAME AS KEY WITH NODE NUMBER AS VALUE
             self._nodes[node_name] = len(self._nodes) + 1
     
-    def add_edge(self, node_bgn_name, node_end_name, weight=""):
+    def add_edge(self, node_bgn_name, node_end_name, weight=1.0, label=''):
         
         # ADDS NODES IF THEY DON'T EXIST
         self.add_node(node_bgn_name)
@@ -42,7 +42,8 @@ class Pajek(object):
         if (node_bgn_name, node_end_name) not in self._edges:
             
             # KEYED WITH NODES, VALUE IS WEIGHT
-            self._edges[(node_bgn_name, node_end_name)] = weight
+            self._edges[(node_bgn_name, node_end_name)] = {'weight' : weight,
+                                                           'label' : label }
 
     def write_pajek_string(self):
         
@@ -62,13 +63,10 @@ class Pajek(object):
             node_bgn_num = self._nodes[edge[0]]
             node_end_num = self._nodes[edge[1]]
             
-            weight = ''
+            weight = self._edges[edge]['weight']
+            label = self._edges[edge]['label']
             
-            if self._edges[edge] != '':
-                weight = ' {}'.format(weight)
-            
-            
-            output_list.append('{} {}{}'.format(node_bgn_num, node_end_num, weight))
+            output_list.append('{} {} "{}" {}'.format(node_bgn_num, node_end_num, label, weight))
         
         return '\n'.join(output_list)
     
@@ -153,6 +151,7 @@ Dependencies:
         for line in fo:
             
             line = line.strip().split('\t')
+            all_label = []
             
             contact_type = line[17]
             
@@ -191,8 +190,6 @@ Dependencies:
                 if proximal:
                     continue
             
-            all_contacts.add_edge(node_bgn, node_end)
-            
             # POLAR
             # USING HBOND, WEAK HBOND, HALOGEN BOND, IONIC, CARBONYL
             # METAL COMPLEX, POLAR, WEAK POLAR
@@ -200,11 +197,17 @@ Dependencies:
                       metal_complex, carbonyl, polar, weak_polar]
             
             if any(polars):
-                polar_contacts.add_edge(node_bgn, node_end)
+                polar_contacts.add_edge(node_bgn, node_end, label='polar')
+                all_label.append('polar')
             
             # HYDROPHOBIC
             if hydrophobic:
-                hydrophobic_contacts.add_edge(node_bgn, node_end)
+                hydrophobic_contacts.add_edge(node_bgn, node_end, label='apolar')
+                all_label.append('apolar')
+            
+            # ALL WITH LABELS
+            all_label_string = '_'.join(all_label)
+            all_contacts.add_edge(node_bgn, node_end, label=all_label_string)
             
     all_contacts.write_pajek_file(contacts_filename.replace(contacts_extension, '_all{}.net'.format(output_postfix2)))
     polar_contacts.write_pajek_file(contacts_filename.replace(contacts_extension, '_polar{}.net'.format(output_postfix2)))
