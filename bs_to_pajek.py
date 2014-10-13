@@ -13,67 +13,7 @@ import sys
 
 from collections import OrderedDict
 
-###########
-# CLASSES #
-###########
-
-class Pajek(object):
-    '''
-    '''
-    
-    def __init__(self):
-        
-        self._nodes = OrderedDict()
-        self._edges = OrderedDict()
-    
-    def add_node(self, node_name):
-        
-        if node_name not in self._nodes:
-            
-            # ADD NODE NAME AS KEY WITH NODE NUMBER AS VALUE
-            self._nodes[node_name] = len(self._nodes) + 1
-    
-    def add_edge(self, node_bgn_name, node_end_name, weight=1.0, label=''):
-        
-        # ADDS NODES IF THEY DON'T EXIST
-        self.add_node(node_bgn_name)
-        self.add_node(node_end_name)
-        
-        if (node_bgn_name, node_end_name) not in self._edges:
-            
-            # KEYED WITH NODES, VALUE IS WEIGHT
-            self._edges[(node_bgn_name, node_end_name)] = {'weight' : weight,
-                                                           'label' : label }
-
-    def write_pajek_string(self):
-        
-        output_list = []
-        
-        # NODES
-        output_list.append('*Vertices {}'.format(len(self._nodes)))
-        
-        for node_name, node_num in self._nodes.iteritems():
-            output_list.append('{} "{}"'.format(node_num, node_name))
-        
-        # EDGES
-        output_list.append('*Edges')
-        
-        for edge in self._edges:
-            
-            node_bgn_num = self._nodes[edge[0]]
-            node_end_num = self._nodes[edge[1]]
-            
-            weight = self._edges[edge]['weight']
-            label = self._edges[edge]['label']
-            
-            output_list.append('{} {} "{}" {}'.format(node_bgn_num, node_end_num, label, weight))
-        
-        return '\n'.join(output_list)
-    
-    def write_pajek_file(self, filename):
-        
-        with open(filename, 'wb') as fo:
-            fo.write(self.write_pajek_string())
+import igraph
 
 #############
 # FUNCTIONS #
@@ -82,6 +22,20 @@ class Pajek(object):
 def sift_to_bool(x):
     
     return bool(int(x))
+
+def add_vertex_without_duplication(g, name):
+    '''
+    By default, igraph allows you to add nodes with a name that already exists
+    in the graph.
+    
+    This function adds a node with a name to a graph, but ensures that the name
+    isn't already given to an existing node.
+    '''
+    
+    try:
+        g.vs.find(name=name)
+    except (ValueError, KeyError):
+        g.add_vertex(name=name)
 
 ########
 # MAIN #
@@ -101,6 +55,7 @@ Arpeggio, and converting to Pajek graph network format.
 
 Dependencies:
 - Python (v2.7)
+- python-igraph
 
 ''', formatter_class=argparse.RawTextHelpFormatter)
     
@@ -109,6 +64,7 @@ Dependencies:
     parser.add_argument('-ip', '--include-proximals', action='store_true', help='Include proximal contacts.')
     parser.add_argument('-icl', '--include-covalent-clashes', action='store_true', help='Include covalent clashes.')
     parser.add_argument('-ico', '--include-covalents', action='store_true', help='Include covalent contacts.')
+    parser.add_argument('-io', '--include-others', action='store_true', help='Include contacts which aren\'t polar or apolar, e.g. atom-atom aromatic.')
     parser.add_argument('-op', type=str, default='', help='The output postfix you used with Arpeggio (if any).')
     parser.add_argument('-op2', type=str, default='', help='An additional output postfix for your .net files, if you want.')
     
@@ -141,9 +97,9 @@ Dependencies:
     contacts_filename = pdb_filename.replace('.pdb', output_postfix + contacts_extension)
     
     # MAKE DATA STRUCTURE FOR PAJEK FORMAT
-    all_contacts = Pajek()
-    polar_contacts = Pajek()
-    hydrophobic_contacts = Pajek()
+    contacts = igraph.Graph()
+    polar_contacts = igraph.Graph()
+    apolar_contacts = igraph.Graph()
     
     # GET CONTACTS
     with open(contacts_filename, 'rb') as fo:
@@ -151,7 +107,7 @@ Dependencies:
         for line in fo:
             
             line = line.strip().split('\t')
-            all_label = []
+            label = []
             
             contact_type = line[17]
             
@@ -197,20 +153,39 @@ Dependencies:
                       metal_complex, carbonyl, polar, weak_polar]
             
             if any(polars):
-                polar_contacts.add_edge(node_bgn, node_end, label='polar')
-                all_label.append('polar')
+                add_vertex_without_duplication(polar_contacts, name=node_bgn)
+                add_vertex_without_duplication(polar_contacts, name=node_end)
+                polar_contacts.add_edge(node_bgn, node_end) #, label='polar')
+                
+                label.append('polar')
             
             # HYDROPHOBIC
             if hydrophobic:
-                hydrophobic_contacts.add_edge(node_bgn, node_end, label='apolar')
-                all_label.append('apolar')
+                add_vertex_without_duplication(apolar_contacts, name=node_bgn)
+                add_vertex_without_duplication(apolar_contacts, name=node_end)
+                apolar_contacts.add_edge(node_bgn, node_end) #, label='apolar')
+                
+                label.append('apolar')
+            
+            # DON'T OUTPUT NON-POLAR OR HYDROPHOBIC CONTACTS
+            if not args.include_others:
+                if not label:
+                    continue
             
             # ALL WITH LABELS
-            all_label_string = '_'.join(all_label)
-            all_contacts.add_edge(node_bgn, node_end, label=all_label_string)
+            label_string = '_'.join(label)
             
-    all_contacts.write_pajek_file(contacts_filename.replace(contacts_extension, '_all{}.net'.format(output_postfix2)))
-    polar_contacts.write_pajek_file(contacts_filename.replace(contacts_extension, '_polar{}.net'.format(output_postfix2)))
-    hydrophobic_contacts.write_pajek_file(contacts_filename.replace(contacts_extension, '_hydrophobic{}.net'.format(output_postfix2)))
+            add_vertex_without_duplication(contacts, name=node_bgn)
+            add_vertex_without_duplication(contacts, name=node_end)
+            contacts.add_edge(node_bgn, node_end, label=label_string)
+            
+    contacts.write(contacts_filename.replace(contacts_extension, '_all{}.net'.format(output_postfix2)), format='pajek')
+    contacts.write(contacts_filename.replace(contacts_extension, '_all{}.gml'.format(output_postfix2)), format='gml')
+    
+    polar_contacts.write(contacts_filename.replace(contacts_extension, '_polar{}.net'.format(output_postfix2)), format='pajek')
+    polar_contacts.write(contacts_filename.replace(contacts_extension, '_polar{}.gml'.format(output_postfix2)), format='gml')
+    
+    apolar_contacts.write(contacts_filename.replace(contacts_extension, '_apolar{}.net'.format(output_postfix2)), format='pajek')
+    apolar_contacts.write(contacts_filename.replace(contacts_extension, '_apolar{}.gml'.format(output_postfix2)), format='gml')
     
     
