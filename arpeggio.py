@@ -1177,6 +1177,7 @@ Dependencies:
     
     # EXPAND THE SELECTION TO INCLUDE THE BINDING SITE
     selection_plus = set(selection)
+    selection_plus_residues = set([x.get_parent() for x in selection_plus])
     selection_plus_ring_ids = set(selection_ring_ids)
     
     if args.selection:
