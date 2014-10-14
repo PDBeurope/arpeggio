@@ -627,6 +627,7 @@ Dependencies:
     parser.add_argument('-co', '--vdw-comp', type=float, default=0.1, help='Compensation factor for VdW radii dependent interaction types.')    
     parser.add_argument('-i', '--interacting', type=float, default=5.0, help='Distance cutoff for grid points to be \'interacting\' with the entity.')
     parser.add_argument('-ph', type=float, default=7.4, help='pH for hydrogen addition.')
+    parser.add_argument('-sa', '--include-sequence-adjacent', action='store_true', help='For intra-polypeptide interactions, include non-bonding interactions between residues that are next to each other in sequence; this is not done by default.')
     #parser.add_argument('-sr', '--solvent_radius', type=float, default=1.4, help='Radius of solvent probe for accessibility calculations.')
     #parser.add_argument('-ssp', '--solvent-sphere-points', type=int, default=960, help='Number of points to use for solvent shell spheres for accessibility calculations.')
     #parser.add_argument('-st', '--sasa-threshold', type=float, default=1.0, help='Floating point solvent accessible surface area threshold (squared Angstroms) for considering an atom as \'accessible\' or not.')
@@ -976,9 +977,25 @@ Dependencies:
     polypeptide_residues = set([])
     
     for pp in polypeptides:
+        
+        last_residue = None
+        
         for residue in pp:
+            
+            # FLAG AS POLYPEPTIDE
             polypeptide_residues.add(residue)
             residue.is_polypeptide = True
+            
+            # DETERMINE PRECEEDING AND NEXT RESIDUES IN THE SEQUENCE
+            residue.prev_residue = None
+            residue.next_residue = None
+            
+            residue.prev_residue = last_residue
+            
+            if last_residue:
+                last_residue.next_residue = residue
+                
+            last_residue = residue
     
     # PERCIEVE AROMATIC RINGS
     s.rings = OrderedDict()
@@ -1328,8 +1345,22 @@ Dependencies:
             SIFt = [0] * 15
             
             # IGNORE INTRA-RESIDUE CONTACTS
-            if atom_bgn.get_parent() == atom_end.get_parent():
+            res_bgn = atom_bgn.get_parent()
+            res_end = atom_end.get_parent()
+            
+            if res_bgn is res_end:
                 continue
+            
+            # IGNORE CONTACTS TO SEQUENCE-ADJACENT RESIDUES (BY DEFAULT)
+            if not args.include_sequence_adjacent:
+                if res_end.is_polypeptide and res_end.is_polypeptide:
+                    
+                    if hasattr(res_bgn, 'prev_residue') and hasattr(res_bgn, 'next_residue') and \
+                       hasattr(res_end, 'prev_residue') and hasattr(res_end,'next_residue'):
+                        
+                        if res_bgn.next_residue is res_end or res_bgn.prev_residue is res_end or \
+                           res_end.next_residue is res_bgn or res_end.prev_residue is res_bgn:
+                            continue
             
             #print contact_type
             
