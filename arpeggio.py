@@ -950,7 +950,7 @@ Dependencies:
     # INITIALISE RESIDUE SIFTS
     for residue in s.get_residues():
         
-        # POLYPEPTIDE FLAG
+        # INITIALISE POLYPEPTIDE FLAG
         residue.is_polypeptide = False
         
         # INTEGER SIFTS
@@ -968,12 +968,62 @@ Dependencies:
         residue.atom_ring_inter_integer_sift = [0] * 4
         residue.mc_atom_ring_inter_integer_sift = [0] * 4
         residue.sc_atom_ring_inter_integer_sift = [0] * 4
-        
     
-    # DETECT POLYPEPTIDE RESIDUES
+    logging.info('Initialised SIFts.')
+    
+    # DETECT POLYPEPTIDES, RESIDUES, CHAIN BREAKS AND TERMINI
     ppb = PPBuilder()
     polypeptides = ppb.build_peptides(s, aa_only=False)
     
+    # CHAIN BREAKS AND TERMINI
+    
+    # MAKE DATA STRUCTURES FOR CHAIN POLYPEPTIDES
+    chain_ids = set([x.id for x in s.get_chains()])
+    chain_pieces = OrderedDict()
+    chain_polypeptides = OrderedDict()
+    chain_break_residues = OrderedDict()
+    chain_termini = OrderedDict()
+    #chain_sequences = OrderedDict()
+    
+    for chain_id in chain_ids:
+        chain_pieces[chain_id] = 0
+        chain_break_residues[chain_id] = []
+        chain_polypeptides[chain_id] = []
+    
+    # GET THE CHAIN_ID(S) ASSOCIATED WITH EACH POLYPEPTIDE
+    polypeptide_chain_id_sets = [set([k.get_parent().id for k in x]) for x in polypeptides]
+    
+    for e, polypeptide_chain_id_set in enumerate(polypeptide_chain_id_sets):
+    
+        # WARN IF NOT JUST ONE CHAIN ID ASSOCIATED WITH THE POLYPEPTIDE
+        if len(polypeptide_chain_id_set) != 1:
+            logging.warn('A polypeptide had {} chains associated with it: {}'.format(len(polypeptide_chain_id_set),
+                                                                                   polypeptide_chain_id_set))
+    
+        for polypeptide_chain_id in polypeptide_chain_id_set:
+            chain_pieces[polypeptide_chain_id] = chain_pieces[polypeptide_chain_id] + 1
+    
+            # ADD FIRST AND LAST RESIDUE TO THE CHAIN BREAK RESIDUES (POLYPEPTIDE TERMINAL RESIDUES)
+            chain_break_residues[polypeptide_chain_id] = chain_break_residues[polypeptide_chain_id] + [polypeptides[e][0], polypeptides[e][-1]]
+            chain_polypeptides[polypeptide_chain_id] = chain_polypeptides[polypeptide_chain_id] + [polypeptides[e]]
+            
+    # CHAIN BREAKS AND TERMINI
+    for chain_id in chain_break_residues:
+        
+        # GET FIRST AND LAST ("GENUINE") TERMINI
+        chain_termini[chain_id] = [chain_break_residues[chain_id][0], chain_break_residues[chain_id][-1]]
+        
+        # POP OUT THE FIRST AND LAST RESIDUES FROM THE CHAIN BREAK RESIDUES
+        # TO REMOVE THE GENUINE TERMINI
+        chain_break_residues[chain_id] = chain_break_residues[chain_id][1:-1]
+    
+    all_chain_break_residues = reduce(operator.add, chain_break_residues.values())
+    all_terminal_residues = reduce(operator.add, chain_termini.values())
+    
+    # AMIDES FOR AMIDE-RELATED NON-BONDING INTERACTIONS
+    amides = OrderedDict()
+    
+    # POLYPEPTIDE RESIDUES
     polypeptide_residues = set([])
     
     for pp in polypeptides:
@@ -986,6 +1036,19 @@ Dependencies:
             polypeptide_residues.add(residue)
             residue.is_polypeptide = True
             
+            # FLAG IF CHAIN BREAK OR TERMINAL
+            residue.is_chain_break = False
+            residue.is_terminal = False
+            residue.is_terminal_or_break = False
+            
+            if residue in all_chain_break_residues:
+                residue.is_chain_break = True
+                
+            if residue in all_terminal_residues:
+                residue.is_terminal = True
+                
+            residue.is_terminal_or_break = residue.is_terminal or residue.is_chain_break
+            
             # DETERMINE PRECEEDING AND NEXT RESIDUES IN THE SEQUENCE
             residue.prev_residue = None
             residue.next_residue = None
@@ -996,6 +1059,33 @@ Dependencies:
                 last_residue.next_residue = residue
                 
             last_residue = residue
+        
+        # AROUND AGAIN AFTER ASSIGNING NEXT/PREV RESIDUE
+        # TO ASSIGN AMIDES (WHICH REQUIRES NEXT RESIDUE)
+        
+        for residue in pp:
+            
+            if not hasattr(residue, 'next_residue'):
+                continue
+            
+            if not residue.is_terminal_or_break:
+                
+                # GET AMIDE BOND ATOMS
+                ca = residue.child_dict['CA']
+                c = residue.child_dict['C']
+                o = residue.child_dict['O']
+                n = residue.next_residue.child_dict['N']
+                
+                # GET AMIDE BOND CENTROID
+                # DETERMINED AS CENTRE OF MASS OF C-O-N
+                con = np.array([c.coord, o.coord, n.coord])
+                amide_centroid = con.sum(0) / len(con)
+                
+                # GET AMIDE BOND PLANE
+                
+                sys.exit()
+    
+    logging.info('Determined polypeptide residues, chain breaks, termini and amide bonds.')
     
     # PERCIEVE AROMATIC RINGS
     s.rings = OrderedDict()
