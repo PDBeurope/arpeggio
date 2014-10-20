@@ -649,6 +649,9 @@ if __name__ == '__main__':
         for line in fo:
             line = line.strip().split('\t')
             
+            if line[8] == 'INTRA_NON_SELECTION':
+                continue
+            
             do('pseudoatom pt1, pos={}'.format(line[2]))
             do('pseudoatom pt2, pos={}'.format(line[5]))
             
@@ -668,6 +671,9 @@ if __name__ == '__main__':
             
             do('pseudoatom pt1, pos={}'.format(line[3]))
             
+            if line[6] == 'INTRA_NON_SELECTION':
+                continue
+            
             if type(eval(line[4])) is list:
             
                 for itype in eval(line[4]):
@@ -682,6 +688,7 @@ if __name__ == '__main__':
     do('color blue, DONORPI')
     do('color green, HALOGENPI')
     do('color red, CATIONPI')
+    do('color yellow, METSULPHURPI')
     
     # PRETTINESS
     do('hide labels')

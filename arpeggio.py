@@ -38,7 +38,7 @@ import openbabel as ob
 # CONSTANTS #
 #############
 
-from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, VALENCE, MAINCHAIN_ATOMS
+from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, VALENCE, MAINCHAIN_ATOMS, THETA_REQUIRED
 
 ###########
 # CLASSES #
@@ -964,10 +964,10 @@ Dependencies:
         residue.ring_ring_inter_integer_sift = [0] * 9
         
         # ATOM-RING SIFTS
-        residue.ring_atom_inter_integer_sift = [0] * 4
-        residue.atom_ring_inter_integer_sift = [0] * 4
-        residue.mc_atom_ring_inter_integer_sift = [0] * 4
-        residue.sc_atom_ring_inter_integer_sift = [0] * 4
+        residue.ring_atom_inter_integer_sift = [0] * 5
+        residue.atom_ring_inter_integer_sift = [0] * 5
+        residue.mc_atom_ring_inter_integer_sift = [0] * 5
+        residue.sc_atom_ring_inter_integer_sift = [0] * 5
     
     logging.info('Initialised SIFts.')
     
@@ -1082,10 +1082,8 @@ Dependencies:
                 amide_centroid = con.sum(0) / len(con)
                 
                 # GET AMIDE BOND PLANE
-                
-                sys.exit()
     
-    logging.info('Determined polypeptide residues, chain breaks, termini and amide bonds.')
+    logging.info('Determined polypeptide residues, chain breaks, termini') # and amide bonds.')
     
     # PERCIEVE AROMATIC RINGS
     s.rings = OrderedDict()
@@ -1747,6 +1745,9 @@ Dependencies:
                 if not ring_key in selection_ring_ids and not ring_key2 in selection_ring_ids:
                     contact_type = 'INTRA_NON_SELECTION'
                     
+                if ring_key in selection_plus_ring_ids and ring_key2 in selection_plus_ring_ids:
+                    contact_type = 'INTRA_BINDING_SITE'
+                    
                 if ring_key in selection_ring_ids and ring_key2 in selection_ring_ids:
                     contact_type = 'INTRA_SELECTION'
                     
@@ -1856,7 +1857,7 @@ Dependencies:
                 # GET DISTANCE AND CHECK IF FAR ENOUGH
                 distance = np.linalg.norm(atom.coord - ring['center'])
                 
-                if distance > CONTACT_TYPES['aromatic']['atom_aromatic_distance'] or 'aromatic' in atom.atom_types:
+                if 'aromatic' in atom.atom_types:
                     continue
                 
                 # CHECK IF INTRA-RESIDUE
@@ -1870,7 +1871,10 @@ Dependencies:
                 
                 if not ring_key in selection_ring_ids and not atom in selection_set:
                     contact_type = 'INTRA_NON_SELECTION'
-                    
+                
+                if ring_key in selection_plus_ring_ids and atom in selection_plus:
+                    contact_type = 'INTRA_BINDING_SITE'
+                
                 if ring_key in selection_ring_ids and atom in selection_set:
                     contact_type = 'INTRA_SELECTION'
                     
@@ -1880,72 +1884,75 @@ Dependencies:
                 # DETERMINE INTERACTIONS
                 potential_interactions = set([])
                 
-                if atom.element == 'C' and 'weak hbond donor' in atom.atom_types:
-                    potential_interactions.add('CARBONPI')
-                
-                if 'pos ionisable' in atom.atom_types:
-                    potential_interactions.add('CATIONPI')
-                    
-                if 'hbond donor' in atom.atom_types:
-                    potential_interactions.add('DONORPI')
-                
-                if 'xbond donor' in atom.atom_types:
-                    potential_interactions.add('HALOGENPI')
-                
-                if not potential_interactions:
-                    continue
-                
-                if len(potential_interactions) != 1:
-                    logging.warn('More than one atom-ring interaction type for <atom: {}>:<ring: {}>.'.format(make_pymol_string(atom), ring_key))
-                
-                interaction_type = list(potential_interactions)[0]
-                
                 # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
                 #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
                 #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
                 theta = abs(ring_angle(ring, ring['center'] - atom.coord, True, True)) # CHECK IF `atom.coord` or `ring['center'] - atom.coord`
+                
+                if distance <= CONTACT_TYPES['aromatic']['atom_aromatic_distance'] and theta <= 30.0:
+                
+                    if atom.element == 'C' and 'weak hbond donor' in atom.atom_types:
+                        potential_interactions.add('CARBONPI')
+                    
+                    if 'pos ionisable' in atom.atom_types:
+                        potential_interactions.add('CATIONPI')
+                        
+                    if 'hbond donor' in atom.atom_types:
+                        potential_interactions.add('DONORPI')
+                    
+                    if 'xbond donor' in atom.atom_types:
+                        potential_interactions.add('HALOGENPI')
+                
+                if distance <= CONTACT_TYPES['aromatic']['met_sulphur_aromatic_distance']:
+                
+                    if atom.get_parent().resname == 'MET' and atom.element == 'S':
+                        potential_interactions.add('METSULPHURPI')
+                
+                if not potential_interactions:
+                    continue
+                
+                interaction_type = list(potential_interactions)[0]
                 
                 # OUTPUT INTRA/INTER RESIDUE AS TEXT RATHER THAN BOOLEAN
                 intra_residue_text = 'INTER_RESIDUE'
                 
                 if intra_residue:
                     intra_residue_text = 'INTRA_RESIDUE'
+                    
+                #logging.info('Atom: <{}>     Theta = {}'.format(atom.get_full_id(), theta))
                 
-                if theta <= 30.0:
-                    
-                    #logging.info('Atom: <{}>     Theta = {}'.format(atom.get_full_id(), theta))
-                    
-                    # RESIDUE RING-ATOM SIFT
-                    if contact_type == 'INTER':
-                    
-                        for k, i_type in enumerate(('CARBONPI', 'CATIONPI', 'DONORPI', 'HALOGENPI')):
+                # RESIDUE RING-ATOM SIFT
+                if contact_type == 'INTER':
+                
+                    for k, i_type in enumerate(('CARBONPI', 'CATIONPI', 'DONORPI', 'HALOGENPI', 'METSULPHURPI')):
+                        
+                        for potential_interaction in potential_interactions:
                             
-                            for potential_interaction in potential_interactions:
+                            if potential_interaction == i_type:
                                 
-                                if potential_interaction == i_type:
+                                ring['residue'].ring_atom_inter_integer_sift[k] = ring['residue'].ring_atom_inter_integer_sift[k] + 1
+                                atom.get_parent().atom_ring_inter_integer_sift[k] = atom.get_parent().atom_ring_inter_integer_sift[k] + 1
+                                
+                                if atom.get_parent() in polypeptide_residues:
                                     
-                                    ring['residue'].ring_atom_inter_integer_sift[k] = ring['residue'].ring_atom_inter_integer_sift[k] + 1
-                                    atom.get_parent().atom_ring_inter_integer_sift[k] = atom.get_parent().atom_ring_inter_integer_sift[k] + 1
+                                    if atom.name in MAINCHAIN_ATOMS:
+                                        atom.get_parent().mc_atom_ring_inter_integer_sift[k] = atom.get_parent().mc_atom_ring_inter_integer_sift[k] + 1
                                     
-                                    if atom.get_parent() in polypeptide_residues:
-                                        
-                                        if atom.name in MAINCHAIN_ATOMS:
-                                            atom.get_parent().mc_atom_ring_inter_integer_sift[k] = atom.get_parent().mc_atom_ring_inter_integer_sift[k] + 1
-                                        
-                                        else:
-                                            atom.get_parent().sc_atom_ring_inter_integer_sift[k] = atom.get_parent().sc_atom_ring_inter_integer_sift[k] + 1
+                                    else:
+                                        atom.get_parent().sc_atom_ring_inter_integer_sift[k] = atom.get_parent().sc_atom_ring_inter_integer_sift[k] + 1
                     
-                    # WRITE ATOM-RING INTERACTION TO FILE
-                    output = [
-                        make_pymol_string(atom),
-                        ring['ring_id'],
-                        make_pymol_string(ring['residue']),
-                        list(ring['center']),
-                        sorted(list(potential_interactions)),
-                        intra_residue_text
-                    ]
-                    
-                    fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
+                # WRITE ATOM-RING INTERACTION TO FILE
+                output = [
+                    make_pymol_string(atom),
+                    ring['ring_id'],
+                    make_pymol_string(ring['residue']),
+                    list(ring['center']),
+                    sorted(list(potential_interactions)),
+                    intra_residue_text,
+                    contact_type
+                ]
+                
+                fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
             
             # WRITE RING OUT TO RING FILE
             output = [

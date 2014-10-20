@@ -147,7 +147,8 @@ CONTACT_TYPES = {
         {
             "distance": 4.0,
             "centroid_distance": 6.0,
-            "atom_aromatic_distance": 4.5
+            "atom_aromatic_distance": 4.5,
+            "met_sulphur_aromatic_distance": 6.0
         },
 
         "xbond":
@@ -181,3 +182,5 @@ CONTACT_TYPES = {
             "distance": 2.8
         }
 }
+
+THETA_REQUIRED = set(['CARBONPI', 'CATIONPI', 'DONORPI', 'HALOGENPI'])
