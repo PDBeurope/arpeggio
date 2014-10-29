@@ -50,7 +50,12 @@ ATOM_TYPES = {
                 
         "hbond acceptor":
         {
-            "acceptor": "[$([O,S;H1;v2]-[!$(*=[O,N,P,S])]),$([O,S;H0;v2]),$([O,S;-]),$([N&v3;H1,H2]-[!$(*=[O,N,P,S])]),$([N;v3;H0]),$([n,o,s;+0]),F]"
+            "acceptor"          : "[#8,#9,$([#16;H0,H1;v2,v1]),$([N;v3;!$(N-*=!@[O,N,P,S]);!$(N-!@a);!$([NH]=!@*)]),[nH0;+0]]",
+            "enol"              : "[$([nH]:@c(=O))]",
+            "tautomeric nH"     : "[$([n;H1;v3;!$([nH]cccc)])]"
+            # AMBIGUITY OF TERMINAL AMIDES TURNED OFF FOR NOW
+            # AS MAY AFFECT NON-PROTEIN AMIDES
+            # "NH2 terminal amide": "[$([N;H2;v3;$(N-C(=O))])]"
         },
 
         "hbond donor":
@@ -60,17 +65,29 @@ ATOM_TYPES = {
 
         "xbond acceptor":
         {
-            "acceptor": "[#7&!$([nX3,#7v5]),#8,#16&!$([#16v4,#16v6]);!$([*+1,*+2,*+3])]"
+            # SAME AS HBA
+            "acceptor"          : "[#8,#9,$([#16;H0,H1;v2,v1]),$([N;v3;!$(N-*=!@[O,N,P,S]);!$(N-!@a);!$([NH]=!@*)]),[nH0;+0]]",
+            "enol"              : "[$([nH]:@c(=O))]",
+            "tautomeric nH"     : "[$([n;H1;v3;!$([nH]cccc)])]"
+            # AMBIGUITY OF TERMINAL AMIDES TURNED OFF FOR NOW
+            # AS MAY AFFECT NON-PROTEIN AMIDES
+            # "NH2 terminal amide": "[$([N;H2;v3;$(N-C(=O))])]"
         },
 
         "xbond donor":
         {
-            "donor": "[F,Cl,Br,I;X1;$([F,Cl,Br,I]-[#6,#8]);!$([F,Cl,Br,I]C[F,Cl,Br,I])]"
+            "donor": "[Cl,Br,I;X1;$([Cl,Br,I]-[#6])]"
         },
 
         "weak hbond acceptor":
         {
-            "c-x halogens": "[F,Cl,Br,I;X1;$([F,Cl,Br,I]-[#6,#8])]"
+            # SAME AS HBA
+            "acceptor"          : "[#8,#9,$([#16;H0,H1;v2,v1]),$([N;v3;!$(N-*=!@[O,N,P,S]);!$(N-!@a);!$([NH]=!@*)]),[nH0;+0]]",
+            "enol"              : "[$([nH]:@c(=O))]",
+            "tautomeric nH"     : "[$([n;H1;v3;!$([nH]cccc)])]"
+            # AMBIGUITY OF TERMINAL AMIDES TURNED OFF FOR NOW
+            # AS MAY AFFECT NON-PROTEIN AMIDES
+            # "NH2 terminal amide": "[$([N;H2;v3;$(N-C(=O))])]"
         },
 
         "weak hbond donor":
@@ -82,32 +99,32 @@ ATOM_TYPES = {
         "pos ionisable":
         {
             "rdkit basic group": "[$([N;H2&+0][C;!$(C=*)]),$([N;H1&+0]([C;!$(C=*)])[C;!$(C=*)]),$([N;H0&+0]([C;!$(C=*)])([C;!$(C=*)])[C;!$(C=*)]);!$(N[a])]",
-            #"basic group": "[NH0+0$(*(-[C!$(*=*)])(-[C!$(*=*)])-[C!$(*=*)])!$(*-[a]),NH+0$(*(-[C!$(*=*)])-[C!$(*=*)])!$(*-[a]),NH2+0$(*-[C!$(*=*)])!$(*-[a])]",
-            "imidazole": "n1cncc1",
-            "guanidine": "N=C(-N)-N",
-            #"posn": "[#7+]"
-            "rdkit posn": "[#7;+;!$([N+]-[O-])]"
+            "imidazole": "[n;R1]1[c;R1][n;R1][c;R1][c;R1]1",
+            "guanidine amidine" : "[C=N(N)]",
+            "rdkit posn": "[#7;+;!$([N+]-[O-])]",
+            "cations"   : "[$([*+1,*+2,*+3]);!$([N+]-[O-])]",
+            "metals"    : "[Li,Be,Na,Mg,Al,K,Ca,Sc,Ti,V,Cr,Mn,Fe,Co,Ni,Cu,Zn,Ga,Rb,Sr,Y,Zr,Nb,Mo,Tc,Ru,Rh,Pd,Ag,Cd,In,Sn,Cs,Ba,La,Ce,Pr,Nd,Pm,Sm,Eu,Gd,Tb,Dy,Ho,Er,Tm,Yb,Lu,Hf,Ta,W,Re,Os,Ir,Pt,Au,Hg,Tl,Pb,Bi,Po,Fr,Ra,Ac,Th,Pa,U,Np,Pu,Am,Cm,Bk,Cf]"
         },
 
         "neg ionisable":
         {
-            "acidic group": "[OH,OH0-]-[C,S]=[O,P,S]",
-            "hydroxylic acid": "[OH$(*-[A]=[!#6])]"
+            "O acidic group": "[$([OH,O-]-[C,S,N,P,Cl,Br,I]=O),$(O=[C,S,N,P,Cl,Br,I]-[OH,O-])]",
+            "anions": "[*-1,*-2]"
         },
 
         "hydrophobe":
         {
-            "hydrophobe": "[#6+0!$(*~[#7,#8,F]),SH0+0v2,s+0,S^3,Cl+0,Br+0,I+0]"
+            "hydrophobe": "[#6+0!$(*~[#7,#8,F]),SH0+0v2,s+0,Cl+0,Br+0,I+0]"
         },
 
         "carbonyl oxygen":
         {
-            "oxygen": "[$([OH0]=[CX3,c])]"
+            "oxygen": "[$([OH0]=[CX3,c]);!$([OH0]=[CX3,c]-[OH,O-])]"
         },
 
         "carbonyl carbon":
         {
-            "carbon": "[$([CX3,c](=[OH0]))]"
+            "carbon": "[$([CX3,c]=[OH0]);!$([CX3,c](=[OH0])-[OH,O-])]"
         },
 
         "aromatic":
