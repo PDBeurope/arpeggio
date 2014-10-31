@@ -1848,7 +1848,7 @@ Dependencies:
             if ring_key not in selection_plus_ring_ids:
                 continue
             
-            for atom in ns.search(ring['center'], CONTACT_TYPES['aromatic']['atom_aromatic_distance']):
+            for atom in ns.search(ring['center'], CONTACT_TYPES['aromatic']['met_sulphur_aromatic_distance']):
                 
                 # CHECK THAT THE ATOM IS INVOLVED IN THE SELECTION OR BINDING SITE
                 if atom not in selection_plus:
@@ -1857,6 +1857,7 @@ Dependencies:
                 # GET DISTANCE AND CHECK IF FAR ENOUGH
                 distance = np.linalg.norm(atom.coord - ring['center'])
                 
+                # NO AROMATIC ATOM-RING INTERACTIONS
                 if 'aromatic' in atom.atom_types:
                     continue
                 
@@ -1919,7 +1920,7 @@ Dependencies:
                 if intra_residue:
                     intra_residue_text = 'INTRA_RESIDUE'
                     
-                #logging.info('Atom: <{}>     Theta = {}'.format(atom.get_full_id(), theta))
+                #logging.info('Atom: <{}>   Ring: <{}>  Theta = {}'.format(atom.get_full_id(), ring['ring_id'], theta))
                 
                 # RESIDUE RING-ATOM SIFT
                 if contact_type == 'INTER':
