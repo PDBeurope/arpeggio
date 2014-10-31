@@ -92,6 +92,7 @@ ATOM_TYPES = {
             # AMBIGUITY OF TERMINAL AMIDES TURNED OFF FOR NOW
             # AS MAY AFFECT NON-PROTEIN AMIDES
             # "NH2 terminal amide": "[$([N;H2;v3;$(N-C(=O))])]"
+            "c-x halogens"      : "[Cl,Br,I;X1;$([Cl,Br,I]-[#6])]"
         },
 
         "weak hbond donor":
