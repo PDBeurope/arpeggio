@@ -38,7 +38,9 @@ import openbabel as ob
 # CONSTANTS #
 #############
 
-from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, VALENCE, MAINCHAIN_ATOMS, THETA_REQUIRED
+from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, \
+                   HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, VALENCE, \
+                   MAINCHAIN_ATOMS, THETA_REQUIRED, STD_RES, PROT_ATOM_TYPES
 
 ###########
 # CLASSES #
@@ -790,6 +792,25 @@ Dependencies:
     for atom in (x for x in s_atoms if x.get_full_id()[3][0] == 'W'):
         atom.atom_types.add('hbond acceptor')
         atom.atom_types.add('hbond donor')
+    
+    # OVERRIDE PROTEIN ATOM TYPING FROM DICTIONARY
+    for residue in s.get_residues():
+        
+        if residue.resname in STD_RES:
+            
+            for atom in residue.child_list:
+                
+                # REMOVE TYPES IF ALREADY ASSIGNED FROM SMARTS
+                for atom_type in PROT_ATOM_TYPES.keys():
+                    atom.atom_types.discard(atom_type)
+                
+                # ADD ATOM TYPES FROM DICTIONARY
+                for atom_type, atom_ids in PROT_ATOM_TYPES.iteritems():
+                    
+                    atom_id = residue.resname.strip() + atom.name.strip()
+                    
+                    if atom_id in atom_ids:
+                        atom.atom_types.add(atom_type)
     
     with open(pdb_filename.replace('.pdb', '.atomtypes'), 'wb') as fo:
         for atom in s_atoms:
