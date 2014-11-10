@@ -63,7 +63,9 @@ ATOM_TYPES = {
             "donor"             : "[N!H0v3,N!H0+v4,OH+0,SH+0,nH+0]",
             "oxygen acid"       : "[$([O;H0;$(O=C([OH])-*)])]",
             "tautomer nH"       : "[$(n:a:[nH])]",
-            "oxygen amide term" : "[$([O;H0;$(O=C-[NH2])])]"
+            # AMBIGUITY OF TERMINAL AMIDES TURNED OFF FOR NOW
+            # AS MAY AFFECT NON-PROTEIN AMIDES 
+            #"oxygen amide term" : "[$([O;H0;$(O=C-[NH2])])]"
                    
         },
 
