@@ -1170,7 +1170,7 @@ Dependencies:
     
     matches = [x for x in ob_smart.GetMapList()]
     
-    for match in matches:
+    for e, match in enumerate(matches):
         
         ob_match = [mol.GetAtom(x) for x in match]
         bio_match = [ob_to_bio[x.GetId()] for x in ob_match]
@@ -1178,11 +1178,46 @@ Dependencies:
         # CHECK FOR EXPECTED BEHAVIOUR
         assert len(bio_match) == 4
         assert bio_match[0].element == 'N'
-        assert bio_match[1].element == 'C' # BACKBONE C IN PROTEIN MAINCHAIN
+        assert bio_match[1].element == 'C' # SHOULD BE BACKBONE C WHEN IN PROTEIN MAINCHAIN
         assert bio_match[2].element == 'O'
-        assert bio_match[3].element == 'C' # C-ALPHA IN PROTEIN MAINCHAIN
+        assert bio_match[3].element == 'C' # SHOULD BE C-ALPHA WHEN IN PROTEIN MAINCHAIN
+        
+        # ASSIGN GROUP TO A RESIDUE
+        bio_match_residues = [x.get_parent() for x in bio_match]
+        
+        # USE THE RESIDUE OF THE MAJORITY OF ATOMS
+        # `http://stackoverflow.com/questions/1518522/python-most-common-element-in-a-list`
+        group_residue =  max(bio_match_residues, key=bio_match_residues.count)
+        
+        # GET AMIDE BOND CENTROID
+        # DETERMINED AS CENTRE OF MASS OF C-N (OR C-O-N?)
+        #con = np.array([bio_match[1].coord, bio_match[2].coord, bio_match[0].coord]) # C-O-N
+        con = np.array([bio_match[1].coord, bio_match[0].coord]) # C-N
+        amide_centroid = con.sum(0) / float(len(con))
+        
+        # GET AMIDE PLANE WITH SVD
+        # `http://mail.scipy.org/pipermail/numpy-discussion/2011-January/054621.html`
+        
+        cog = con - amide_centroid
+        u, s_, vh = np.linalg.svd(cog)
+        v = vh.conj().transpose()
+        a, b, c = v[:,-1]
+        d = 0 # :S
+        
+        normal = np.array([a, b, c])
+        normal_opp = -normal
+        
+        # STORE AMIDE GROUPS
+        s.amides[e] = {
+            'amide_id': e,
+            'center': amide_centroid,
+            'normal': normal,
+            'normal_opp': normal_opp,
+            'atoms': bio_match,
+            'residue': group_residue
+        }
     
-    logging.info('Perceived amide groups.')
+    logging.info('Perceived and stored amide groups.')
     
     # FOR PDB OUTPUT OF OB STRUCTURES
     conv = ob.OBConversion()

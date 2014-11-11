@@ -628,6 +628,13 @@ CONTACT_TYPES = {
             "atom_aromatic_distance": 4.5,
             "met_sulphur_aromatic_distance": 6.0
         },
+        
+        "amide":
+        {
+             "centroid_distance": 6.0,
+             "angle degree": 30.0,
+             "angle rad": 0.52
+        },
 
         "xbond":
         {
