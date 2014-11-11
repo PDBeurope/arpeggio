@@ -53,9 +53,8 @@ ATOM_TYPES = {
             "acceptor"          : "[#8,#9,$([#16;H0,H1;v2,v1]),$([N;v3;!$(N-*=!@[O,N,P,S]);!$(N-!@a);!$([NH]=!@*)]),$([nH0;+0])]",
             "enol"              : "[$([nH]:@c(=O))]",
             "tautomeric nH"     : "[$([n;H1;v3;!$([nH]cccc)])]",
-            # AMBIGUITY OF TERMINAL AMIDES TURNED OFF FOR NOW
-            # AS MAY AFFECT NON-PROTEIN AMIDES
-            # "NH2 terminal amide": "[$([N;H2;v3;$(N-C(=O))])]"
+            # AMBIGUITY OF TERMINAL AMIDES MAY AFFECT NON-PROTEIN AMIDES
+            "NH2 terminal amide": "[$([N;H2;v3;$(N-C(=O))])]"
         },
 
         "hbond donor":
@@ -63,9 +62,8 @@ ATOM_TYPES = {
             "donor"             : "[N!H0v3,N!H0+v4,OH+0,SH+0,nH+0]",
             "oxygen acid"       : "[$([O;H0;$(O=C([OH])-*)])]",
             "tautomer nH"       : "[$(n:a:[nH])]",
-            # AMBIGUITY OF TERMINAL AMIDES TURNED OFF FOR NOW
-            # AS MAY AFFECT NON-PROTEIN AMIDES 
-            #"oxygen amide term" : "[$([O;H0;$(O=C-[NH2])])]"
+            # AMBIGUITY OF TERMINAL AMIDES MAY AFFECT NON-PROTEIN AMIDES 
+            "oxygen amide term" : "[$([O;H0;$(O=C-[NH2])])]"
                    
         },
 
@@ -75,9 +73,8 @@ ATOM_TYPES = {
             "acceptor"          : "[#8,#9,$([#16;H0,H1;v2,v1]),$([N;v3;!$(N-*=!@[O,N,P,S]);!$(N-!@a);!$([NH]=!@*)]),$([nH0;+0])]",
             "enol"              : "[$([nH]:@c(=O))]",
             "tautomeric nH"     : "[$([n;H1;v3;!$([nH]cccc)])]",
-            # AMBIGUITY OF TERMINAL AMIDES TURNED OFF FOR NOW
-            # AS MAY AFFECT NON-PROTEIN AMIDES
-            # "NH2 terminal amide": "[$([N;H2;v3;$(N-C(=O))])]"
+            # AMBIGUITY OF TERMINAL AMIDES MAY AFFECT NON-PROTEIN AMIDES
+            "NH2 terminal amide": "[$([N;H2;v3;$(N-C(=O))])]"
         },
 
         "xbond donor":
@@ -91,9 +88,8 @@ ATOM_TYPES = {
             "acceptor"          : "[#8,#9,$([#16;H0,H1;v2,v1]),$([N;v3;!$(N-*=!@[O,N,P,S]);!$(N-!@a);!$([NH]=!@*)]),$([nH0;+0])]",
             "enol"              : "[$([nH]:@c(=O))]",
             "tautomeric nH"     : "[$([n;H1;v3;!$([nH]cccc)])]",
-            # AMBIGUITY OF TERMINAL AMIDES TURNED OFF FOR NOW
-            # AS MAY AFFECT NON-PROTEIN AMIDES
-            # "NH2 terminal amide": "[$([N;H2;v3;$(N-C(=O))])]"
+            # AMBIGUITY OF TERMINAL AMIDES MAY AFFECT NON-PROTEIN AMIDES
+            "NH2 terminal amide": "[$([N;H2;v3;$(N-C(=O))])]",
             "c-x halogens"      : "[Cl,Br,I;X1;$([Cl,Br,I]-[#6])]"
         },
 
@@ -198,9 +194,9 @@ PROT_ATOM_TYPES = {
                                 "GLUOE1",
                                 "GLUOE2",
                                 "HISND1",       #for the ambiguity of the position of the N/C
-                                #"HISCE1",       #for the ambiguity of the position of the N/C
+                                "HISCE1",       #for the ambiguity of the position of the N/C
                                 "HISNE2",       #for the ambiguity of the position of the N/C         
-                                #"HISCD2",       #for the ambiguity of the position of the N/C
+                                "HISCD2",       #for the ambiguity of the position of the N/C
                                 "METSD",        #http://pubs.acs.org/doi/abs/10.1021/jz300207k and pubid 19089987
                                 "CYSSG",        #pubid 19089987, also when they from di-sulfide (Cys-Cys, fig 8 paper)
                                 "SEROG",        #isostar plots
@@ -237,9 +233,9 @@ PROT_ATOM_TYPES = {
                                 "GLNNE2",
                                 "GLNOE1",       #for the ambiguity of the position of N/O
                                 "HISND1",       #for the ambiguity of the position of the N/C
-                                #"HISCE1",       #for the ambiguity of the position of the N/C
-                                #"HISNE2",       #for the ambiguity of the position of the N/C         
-                                #"HISCD2",       #for the ambiguity of the position of the N/C
+                                "HISCE1",       #for the ambiguity of the position of the N/C
+                                "HISNE2",       #for the ambiguity of the position of the N/C         
+                                "HISCD2",       #for the ambiguity of the position of the N/C
                                 "LYSNZ",
                                 "SEROG",        
                                 "THROG1",       
@@ -298,9 +294,9 @@ PROT_ATOM_TYPES = {
                                 "GLUOE1",
                                 "GLUOE2",
                                 "HISND1",       #for the ambiguity of the position of the N/C
-                                #"HISCE1",       #for the ambiguity of the position of the N/C
+                                "HISCE1",       #for the ambiguity of the position of the N/C
                                 "HISNE2",       #for the ambiguity of the position of the N/C         
-                                #"HISCD2",       #for the ambiguity of the position of the N/C
+                                "HISCD2",       #for the ambiguity of the position of the N/C
                                 "METSD",        #http://pubs.acs.org/doi/abs/10.1021/jz300207k and pubid 19089987
                                 "CYSSG",        #pubid 19089987, also when they from di-sulfide (Cys-Cys, fig 8 paper)
                                 "SEROG",        #isostar plots
@@ -358,9 +354,9 @@ PROT_ATOM_TYPES = {
                                 "GLUOE1",
                                 "GLUOE2",
                                 "HISND1",       #for the ambiguity of the position of the N/C
-                                #"HISCE1",       #for the ambiguity of the position of the N/C
+                                "HISCE1",       #for the ambiguity of the position of the N/C
                                 "HISNE2",       #for the ambiguity of the position of the N/C         
-                                #"HISCD2",       #for the ambiguity of the position of the N/C
+                                "HISCD2",       #for the ambiguity of the position of the N/C
                                 "METSD",        #http://pubs.acs.org/doi/abs/10.1021/jz300207k and pubid 19089987
                                 "CYSSG",        #pubid 19089987, also when they from di-sulfide (Cys-Cys, fig 8 paper)
                                 "SEROG",        #isostar plots

@@ -630,6 +630,7 @@ Dependencies:
     parser.add_argument('-i', '--interacting', type=float, default=5.0, help='Distance cutoff for grid points to be \'interacting\' with the entity.')
     parser.add_argument('-ph', type=float, default=7.4, help='pH for hydrogen addition.')
     parser.add_argument('-sa', '--include-sequence-adjacent', action='store_true', help='For intra-polypeptide interactions, include non-bonding interactions between residues that are next to each other in sequence; this is not done by default.')
+    parser.add_argument('-a', '--use-ambiguities', action='store_true', help='Turn on abiguous definitions for ambiguous contacts.')
     #parser.add_argument('-sr', '--solvent_radius', type=float, default=1.4, help='Radius of solvent probe for accessibility calculations.')
     #parser.add_argument('-ssp', '--solvent-sphere-points', type=int, default=960, help='Number of points to use for solvent shell spheres for accessibility calculations.')
     #parser.add_argument('-st', '--sasa-threshold', type=float, default=1.0, help='Floating point solvent accessible surface area threshold (squared Angstroms) for considering an atom as \'accessible\' or not.')
@@ -655,6 +656,23 @@ Dependencies:
         logging.basicConfig(level=logging.WARN, format='%(levelname)s//%(asctime)s.%(msecs).03d//%(message)s', datefmt='%H:%M:%S')
     
     logging.info('Program begin.')
+    
+    # ADDRESS AMBIGUITIES
+    if not args.use_ambiguities:
+        
+        # REMOVE IF NOT USING THE AMBIGUITIES (DEFAULT)
+        
+        # REMOVE FROM SMARTS DEFINITIONS
+        ATOM_TYPES['hbond acceptor'].pop('NH2 terminal amide', None)
+        ATOM_TYPES['hbond donor'].pop('oxygen amide term', None)
+        ATOM_TYPES['xbond acceptor'].pop('NH2 terminal amide', None)
+        ATOM_TYPES['weak hbond acceptor'].pop('NH2 terminal amide', None)
+        
+        # REMOVE FROM PROTEIN ATOM DEFINITIONS
+        PROT_ATOM_TYPES['hbond acceptor'] = [x for x in PROT_ATOM_TYPES['hbond acceptor'] if x not in ('ASNND2', 'GLNNE2', 'HISCE1', 'HISCD2')]
+        PROT_ATOM_TYPES['hbond donor'] = [x for x in PROT_ATOM_TYPES['hbond donor'] if x not in ('ASNOD1', 'GLNOE1', 'HISCE1', 'HISCD2')]
+        PROT_ATOM_TYPES['xbond acceptor'] = [x for x in PROT_ATOM_TYPES['xbond acceptor'] if x not in ('ASNND2', 'GLNNE2', 'HISCE1', 'HISCD2')]
+        PROT_ATOM_TYPES['weak hbond acceptor'] = [x for x in PROT_ATOM_TYPES['weak hbond acceptor'] if x not in ('ASNND2', 'GLNNE2', 'HISCE1', 'HISCD2')]
     
     # LOAD STRUCTURE (BIOPYTHON)
     pdb_parser = PDBParser()
