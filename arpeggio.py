@@ -326,15 +326,15 @@ def get_angle(point_a, point_b, point_c):
     
     return angle
 
-def ring_angle(ring, point_coords, degrees=False, signed=False):
+def group_angle(group, point_coords, degrees=False, signed=False):
     '''
     Adapted from CREDO: `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
     
-    `ring` should be a dict with Numpy array 'center' and 'normal' attributes.
+    `group` should be a dict with Numpy array 'center' and 'normal' attributes.
     `point_coords` should be a Numpy array.
     '''
     
-    cosangle = np.dot(ring['normal'], point_coords) / (np.linalg.norm(ring['normal']) * np.linalg.norm(point_coords))
+    cosangle = np.dot(group['normal'], point_coords) / (np.linalg.norm(group['normal']) * np.linalg.norm(point_coords))
 
     # GET THE ANGLE AS RADIANS
     rad = np.arccos(cosangle)
@@ -350,14 +350,14 @@ def ring_angle(ring, point_coords, degrees=False, signed=False):
         # RETURN DEGREES
         return rad * 180 / np.pi
     
-def ring_ring_angle(ring, ring2, degrees=False, signed=False):
+def group_group_angle(group, group2, degrees=False, signed=False):
     '''
     Adapted from CREDO: `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
     
-    `ring` and `ring2` should be a dict with Numpy array 'center' and 'normal' attributes.
+    `group` and `group2` should be a dict with Numpy array 'center' and 'normal' attributes.
     '''
     
-    cosangle = np.dot(ring['normal'], ring2['normal']) / (np.linalg.norm(ring['normal']) * np.linalg.norm(ring2['normal']))
+    cosangle = np.dot(group['normal'], group2['normal']) / (np.linalg.norm(group['normal']) * np.linalg.norm(group2['normal']))
 
     # GET THE ANGLE AS RADIANS
     rad = np.arccos(cosangle)
@@ -1826,8 +1826,8 @@ Dependencies:
                 # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
                 #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
                 #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
-                dihedral = abs(ring_ring_angle(ring, ring2, True, True))
-                theta = abs(ring_angle(ring, theta_point, True, True))
+                dihedral = abs(group_group_angle(ring, ring2, True, True))
+                theta = abs(group_angle(ring, theta_point, True, True))
                 
                 #logging.info('Dihedral = {}     Theta = {}'.format(dihedral, theta))
                 
@@ -1948,7 +1948,7 @@ Dependencies:
                 # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
                 #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
                 #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
-                theta = abs(ring_angle(ring, ring['center'] - atom.coord, True, True)) # CHECK IF `atom.coord` or `ring['center'] - atom.coord`
+                theta = abs(group_angle(ring, ring['center'] - atom.coord, True, True)) # CHECK IF `atom.coord` or `ring['center'] - atom.coord`
                 
                 if distance <= CONTACT_TYPES['aromatic']['atom_aromatic_distance'] and theta <= 30.0:
                 
