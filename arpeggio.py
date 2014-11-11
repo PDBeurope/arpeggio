@@ -1344,6 +1344,7 @@ Dependencies:
     # WITHIN THE ENTITY FOR CONTACT CALCULATION
     selection = e[:]
     selection_ring_ids = list(s.rings)
+    selection_amide_ids = list(s.amides)
     
     if args.selection:
         selection = selection_parser(args.selection, e)
@@ -1365,6 +1366,7 @@ Dependencies:
     selection_plus = set(selection)
     selection_plus_residues = set([x.get_parent() for x in selection_plus])
     selection_plus_ring_ids = set(selection_ring_ids)
+    selection_plus_amide_ids = set(selection_amide_ids)
     
     if args.selection:
         
@@ -1373,6 +1375,7 @@ Dependencies:
         
         # MAKE A SET OF ALL RING IDS ASSOCIATED WITH THE SELECTION AND BINDING SITE
         selection_ring_ids = set([x for x in s.rings if s.rings[x]['residue'] in selection_residues])
+        selection_amide_ids = set([x for x in s.amides if s.amides[x]['residue'] in selection_residues])
         
         # EXPAND THE SELECTION TO THE BINDING SITE
         for atom_bgn, atom_end in ns.search_all(6.0):
@@ -1390,6 +1393,9 @@ Dependencies:
         
         # MAKE A SET OF ALL RING IDS ASSOCIATED WITH THE SELECTION AND BINDING SITE
         selection_plus_ring_ids = set([x for x in s.rings if s.rings[x]['residue'] in selection_plus_residues])
+        
+        # MAKE A SET OF ALL AMIDE IDS ASSOCIATED WITH THE SELECTION AND BINDING SITE
+        selection_plus_amide_ids = set([x for x in s.amides if s.amides[x]['residue'] in selection_plus_residues])
         
         logging.info('Flagged selection rings.')
         
@@ -2045,10 +2051,183 @@ Dependencies:
             
             ring_fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
     
+    # AMIDE-RING INTERACTIONS
+    with open(pdb_filename.replace('.pdb', '.amri'), 'wb') as fo:
+        for amide in s.amides:
+            
+            amide_key = amide
+            amide = s.amides[amide]
+            
+            # CHECK AMIDE IS INVOLVED IN THE SELECTION OR BINDING SITE
+            if amide_key not in selection_plus_amide_ids:
+                continue
+            
+            for ring in s.rings:
+                
+                ring_key = ring
+                ring = s.rings[ring]
+                
+                # CHECK RING IS INVOLVED WITH THE SELECTION OR BINDING SITE
+                if ring_key not in selection_plus_ring_ids:
+                    continue
+                
+                # CHECK IF INTERACTION IS WITHIN SAME RESIDUE
+                intra_residue = False
+                
+                if amide['residue'] == ring['residue']:
+                    intra_residue = True
+                
+                # OUTPUT INTRA/INTER RESIDUE AS TEXT RATHER THAN BOOLEAN
+                intra_residue_text = 'INTER_RESIDUE'
+                
+                if intra_residue:
+                    intra_residue_text = 'INTRA_RESIDUE'
+                
+                # DETERMINE CONTACT TYPE
+                contact_type = ''
+                
+                if not amide_key in selection_amide_ids and not ring_key in selection_ring_ids:
+                    contact_type = 'INTRA_NON_SELECTION'
+                    
+                if amide_key in selection_plus_amide_ids and ring_key in selection_plus_ring_ids:
+                    contact_type = 'INTRA_BINDING_SITE'
+                    
+                if amide_key in selection_amide_ids and ring_key in selection_ring_ids:
+                    contact_type = 'INTRA_SELECTION'
+                    
+                if (amide_key in selection_amide_ids and not ring_key in selection_ring_ids) or (ring_key in selection_ring_ids and not amide_key in selection_amide_ids):
+                    contact_type = 'INTER'
+                    
+                # DETERMINE AMIDE-RING DISTANCE
+                distance = np.linalg.norm(amide['center'] - ring['center'])
+                
+                if distance > CONTACT_TYPES['amide']['centroid_distance']:
+                    continue
+                
+                theta_point = amide['center'] - ring['center']
+                
+                # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
+                #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
+                #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
+                dihedral = abs(group_group_angle(amide, ring, True, True))
+                theta = abs(group_angle(amide, theta_point, True, True))
+                
+                # FACE-ON ORIENTATION ONLY
+                if theta > CONTACT_TYPES['amide']['angle degree']:
+                    continue
+                
+                # IF IT'S SURVIVED SO FAR...(!)
+                
+                # SIFTs
+                amide['residue'].amide_ring_inter_integer_sift[0] = amide['residue'].amide_ring_inter_integer_sift[0] + 1
+                ring['residue'].ring_amide_inter_integer_sift[0] = ring['residue'].ring_amide_inter_integer_sift[0] + 1
+                
+                # WRITE TO FILE
+                output = [
+                    amide['amide_id'],
+                    make_pymol_string(amide['residue']),
+                    list(amide['center']),
+                    ring['ring_id'],
+                    make_pymol_string(ring['residue']),
+                    list(ring['center']),
+                    int_type,
+                    intra_residue_text,
+                    contact_type
+                ]
+                
+                fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
+    
+    # AMIDE-AMIDE INTERACTIONS
+    with open(pdb_filename.replace('.pdb', '.amam'), 'wb') as fo:
+        for amide in s.amides:
+            
+            amide_key = amide
+            amide = s.amides[amide]
+            
+            # CHECK AMIDE IS INVOLVED IN THE SELECTION OR BINDING SITE
+            if amide_key not in selection_plus_amide_ids:
+                continue
+            
+            for amide2 in s.amides:
+                
+                amide_key2 = amide2
+                amide2 = s.amides[amide2]
+                
+                # NO SELFIES
+                if amide_key == amide_key2:
+                    continue
+                
+                # CHECK RING IS INVOLVED WITH THE SELECTION OR BINDING SITE
+                if amide_key2 not in selection_plus_amide_ids:
+                    continue
+                
+                # CHECK IF INTERACTION IS WITHIN SAME RESIDUE
+                intra_residue = False
+                
+                if amide['residue'] == amide2['residue']:
+                    intra_residue = True
+                
+                # OUTPUT INTRA/INTER RESIDUE AS TEXT RATHER THAN BOOLEAN
+                intra_residue_text = 'INTER_RESIDUE'
+                
+                if intra_residue:
+                    intra_residue_text = 'INTRA_RESIDUE'
+                
+                # DETERMINE CONTACT TYPE
+                contact_type = ''
+                
+                if not amide_key in selection_amide_ids and not amide_key2 in selection_amide_ids:
+                    contact_type = 'INTRA_NON_SELECTION'
+                    
+                if amide_key in selection_plus_amide_ids and amide_key2 in selection_plus_amide_ids:
+                    contact_type = 'INTRA_BINDING_SITE'
+                    
+                if amide_key in selection_amide_ids and amide_key2 in selection_amide_ids:
+                    contact_type = 'INTRA_SELECTION'
+                    
+                if (amide_key in selection_amide_ids and not amide_key2 in selection_amide_ids) or (amide_key2 in selection_amide_ids and not amide_key in selection_amide_ids):
+                    contact_type = 'INTER'
+                    
+                # DETERMINE AMIDE-RING DISTANCE
+                distance = np.linalg.norm(amide['center'] - amide2['center'])
+                
+                if distance > CONTACT_TYPES['amide']['centroid_distance']:
+                    continue
+                
+                theta_point = amide['center'] - amide2['center']
+                
+                # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
+                #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
+                #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
+                dihedral = abs(group_group_angle(amide, amide2, True, True))
+                theta = abs(group_angle(amide, theta_point, True, True))
+                
+                # FACE-ON ORIENTATION ONLY
+                if theta > CONTACT_TYPES['amide']['angle degree']:
+                    continue
+                
+                # IF IT'S SURVIVED SO FAR...(!)
+                
+                # SIFT
+                amide['residue'].amide_amide_inter_integer_sift[0] = amide['residue'].amide_amide_inter_integer_sift[0] + 1
+                
+                # WRITE TO FILE
+                output = [
+                    amide['amide_id'],
+                    make_pymol_string(amide['residue']),
+                    list(amide['center']),
+                    amide2['amide_id'],
+                    make_pymol_string(amide2['residue']),
+                    list(amide2['center']),
+                    int_type,
+                    intra_residue_text,
+                    contact_type
+                ]
+                
+                fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
+    
     # RESIDUE LEVEL OUTPUTS
     # CALCULATE INTEGER SIFTS, FLATTEN THEM TO BINARY SIFTS
-    # TODO: OUTPUT MC/SC SPECIFIC SIFTS FOR POLYPEPTIDE RESIDUES
-    # TODO: INCLUDE RING INTERACTIONS IN RESIDUE SIFT
     for residue in s.get_residues():
         
         # WHOLE RESIDUE SIFTS
