@@ -1008,6 +1008,13 @@ Dependencies:
         residue.atom_ring_inter_integer_sift = [0] * 5
         residue.mc_atom_ring_inter_integer_sift = [0] * 5
         residue.sc_atom_ring_inter_integer_sift = [0] * 5
+        
+        # AMIDE-RING
+        residue.amide_ring_inter_integer_sift = [0]
+        residue.ring_amide_inter_integer_sift = [0]
+        
+        # AMIDE-AMIDE
+        residue.amide_amide_inter_integer_sift = [0]
     
     logging.info('Initialised SIFts.')
     
@@ -1096,30 +1103,7 @@ Dependencies:
                 last_residue.next_residue = residue
                 
             last_residue = residue
-        
-        # AROUND AGAIN AFTER ASSIGNING NEXT/PREV RESIDUE
-        # TO ASSIGN AMIDES (WHICH REQUIRES NEXT RESIDUE)
-        
-        #for residue in pp:
-        #    
-        #    if not hasattr(residue, 'next_residue'):
-        #        continue
-        #    
-        #    if not residue.is_terminal_or_break:
-        #        
-        #        # GET AMIDE BOND ATOMS
-        #        ca = residue.child_dict['CA']
-        #        c = residue.child_dict['C']
-        #        o = residue.child_dict['O']
-        #        n = residue.next_residue.child_dict['N']
-        #        
-        #        # GET AMIDE BOND CENTROID
-        #        # DETERMINED AS CENTRE OF MASS OF C-O-N
-        #        con = np.array([c.coord, o.coord, n.coord])
-        #        amide_centroid = con.sum(0) / len(con)
-        #        
-        #        # GET AMIDE BOND PLANE
-    
+
     logging.info('Determined polypeptide residues, chain breaks, termini') # and amide bonds.')
     
     # PERCIEVE AROMATIC RINGS
