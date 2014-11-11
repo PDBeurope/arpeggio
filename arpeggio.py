@@ -2118,6 +2118,8 @@ Dependencies:
                 
                 # IF IT'S SURVIVED SO FAR...(!)
                 
+                int_type = 'AMIDERING'
+                
                 # SIFTs
                 amide['residue'].amide_ring_inter_integer_sift[0] = amide['residue'].amide_ring_inter_integer_sift[0] + 1
                 ring['residue'].ring_amide_inter_integer_sift[0] = ring['residue'].ring_amide_inter_integer_sift[0] + 1
@@ -2207,6 +2209,8 @@ Dependencies:
                     continue
                 
                 # IF IT'S SURVIVED SO FAR...(!)
+                
+                int_type = 'AMIDEAMIDE'
                 
                 # SIFT
                 amide['residue'].amide_amide_inter_integer_sift[0] = amide['residue'].amide_amide_inter_integer_sift[0] + 1

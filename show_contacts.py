@@ -402,6 +402,8 @@ if __name__ == '__main__':
     rings_filename = pdb_filename.replace('.pdb', output_postfix + '.rings')
     ari_filename = pdb_filename.replace('.pdb', output_postfix + '.ari') # ATOM-RING INTERACTIONS
     ri_filename = pdb_filename.replace('.pdb', output_postfix + '.ri') # RING-RING INTERACTIONS
+    amri_filename = pdb_filename.replace('.pdb', output_postfix + '.amri') # AMIDE-RING INTERACTIONS
+    amam_filename = pdb_filename.replace('.pdb', output_postfix + '.amam') # AMIDE-AMIDE INTERACTIONS
     
     script_filename = pdb_filename.replace('.pdb', output_postfix + '.pml')
     
@@ -689,6 +691,48 @@ if __name__ == '__main__':
     do('color green, HALOGENPI')
     do('color red, CATIONPI')
     do('color yellow, METSULPHURPI')
+    
+    # AMIDE-RING INTERACTIONS
+    with open(amri_filename, 'rb') as fo:
+        for line in fo:
+            line = line.strip().split('\t')
+            
+            if line[8] == 'INTRA_NON_SELECTION':
+                continue
+            
+            do('pseudoatom pt1, pos={}'.format(line[2]))
+            do('pseudoatom pt2, pos={}'.format(line[5]))
+            
+            do('distance amide-ring, pt1, pt2')
+            
+            do('delete pt1')
+            do('delete pt2')
+    
+    do('set dash_radius, 0.25, amide-ring')
+    do('set dash_gap, 0.2, amide-ring')
+    do('set dash_length, 0.5, amide-ring')
+    do('color white, amide-ring')
+    
+    # AMIDE-AMIDE INTERACTIONS
+    with open(amam_filename, 'rb') as fo:
+        for line in fo:
+            line = line.strip().split('\t')
+            
+            if line[8] == 'INTRA_NON_SELECTION':
+                continue
+            
+            do('pseudoatom pt1, pos={}'.format(line[2]))
+            do('pseudoatom pt2, pos={}'.format(line[5]))
+            
+            do('distance amide-amide, pt1, pt2')
+            
+            do('delete pt1')
+            do('delete pt2')
+    
+    do('set dash_radius, 0.25, amide-amide')
+    do('set dash_gap, 0.2, amide-amide')
+    do('set dash_length, 0.5, amide-amide')
+    do('color blue, amide-amide')
     
     # PRETTINESS
     do('hide labels')
