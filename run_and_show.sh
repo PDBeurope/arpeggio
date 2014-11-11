@@ -4,7 +4,9 @@
 # NOTE: DOESN'T WORK WITH OUTPUT POSTFIXES. #
 #       JUST DESIGNED FOR QUICK TESTING.    #
 #                                           #
-#       PASS NORMAL OPTIONS TO ARPEGGIO.    #
+#      PASS NORMAL OPTIONS TO ARPEGGIO.     #
+#                                           #
+#  WARNING: OVERWRITES DEFAULT .pml OUTPUT  #
 #                                           #
 #       SHOW CONTACTS USES -bs OPTION.      #
 #                                           #
@@ -17,16 +19,12 @@ echo "Running Arpeggio."
 # http://stackoverflow.com/questions/3190818/pass-all-arguments-from-bash-script-to-another-command
 python $SCRIPT_DIR/arpeggio.py "$@"
 
-echo "Running PyMOL."
-pymol -R &
-PYMOL_PID=$!
-
-echo "Waiting..."
-echo "(Fudge factor, PyMOL has to load, increase if script fails here.)"
-sleep 1
-
 echo "Running show contacts."
-python $SCRIPT_DIR/show_contacts.py $1 -xml -bs
+python $SCRIPT_DIR/show_contacts.py $1 -s -bs
+
+echo "Running PyMOL."
+pymol $(echo "$1" | sed 's/\.pdb/.pml/') &
+PYMOL_PID=$!
 
 echo "Finished running things."
 echo "PyMOL PID = $PYMOL_PID"
@@ -37,11 +35,6 @@ do
 	echo "########################################"
 	echo "#                                      #"
 	echo "# Type 'exit' here to quit everything. #"
-	echo "#                                      #"
-	echo "# N.B.: Exiting without closing PyMOL  #"
-	echo "#       (leaving more than one PyMOL   #"
-	echo "#       server running) may get        #"
-	echo "#       confusing!                     #"
 	echo "#                                      #"
 	echo "########################################"
 	read OPTION
