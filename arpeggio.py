@@ -40,7 +40,8 @@ import openbabel as ob
 
 from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, \
                    HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, VALENCE, \
-                   MAINCHAIN_ATOMS, THETA_REQUIRED, STD_RES, PROT_ATOM_TYPES
+                   MAINCHAIN_ATOMS, THETA_REQUIRED, STD_RES, PROT_ATOM_TYPES, \
+                   AMIDE_SMARTS
 
 ###########
 # CLASSES #
@@ -836,6 +837,29 @@ Dependencies:
         
     logging.info('Typed atoms.')
     
+    # DETECT AMIDE GROUPS
+    # AMIDES FOR AMIDE-RELATED NON-BONDING INTERACTIONS
+    s.amides = OrderedDict()
+    
+    # GET OPENBABEL ATOM MATCHES TO THE SMARTS PATTERN
+    ob_smart = ob.OBSmartsPattern()
+    ob_smart.Init(AMIDE_SMARTS)
+    ob_smart.Match(mol)
+    
+    matches = [x for x in ob_smart.GetMapList()]
+    
+    for match in matches:
+        
+        ob_match = [mol.GetAtom(x) for x in match]
+        bio_match = [ob_to_bio[x.GetId()] for x in ob_match]
+        
+        # CHECK FOR EXPECTED BEHAVIOUR
+        assert len(bio_match) == 4
+        assert bio_match[0].element == 'N'
+        assert bio_match[1].element == 'C' # BACKBONE C IN PROTEIN MAINCHAIN
+        assert bio_match[2].element == 'O'
+        assert bio_match[3].element == 'C' # C-ALPHA IN PROTEIN MAINCHAIN
+    
     # DETERMINE ATOM VALENCES AND EXPLICIT HYDROGEN COUNTS
     for ob_atom in ob.OBMolAtomIter(mol):
         
@@ -1059,9 +1083,6 @@ Dependencies:
     all_chain_break_residues = reduce(operator.add, chain_break_residues.values())
     all_terminal_residues = reduce(operator.add, chain_termini.values())
     
-    # AMIDES FOR AMIDE-RELATED NON-BONDING INTERACTIONS
-    amides = OrderedDict()
-    
     # POLYPEPTIDE RESIDUES
     polypeptide_residues = set([])
     
@@ -1102,25 +1123,25 @@ Dependencies:
         # AROUND AGAIN AFTER ASSIGNING NEXT/PREV RESIDUE
         # TO ASSIGN AMIDES (WHICH REQUIRES NEXT RESIDUE)
         
-        for residue in pp:
-            
-            if not hasattr(residue, 'next_residue'):
-                continue
-            
-            if not residue.is_terminal_or_break:
-                
-                # GET AMIDE BOND ATOMS
-                ca = residue.child_dict['CA']
-                c = residue.child_dict['C']
-                o = residue.child_dict['O']
-                n = residue.next_residue.child_dict['N']
-                
-                # GET AMIDE BOND CENTROID
-                # DETERMINED AS CENTRE OF MASS OF C-O-N
-                con = np.array([c.coord, o.coord, n.coord])
-                amide_centroid = con.sum(0) / len(con)
-                
-                # GET AMIDE BOND PLANE
+        #for residue in pp:
+        #    
+        #    if not hasattr(residue, 'next_residue'):
+        #        continue
+        #    
+        #    if not residue.is_terminal_or_break:
+        #        
+        #        # GET AMIDE BOND ATOMS
+        #        ca = residue.child_dict['CA']
+        #        c = residue.child_dict['C']
+        #        o = residue.child_dict['O']
+        #        n = residue.next_residue.child_dict['N']
+        #        
+        #        # GET AMIDE BOND CENTROID
+        #        # DETERMINED AS CENTRE OF MASS OF C-O-N
+        #        con = np.array([c.coord, o.coord, n.coord])
+        #        amide_centroid = con.sum(0) / len(con)
+        #        
+        #        # GET AMIDE BOND PLANE
     
     logging.info('Determined polypeptide residues, chain breaks, termini') # and amide bonds.')
     
