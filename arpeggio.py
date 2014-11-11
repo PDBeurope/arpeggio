@@ -837,29 +837,6 @@ Dependencies:
         
     logging.info('Typed atoms.')
     
-    # DETECT AMIDE GROUPS
-    # AMIDES FOR AMIDE-RELATED NON-BONDING INTERACTIONS
-    s.amides = OrderedDict()
-    
-    # GET OPENBABEL ATOM MATCHES TO THE SMARTS PATTERN
-    ob_smart = ob.OBSmartsPattern()
-    ob_smart.Init(AMIDE_SMARTS)
-    ob_smart.Match(mol)
-    
-    matches = [x for x in ob_smart.GetMapList()]
-    
-    for match in matches:
-        
-        ob_match = [mol.GetAtom(x) for x in match]
-        bio_match = [ob_to_bio[x.GetId()] for x in ob_match]
-        
-        # CHECK FOR EXPECTED BEHAVIOUR
-        assert len(bio_match) == 4
-        assert bio_match[0].element == 'N'
-        assert bio_match[1].element == 'C' # BACKBONE C IN PROTEIN MAINCHAIN
-        assert bio_match[2].element == 'O'
-        assert bio_match[3].element == 'C' # C-ALPHA IN PROTEIN MAINCHAIN
-    
     # DETERMINE ATOM VALENCES AND EXPLICIT HYDROGEN COUNTS
     for ob_atom in ob.OBMolAtomIter(mol):
         
@@ -1181,6 +1158,31 @@ Dependencies:
                 s.rings[e]['ob_atom_ids'].append(ob_atom.GetId())
     
     logging.info('Percieved and stored rings.')
+    
+    # DETECT AMIDE GROUPS
+    # AMIDES FOR AMIDE-RELATED NON-BONDING INTERACTIONS
+    s.amides = OrderedDict()
+    
+    # GET OPENBABEL ATOM MATCHES TO THE SMARTS PATTERN
+    ob_smart = ob.OBSmartsPattern()
+    ob_smart.Init(AMIDE_SMARTS)
+    ob_smart.Match(mol)
+    
+    matches = [x for x in ob_smart.GetMapList()]
+    
+    for match in matches:
+        
+        ob_match = [mol.GetAtom(x) for x in match]
+        bio_match = [ob_to_bio[x.GetId()] for x in ob_match]
+        
+        # CHECK FOR EXPECTED BEHAVIOUR
+        assert len(bio_match) == 4
+        assert bio_match[0].element == 'N'
+        assert bio_match[1].element == 'C' # BACKBONE C IN PROTEIN MAINCHAIN
+        assert bio_match[2].element == 'O'
+        assert bio_match[3].element == 'C' # C-ALPHA IN PROTEIN MAINCHAIN
+    
+    logging.info('Perceived amide groups.')
     
     # FOR PDB OUTPUT OF OB STRUCTURES
     conv = ob.OBConversion()
