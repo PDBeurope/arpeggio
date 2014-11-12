@@ -1057,15 +1057,31 @@ Dependencies:
     # CHAIN BREAKS AND TERMINI
     for chain_id in chain_break_residues:
         
-        # GET FIRST AND LAST ("GENUINE") TERMINI
-        chain_termini[chain_id] = [chain_break_residues[chain_id][0], chain_break_residues[chain_id][-1]]
+        try:
+            # GET FIRST AND LAST ("GENUINE") TERMINI
+            chain_termini[chain_id] = [chain_break_residues[chain_id][0], chain_break_residues[chain_id][-1]]
+        except IndexError:
+            logging.warn('Chain termini could not be determined for chain {}. It may not be a polypeptide chain.'.format(chain_id))
         
-        # POP OUT THE FIRST AND LAST RESIDUES FROM THE CHAIN BREAK RESIDUES
-        # TO REMOVE THE GENUINE TERMINI
-        chain_break_residues[chain_id] = chain_break_residues[chain_id][1:-1]
+        try:
+            # POP OUT THE FIRST AND LAST RESIDUES FROM THE CHAIN BREAK RESIDUES
+            # TO REMOVE THE GENUINE TERMINI
+            chain_break_residues[chain_id] = chain_break_residues[chain_id][1:-1]
+        except IndexError:
+            logging.warn('Chain termini could not be extracted from breaks for chain {}. It may not be a polypeptide chain.'.format(chain_id))
     
-    all_chain_break_residues = reduce(operator.add, chain_break_residues.values())
-    all_terminal_residues = reduce(operator.add, chain_termini.values())
+    all_chain_break_residues = []
+    all_terminal_residues = []
+    
+    try:
+        all_chain_break_residues = reduce(operator.add, chain_break_residues.values())
+    except TypeError:
+        pass
+    
+    try:
+        all_terminal_residues = reduce(operator.add, chain_termini.values())
+    except TypeError:
+        pass
     
     # POLYPEPTIDE RESIDUES
     polypeptide_residues = set([])
