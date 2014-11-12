@@ -17,13 +17,13 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 echo "Running Arpeggio."
 # http://stackoverflow.com/questions/3190818/pass-all-arguments-from-bash-script-to-another-command
-python $SCRIPT_DIR/arpeggio.py "$@"
+python $SCRIPT_DIR/arpeggio.py "$@" -wh
 
 echo "Running show contacts."
 python $SCRIPT_DIR/show_contacts.py $1 -s -bs
 
 echo "Running PyMOL."
-pymol $(echo "$1" | sed 's/\.pdb/.pml/') &
+pymol $(echo "$1" | sed 's/\.pdb/.pml/') $(echo "$1" | sed 's/\.pdb/_hydrogenated.pdb/') &
 PYMOL_PID=$!
 
 echo "Finished running things."
