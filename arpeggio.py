@@ -54,8 +54,13 @@ class HydrogenError(Exception):
 
 class OBBioMatchError(Exception):
     
-    def __init__(self):
-        logging.error('An OpenBabel atom could not be matched to a BioPython counterpart.')
+    def __init__(self, serial=''):
+        
+        if not serial:
+            logging.error('An OpenBabel atom could not be matched to a BioPython counterpart.')
+        
+        else:
+            logging.error('OpenBabel OBAtom with PDB serial number {} could not be matched to a BioPython counterpart.'.format(serial))
 
 class AtomSerialError(Exception):
     
@@ -728,7 +733,7 @@ Dependencies:
         
         except KeyError:
             # ERRORWORTHY IF WE CAN'T MATCH AN OB ATOM TO A BIOPYTHON ONE
-            raise OBBioMatchError
+            raise OBBioMatchError(serial)
         
         # `Id` IS A UNIQUE AND STABLE ID IN OPENBABEL
         # CAN RECOVER THE ATOM WITH `mol.GetAtomById(id)`
