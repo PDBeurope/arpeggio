@@ -1959,6 +1959,11 @@ Dependencies:
             
             for atom in ns.search(ring['center'], CONTACT_TYPES['aromatic']['met_sulphur_aromatic_distance']):
                 
+                # IGNORE ANY HYDROGENS FOR THESE CONTACTS
+                # IF HYDROGENS ARE PRESENT IN THE BIOPYTHON STRUCTURE FOR ANY REASON
+                if atom.element.strip() == 'H':
+                    continue
+                
                 # CHECK THAT THE ATOM IS INVOLVED IN THE SELECTION OR BINDING SITE
                 if atom not in selection_plus:
                     continue
