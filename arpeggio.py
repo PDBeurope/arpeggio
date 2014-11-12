@@ -1175,9 +1175,10 @@ Dependencies:
         
         # GET AMIDE BOND CENTROID
         # DETERMINED AS CENTRE OF MASS OF C-N (OR C-O-N?)
-        #con = np.array([bio_match[1].coord, bio_match[2].coord, bio_match[0].coord]) # C-O-N
-        con = np.array([bio_match[1].coord, bio_match[0].coord]) # C-N
+        con = np.array([bio_match[1].coord, bio_match[2].coord, bio_match[0].coord]) # C-O-N
+        cn = np.array([bio_match[1].coord, bio_match[0].coord]) # C-N
         amide_centroid = con.sum(0) / float(len(con))
+        bond_centroid = cn.sum(0) / float(len(cn))
         
         # GET AMIDE PLANE WITH SVD
         # `http://mail.scipy.org/pipermail/numpy-discussion/2011-January/054621.html`
@@ -1194,7 +1195,7 @@ Dependencies:
         # STORE AMIDE GROUPS
         s.amides[e] = {
             'amide_id': e,
-            'center': amide_centroid,
+            'center': bond_centroid, #amide_centroid,
             'normal': normal,
             'normal_opp': normal_opp,
             'atoms': bio_match,
@@ -2113,7 +2114,7 @@ Dependencies:
                 theta = abs(group_angle(amide, theta_point, True, True))
                 
                 # FACE-ON ORIENTATION ONLY
-                if dihedral > 30.0 and theta > 30.0:
+                if dihedral > 30.0 or theta > 30.0:
                     continue
                 
                 # IF IT'S SURVIVED SO FAR...(!)
@@ -2134,7 +2135,10 @@ Dependencies:
                     list(ring['center']),
                     int_type,
                     intra_residue_text,
-                    contact_type
+                    contact_type,
+                    #dihedral,
+                    #theta,
+                    #list(theta_point)
                 ]
                 
                 fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
@@ -2205,7 +2209,7 @@ Dependencies:
                 theta = abs(group_angle(amide, theta_point, True, True))
                 
                 # FACE-ON ORIENTATION ONLY
-                if dihedral > 30.0 and theta > 30.0:
+                if dihedral > 30.0 or theta > 30.0:
                     continue
                 
                 # IF IT'S SURVIVED SO FAR...(!)
@@ -2225,7 +2229,10 @@ Dependencies:
                     list(amide2['center']),
                     int_type,
                     intra_residue_text,
-                    contact_type
+                    contact_type,
+                    #dihedral,
+                    #theta,
+                    #list(theta_point)
                 ]
                 
                 fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
