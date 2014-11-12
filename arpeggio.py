@@ -839,8 +839,9 @@ Dependencies:
     # DETERMINE ATOM VALENCES AND EXPLICIT HYDROGEN COUNTS
     for ob_atom in ob.OBMolAtomIter(mol):
         
-        if ob_atom.IsHydrogen():
-            continue
+        if not input_has_hydrogens:
+            if ob_atom.IsHydrogen():
+                continue
         
         # `http://openbabel.org/api/2.3/classOpenBabel_1_1OBAtom.shtml`
         # CURRENT NUMBER OF EXPLICIT CONNECTIONS
