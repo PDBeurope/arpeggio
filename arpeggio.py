@@ -682,15 +682,13 @@ Dependencies:
 
     logging.info('Loaded PDB structure (BioPython)')
     
-    # CHECK FOR HYDROGENS AND RAISE ERROR IF THEY
-    # EXIST. HYDROGENS INTERFERE WITH CONTACT CALCULATION.
-    # COULD MAKE THIS A SMOOTHER PROCESS IN THE FUTURE.
-    # FOR NOW REMOVE ANY HYDROGENS FROM THE INPUT FILE.
-    
+    # CHECK FOR HYDROGENS IN THE INPUT STRUCTURE
+    input_has_hydrogens = False
     hydrogens = [x for x in s_atoms if x.element == 'H']
  
     if hydrogens:
-        raise HydrogenError
+        logging.info('Detected that the input structure contains hydrogens. Hydrogen addition will be skipped.')
+        input_has_hydrogens = True
     
     # LOAD STRUCTURE (OPENBABEL)
     ob_conv = ob.OBConversion()
@@ -764,9 +762,10 @@ Dependencies:
     # ADD EXPLICIT HYDROGEN COORDS FOR H-BONDING INTERACTIONS
     # ADDING HYDROGENS DOESN'T SEEM TO INTERFERE WITH ATOM SERIALS (THEY GET ADDED AS 0)
     # SO WE CAN STILL GET BACK TO THE PERSISTENT BIOPYTHON ATOMS THIS WAY.
-    mol.AddHydrogens(False, True, args.ph) # polaronly, correctForPH, pH
-    
-    logging.info('Added hydrogens.')
+    if not input_has_hydrogens:
+        mol.AddHydrogens(False, True, args.ph) # polaronly, correctForPH, pH
+        
+        logging.info('Added hydrogens.')
     
     # ATOM TYPING VIA OPENBABEL
     # ITERATE OVER ATOM TYPE SMARTS DEFINITIONS
@@ -1275,7 +1274,12 @@ Dependencies:
     # OUTPUT OB STRUCTURE WITH HYDROGENS IF REQUESTED
     if args.write_hydrogenated:
         conv.WriteFile(mol, pdb_filename.replace('.pdb', '_hydrogenated.pdb'))
-        logging.info('Wrote hydrogenated PDB file.')
+        
+        if not input_has_hydrogens:
+            logging.info('Wrote hydrogenated PDB file. Hydrogenation was by Arpeggio using OpenBabel defaults.')
+        
+        else:
+            logging.info('Wrote hydrogenated PDB file. Hydrogens were from the input file.')
     
     # ADD HYDROGENS TO BIOPYTHON ATOMS
     
