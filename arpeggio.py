@@ -1503,6 +1503,11 @@ Dependencies:
             #    if not (atom_bgn.get_full_id()[3][0] == 'W' or atom_end.get_full_id()[3][0] == 'W'):
             #        continue
             
+            # IGNORE ANY HYDROGENS FOR THESE CONTACTS
+            # IF HYDROGENS ARE PRESENT IN THE BIOPYTHON STRUCTURE FOR ANY REASON
+            if atom_bgn.element.strip() == 'H' or atom_end.element.strip() == 'H':
+                continue
+            
             # DETERMINE CONTACT TYPE
             contact_type = ''
             
