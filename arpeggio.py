@@ -2205,7 +2205,7 @@ Dependencies:
                 theta = abs(group_angle(amide, theta_point, True, True))
                 
                 # FACE-ON ORIENTATION ONLY
-                if dihredral > 30.0 and theta > 30.0:
+                if dihedral > 30.0 and theta > 30.0:
                     continue
                 
                 # IF IT'S SURVIVED SO FAR...(!)
