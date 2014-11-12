@@ -1303,24 +1303,24 @@ Dependencies:
     # CHOOSE ENTITY FOR CALCULATION
     # AN ENTITY IS A LIST OF BIOPYTHON ATOMS
     # USING ALL THE BIOPYTHON ATOMS AS E FOR NOW
-    e = list(s_atoms)
+    entity = list(s_atoms)
     
     # ADD VDW RADII TO ENTITY ATOMS
     # USING OPENBABEL VDW RADII
-    for atom in e:
+    for atom in entity:
         atom.vdw_radius = ob.etab.GetVdwRad(mol.GetAtomById(bio_to_ob[atom]).GetAtomicNum())
     
     logging.info('Added VdW radii.')
     
     # ADD COVALENT RADII TO ENTITY ATOMS
     # USING OPENBABEL VDW RADII
-    for atom in e:
+    for atom in entity:
         atom.cov_radius = ob.etab.GetCovalentRad(mol.GetAtomById(bio_to_ob[atom]).GetAtomicNum())
     
     logging.info('Added covalent radii.')
     
     # NEIGHBORSEARCH
-    ns = NeighborSearch(e)
+    ns = NeighborSearch(entity)
     
     logging.info('Completed NeighborSearch.')
     
@@ -1363,16 +1363,16 @@ Dependencies:
     
     # ADD "LIGAND" SELECTION (SUBSET OF ATOMS) FROM
     # WITHIN THE ENTITY FOR CONTACT CALCULATION
-    selection = e[:]
+    selection = entity[:]
     selection_ring_ids = list(s.rings)
     selection_amide_ids = list(s.amides)
     
     if args.selection:
-        selection = selection_parser(args.selection, e)
+        selection = selection_parser(args.selection, entity)
     
     elif args.selection_file:
         with open(args.selection_file, 'rb') as fo:
-            selection = selection_parser([line for line in fo], e)
+            selection = selection_parser([line for line in fo], entity)
     
     if len(selection) == 0:
         
