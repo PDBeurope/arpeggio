@@ -1600,9 +1600,19 @@ Dependencies:
             # PROXIMAL
             else:
                 SIFt[4] = 1
+
+            # METAL COMPLEX
+            # CAN BE COVALENT SO GO HERE
+            if distance <= CONTACT_TYPES['metal']['distance']:
+                
+                if 'hbond acceptor' in atom_bgn.atom_types and atom_end.is_metal:
+                    SIFt[9] = 1
+                    
+                elif 'hbond acceptor' in atom_end.atom_types and atom_bgn.is_metal:
+                    SIFt[9] = 1
             
             # FEATURE CONTACTS
-            if not any(SIFt[:2]) and distance <= CONTACT_TYPES_DIST_MAX:
+            if not any(SIFt[:1]) and distance <= CONTACT_TYPES_DIST_MAX:
                 
                 # HBOND
                 
@@ -1722,15 +1732,6 @@ Dependencies:
                     
                     elif 'neg ionisable' in atom_bgn.atom_types and 'pos ionisable' in atom_end.atom_types:
                         SIFt[8] = 1
-                    
-                # METAL COMPLEX
-                if distance <= CONTACT_TYPES['metal']['distance']:
-                    
-                    if 'hbond acceptor' in atom_bgn.atom_types and atom_end.is_metal:
-                        SIFt[9] = 1
-                        
-                    elif 'hbond acceptor' in atom_end.atom_types and atom_bgn.is_metal:
-                        SIFt[9] = 1
                 
                 # CARBONYL
                 if distance <= CONTACT_TYPES['carbonyl']['distance']:

@@ -62,6 +62,7 @@ pymol_config = {
 
             "ionic":
             {
+                "covalent": "yellow",
                 "vdwclash": "yellow",
                 "vdw": "maize",
                 "proximal": "cream"
@@ -145,6 +146,7 @@ pymol_config = {
 
             "ionic":
             {
+                "covalent": 0.16,
                 "vdwclash": 0.12,
                 "vdw": 0.08,
                 "proximal": 0.04
@@ -228,6 +230,7 @@ pymol_config = {
 
             "ionic":
             {
+                "covalent": 0.20,
                 "vdwclash": 0.25,
                 "vdw": 0.35,
                 "proximal": 0.45
@@ -311,6 +314,7 @@ pymol_config = {
 
             "ionic":
             {
+                "covalent": 0.10,
                 "vdwclash": 0.08,
                 "vdw": 0.06,
                 "proximal": 0.04
@@ -548,7 +552,9 @@ if __name__ == '__main__':
                 dist_flag = 'covalent'
                 
                 # SKIPPING COVALENTS FOR NOW
-                continue
+                # UNLESS METAL COMPLEX
+                if not SIFt[9]:
+                    continue
             
             # VDW_CLASH
             elif SIFt[2]:
