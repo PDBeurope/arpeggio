@@ -111,6 +111,9 @@ drawAtomAtomContactFromPredicates(structure, viewer, '{}',
            pymol_config['dashgap'][dist_feat][dist_dist],
            pymol_config['dashlength'][dist_feat][dist_dist])
 
+    # TODO: ADD FOR RING INTERACTIONS (APPEND TO DICTIONARY
+        # AT THE TOP OF THIS SCRIPT)
+
     # CLOSE LOAD FUNCTION
     js.append('});')
     js.append('}')
