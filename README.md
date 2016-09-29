@@ -45,6 +45,21 @@ Atom-aromatic ring interactions.
 | Ring centroid | list | 3D coordinates of the centre of the ring |
 | Interaction type | list | Type(s) of interaction this atom/ring are making |
 
+### `*.ri`
+
+Aromatic ring-aromatic ring interactions.
+
+| Column | Datatype | Description |
+| ------ | -------- | ----------- |
+| Ring 1 ID | integer | Internal number used to identify the first aromatic ring |
+| Ring 1 Residue   | string `<chain_id>/<res_num>` | Uniquely identifies an the first ring's residue |
+| Ring 1 centroid | list | 3D coordinates of the centre of the first ring |
+| Ring 2 ID | integer | Internal number used to identify the second aromatic ring |
+| Ring 2 Residue   | string `<chain_id>/<res_num>` | Uniquely identifies an the second ring's residue |
+| Ring 2 centroid | list | 3D coordinates of the centre of the second ring |
+| Inter or intra residue | string from (`INTER`, `INTRA_RESIDUE`) | States whether this ring-ring interaction is within the same residue (e.g. within a small molecule ligand), or between two different residues |
+| Interacting entities | string from (`INTER`, `INTRA_NON_SELECTION`, `INTRA_SELECTION`) | Distinguishes how this interacting ring pair relates to the selected atoms: see below |
+
 ### `*.atomtypes`
 
 Atom types for all of the atoms for which interactions are calculated for. This includes the selected atoms, and the atoms that those atoms interact with.
@@ -89,6 +104,3 @@ Entity interactions:
 - `SELECTION_WATER`: Between an atom in the user's selection and a water molecule
 - `NON_SELECTION_WATER`: Between an atom that is not in the user's selection and a water molecule
 - `WATER_WATER`: Between two water molecules
-
-
-
