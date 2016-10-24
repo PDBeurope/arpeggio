@@ -148,6 +148,6 @@ Interaction fingerprints for individual atoms. These are binary (i.e., on/off) i
 
 The columns match the `*.sift` files, but the first 15 columns (after the atom identifier) denote only interactions between the selection made by the user, and non-selection atoms; the second 15 columns indicate interactions made within the selection made by the user; and the third 15 columns indicate interactions made with water only.
 
-### `*.siftmatch`
+### `*.siftmatch`, `*.polarmatch`
 
 These files are for testing purposes.
