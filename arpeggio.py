@@ -41,7 +41,7 @@ import openbabel as ob
 from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, \
                    HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, VALENCE, \
                    MAINCHAIN_ATOMS, THETA_REQUIRED, STD_RES, PROT_ATOM_TYPES, \
-                   AMIDE_SMARTS
+                   AMIDE_SMARTS, COMMON_SOLVENTS, STANDARD_NUCLEOTIDES
 
 ###########
 # CLASSES #
@@ -154,6 +154,22 @@ def selection_parser(selection_list, atom_list):
                 raise SelectionError(original_selection)
             
             current_atom_list = [x for x in current_atom_list if x.get_parent().resname.strip() == selection]
+            
+            for selected_atom in current_atom_list:
+                final_atom_list.add(selected_atom)
+        
+        # SELECT ALL ORGANIC SMALL-MOLECULE LIGANDS
+        elif selection.startswith('LIGANDS'):
+            
+            current_atom_list = [x for x in current_atom_list if
+                                 x.get_parent().is_polypeptide == False and # MUST NOT BE POLYPEPTIDE
+                                 len(x.get_parent().child_list) >= 5 and # MIN NUMBER OF ATOMS
+                                 len(x.get_parent().child_list) <= 100 and # MAX NUMBER OF ATOMS
+                                 'C' in set([y.element for y in x.get_parent().child_list]) and # MUST CONTAIN CARBON
+                                 x.get_parent().resname.strip().upper() not in COMMON_SOLVENTS and # MUST NOT BE COMMON SOLVENT
+                                 x.get_parent().resname.strip().upper() not in STANDARD_NUCLEOTIDES and # MUST NOT BE NUCLEOTIDE
+                                 not x.get_parent().resname.startswith('+') # MUST NOT BE MODIFIED NUCLEOTIDE
+                                 ]
             
             for selected_atom in current_atom_list:
                 final_atom_list.add(selected_atom)
