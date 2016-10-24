@@ -32,6 +32,8 @@ HALOGENS = set(['F', 'CL', 'BR', 'I', 'AT'])
 
 MAINCHAIN_ATOMS = set(['N', 'C', 'CA', 'O', 'OXT'])
 
+AMIDE_SMARTS = '[NX3][CX3](=[OX1])[#6]' # DEFINITION FROM `http://www.daylight.com/dayhtml_tutorials/languages/smarts/smarts_examples.html`
+
 # `https://github.com/openbabel/openbabel/blob/master/src/atom.cpp`
 # THE NUMBER OF VALENCE ELECTRONS IN A FREE ATOM
 VALENCE = [0,1,2,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,9,10,
@@ -50,74 +52,550 @@ ATOM_TYPES = {
                 
         "hbond acceptor":
         {
-            "acceptor": "[$([O,S;H1;v2]-[!$(*=[O,N,P,S])]),$([O,S;H0;v2]),$([O,S;-]),$([N&v3;H1,H2]-[!$(*=[O,N,P,S])]),$([N;v3;H0]),$([n,o,s;+0]),F]"
+            "acceptor"          : "[#8,#9,$([#16;H0,H1;v2,v1]),$([N;v3;!$(N-*=!@[O,N,P,S]);!$(N-!@a);!$([NH]=!@*)]),$([nH0;+0])]",
+            "enol"              : "[$([nH]:@c(=O))]",
+            "tautomeric nH"     : "[$([n;H1;v3;!$([nH]cccc)])]",
+            # AMBIGUITY OF TERMINAL AMIDES MAY AFFECT NON-PROTEIN AMIDES
+            "NH2 terminal amide": "[$([N;H2;v3;$(N-C(=O))])]"
         },
 
         "hbond donor":
         {
-            "donor": "[N!H0v3,N!H0+v4,OH+0,SH+0,nH+0]"
+            "donor"             : "[N!H0v3,N!H0+v4,OH+0,SH+0,nH+0]",
+            "oxygen acid"       : "[$([O;H0;$(O=C([OH])-*)])]",
+            "tautomer nH"       : "[$(n:a:[nH])]",
+            # AMBIGUITY OF TERMINAL AMIDES MAY AFFECT NON-PROTEIN AMIDES 
+            "oxygen amide term" : "[$([O;H0;$(O=C-[NH2])])]"
+                   
         },
 
         "xbond acceptor":
         {
-            "acceptor": "[#7&!$([nX3,#7v5]),#8,#16&!$([#16v4,#16v6]);!$([*+1,*+2,*+3])]"
+            # SAME AS HBA
+            "acceptor"          : "[#8,#9,$([#16;H0,H1;v2,v1]),$([N;v3;!$(N-*=!@[O,N,P,S]);!$(N-!@a);!$([NH]=!@*)]),$([nH0;+0])]",
+            "enol"              : "[$([nH]:@c(=O))]",
+            "tautomeric nH"     : "[$([n;H1;v3;!$([nH]cccc)])]",
+            # AMBIGUITY OF TERMINAL AMIDES MAY AFFECT NON-PROTEIN AMIDES
+            "NH2 terminal amide": "[$([N;H2;v3;$(N-C(=O))])]"
         },
 
         "xbond donor":
         {
-            "donor": "[F,Cl,Br,I;X1;$([F,Cl,Br,I]-[#6,#8]);!$([F,Cl,Br,I]C[F,Cl,Br,I])]"
+            "donor"             : "[Cl,Br,I;X1;$([Cl,Br,I]-[#6])]"
         },
 
         "weak hbond acceptor":
         {
-            "c-x halogens": "[F,Cl,Br,I;X1;$([F,Cl,Br,I]-[#6,#8])]"
+            # SAME AS HBA
+            "acceptor"          : "[#8,#9,$([#16;H0,H1;v2,v1]),$([N;v3;!$(N-*=!@[O,N,P,S]);!$(N-!@a);!$([NH]=!@*)]),$([nH0;+0])]",
+            "enol"              : "[$([nH]:@c(=O))]",
+            "tautomeric nH"     : "[$([n;H1;v3;!$([nH]cccc)])]",
+            # AMBIGUITY OF TERMINAL AMIDES MAY AFFECT NON-PROTEIN AMIDES
+            "NH2 terminal amide": "[$([N;H2;v3;$(N-C(=O))])]",
+            "c-x halogens"      : "[Cl,Br,I;X1;$([Cl,Br,I]-[#6])]"
         },
 
         "weak hbond donor":
         {
-            "donor": "[#6!H0]"
+            "donor"             : "[#6!H0]"
         },
         
         # SEE RDKIT `BaseFeatures.fdef`
         "pos ionisable":
         {
-            "rdkit basic group": "[$([N;H2&+0][C;!$(C=*)]),$([N;H1&+0]([C;!$(C=*)])[C;!$(C=*)]),$([N;H0&+0]([C;!$(C=*)])([C;!$(C=*)])[C;!$(C=*)]);!$(N[a])]",
-            #"basic group": "[NH0+0$(*(-[C!$(*=*)])(-[C!$(*=*)])-[C!$(*=*)])!$(*-[a]),NH+0$(*(-[C!$(*=*)])-[C!$(*=*)])!$(*-[a]),NH2+0$(*-[C!$(*=*)])!$(*-[a])]",
-            "imidazole": "n1cncc1",
-            "guanidine": "N=C(-N)-N",
-            #"posn": "[#7+]"
-            "rdkit posn": "[#7;+;!$([N+]-[O-])]"
+            "rdkit basic group" : "[$([N;H2&+0][C;!$(C=*)]),$([N;H1&+0]([C;!$(C=*)])[C;!$(C=*)]),$([N;H0&+0]([C;!$(C=*)])([C;!$(C=*)])[C;!$(C=*)]);!$(N[a])]",
+            "imidazole"         : "[n;R1]1[c;R1][n;R1][c;R1][c;R1]1",
+            "guanidine amidine" : "NC(=N)",
+            "rdkit posn"        : "[#7;+;!$([N+]-[O-])]",
+            "cations"           : "[$([*+1,*+2,*+3]);!$([N+]-[O-])]",
+            "metals"            : "[Li,Be,Na,Mg,Al,K,Ca,Sc,Ti,V,Cr,Mn,Fe,Co,Ni,Cu,Zn,Ga,Rb,Sr,Y,Zr,Nb,Mo,Tc,Ru,Rh,Pd,Ag,Cd,In,Sn,Cs,Ba,La,Ce,Pr,Nd,Pm,Sm,Eu,Gd,Tb,Dy,Ho,Er,Tm,Yb,Lu,Hf,Ta,W,Re,Os,Ir,Pt,Au,Hg,Tl,Pb,Bi,Po,Fr,Ra,Ac,Th,Pa,U,Np,Pu,Am,Cm,Bk,Cf]"
         },
 
         "neg ionisable":
         {
-            "acidic group": "[OH,OH0-]-[C,S]=[O,P,S]",
-            "hydroxylic acid": "[OH$(*-[A]=[!#6])]"
+            "O acidic group"    : "[$([OH,O-]-[C,S,N,P,Cl,Br,I]=O),$(O=[C,S,N,P,Cl,Br,I]-[OH,O-])]",
+            "anions"            : "[*-1,*-2]"
         },
 
         "hydrophobe":
         {
-            "hydrophobe": "[#6+0!$(*~[#7,#8,F]),SH0+0v2,s+0,S^3,Cl+0,Br+0,I+0]"
+            "hydrophobe"        : "[#6+0!$(*~[#7,#8,F]),SH0+0v2,s+0,Cl+0,Br+0,I+0]"
         },
 
         "carbonyl oxygen":
         {
-            "oxygen": "[$([OH0]=[CX3,c])]"
+            "oxygen"            : "[$([OH0]=[CX3,c]);!$([OH0]=[CX3,c]-[OH,O-])]"
         },
 
         "carbonyl carbon":
         {
-            "carbon": "[$([CX3,c](=[OH0]))]"
+            "carbon"            : "[$([CX3,c]=[OH0]);!$([CX3,c](=[OH0])-[OH,O-])]"
         },
 
         "aromatic":
         {
-            "arom_4": "[a;r4,!R1&r3]1:[a;r4,!R1&r3]:[a;r4,!R1&r3]:[a;r4,!R1&r3]:1",
-            "arom_5": "[a;r5,!R1&r4,!R1&r3]1:[a;r5,!R1&r4,!R1&r3]:[a;r5,!R1&r4,!R1&r3]:[a;r5,!R1&r4,!R1&r3]:[a;r5,!R1&r4,!R1&r3]:1",
-            "arom_6": "[a;r6,!R1&r5,!R1&r4,!R1&r3]1:[a;r6,!R1&r5,!R1&r4,!R1&r3]:[a;r6,!R1&r5,!R1&r4,!R1&r3]:[a;r6,!R1&r5,!R1&r4,!R1&r3]:[a;r6,!R1&r5,!R1&r4,!R1&r3]:[a;r6,!R1&r5,!R1&r4,!R1&r3]:1",
-            "arom_7": "[a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]1:[a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:1",
-            "arom_8": "[a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]1:[a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:1"
+            "arom_4"            : "[a;r4,!R1&r3]1:[a;r4,!R1&r3]:[a;r4,!R1&r3]:[a;r4,!R1&r3]:1",
+            "arom_5"            : "[a;r5,!R1&r4,!R1&r3]1:[a;r5,!R1&r4,!R1&r3]:[a;r5,!R1&r4,!R1&r3]:[a;r5,!R1&r4,!R1&r3]:[a;r5,!R1&r4,!R1&r3]:1",
+            "arom_6"            : "[a;r6,!R1&r5,!R1&r4,!R1&r3]1:[a;r6,!R1&r5,!R1&r4,!R1&r3]:[a;r6,!R1&r5,!R1&r4,!R1&r3]:[a;r6,!R1&r5,!R1&r4,!R1&r3]:[a;r6,!R1&r5,!R1&r4,!R1&r3]:[a;r6,!R1&r5,!R1&r4,!R1&r3]:1",
+            "arom_7"            : "[a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]1:[a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:1",
+            "arom_8"            : "[a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]1:[a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:[a;r8,!R1&r7,!R1&r6,!R1&r5,!R1&r4,!R1&r3]:1"
         }
+}
+
+STD_RES = set(['ALA', 'CYS', 'ASP', 'GLU', 'PHE', 'GLY', 'HIS', 'ILE', 'LYS', 'LEU', 'MET', 'ASN', 'PRO',
+               'GLN', 'ARG', 'SER', 'THR', 'VAL', 'TRP', 'TYR'])
+
+PROT_ATOM_TYPES = {
+        "hbond acceptor":       [
+                                "ALAO",         # all the carbonyl Oxygens in the main chain
+                                "ARGO",
+                                "ASNO",
+                                "ASPO",
+                                "CYSO",
+                                "GLNO",
+                                "GLUO",
+                                "GLYO",
+                                "HISO",
+                                "ILEO",
+                                "LEUO",
+                                "LYSO",
+                                "METO",
+                                "PHEO",
+                                "PROO",
+                                "SERO",
+                                "THRO",
+                                "TRPO",
+                                "TYRO",
+                                "VALO",
+                                "ALAOXT",         # all the carbonyl Oxygens terminals
+                                "ARGOXT",
+                                "ASNOXT",
+                                "ASPOXT",
+                                "CYSOXT",
+                                "GLNOXT",
+                                "GLUOXT",
+                                "GLYOXT",
+                                "HISOXT",
+                                "ILEOXT",
+                                "LEUOXT",
+                                "LYSOXT",
+                                "METOXT",
+                                "PHEOXT",
+                                "PROOXT",
+                                "SEROXT",
+                                "THROXT",
+                                "TRPOXT",
+                                "TYROXT",
+                                "VALOXT",
+                                "ASNOD1",  
+                                "ASNND2",       #for the ambiguity of the position of the N and O
+                                "ASPOD1",
+                                "ASPOD2",
+                                "GLNOE1"
+                                "GLNNE2",       #for the ambiguity of the position of the N and O
+                                "GLUOE1",
+                                "GLUOE2",
+                                "HISND1",       #for the ambiguity of the position of the N/C
+                                "HISCE1",       #for the ambiguity of the position of the N/C
+                                "HISNE2",       #for the ambiguity of the position of the N/C         
+                                "HISCD2",       #for the ambiguity of the position of the N/C
+                                "METSD",        #http://pubs.acs.org/doi/abs/10.1021/jz300207k and pubid 19089987
+                                "CYSSG",        #pubid 19089987, also when they from di-sulfide (Cys-Cys, fig 8 paper)
+                                "SEROG",        #isostar plots
+                                "THROG1",       #isostar plots
+                                "TYROH"         #isostar plots
+                                ]
+        ,
+        "hbond donor":          [
+                                "ALAN",          # all the amide nitrogens in the main chain except proline
+                                "ARGN",
+                                "ASNN",
+                                "ASPN",
+                                "CYSN",
+                                "GLNN",
+                                "GLUN",
+                                "GLYN",
+                                "HISN",
+                                "ILEN",
+                                "LEUN",
+                                "LYSN",
+                                "METN",
+                                "PHEN",
+                                "SERN",
+                                "THRN",
+                                "TRPN",
+                                "TYRN",
+                                "VALN",
+                                "ARGNE",
+                                "ARGNH1",
+                                "ARGNH2",
+                                "ASNND2",
+                                "ASNOD1",       #for the ambiguity of the position of the N and O
+                                "CYSSG",        #http://www.ncbi.nlm.nih.gov/pubmed/19089987
+                                "GLNNE2",
+                                "GLNOE1",       #for the ambiguity of the position of N/O
+                                "HISND1",       #for the ambiguity of the position of the N/C
+                                "HISCE1",       #for the ambiguity of the position of the N/C
+                                "HISNE2",       #for the ambiguity of the position of the N/C         
+                                "HISCD2",       #for the ambiguity of the position of the N/C
+                                "LYSNZ",
+                                "SEROG",        
+                                "THROG1",       
+                                "TRPNE1",
+                                "TYROH"         
+                                ]
+                
+        ,
+        "xbond acceptor": [
+                                "ALAO",         # all the carbonyl Oxygens in the main chain
+                                "ARGO",
+                                "ASNO",
+                                "ASPO",
+                                "CYSO",
+                                "GLNO",
+                                "GLUO",
+                                "GLYO",
+                                "HISO",
+                                "ILEO",
+                                "LEUO",
+                                "LYSO",
+                                "METO",
+                                "PHEO",
+                                "PROO",
+                                "SERO",
+                                "THRO",
+                                "TRPO",
+                                "TYRO",
+                                "VALO",
+                                "ALAOXT",         # all the carbonyl Oxygens terminals
+                                "ARGOXT",
+                                "ASNOXT",
+                                "ASPOXT",
+                                "CYSOXT",
+                                "GLNOXT",
+                                "GLUOXT",
+                                "GLYOXT",
+                                "HISOXT",
+                                "ILEOXT",
+                                "LEUOXT",
+                                "LYSOXT",
+                                "METOXT",
+                                "PHEOXT",
+                                "PROOXT",
+                                "SEROXT",
+                                "THROXT",
+                                "TRPOXT",
+                                "TYROXT",
+                                "VALOXT",
+                                "ASNOD1",  
+                                "ASNND2",       #for the ambiguity of the position of the N and O
+                                "ASPOD1",
+                                "ASPOD2",
+                                "GLNOE1"
+                                "GLNNE2",       #for the ambiguity of the position of the N and O
+                                "GLUOE1",
+                                "GLUOE2",
+                                "HISND1",       #for the ambiguity of the position of the N/C
+                                "HISCE1",       #for the ambiguity of the position of the N/C
+                                "HISNE2",       #for the ambiguity of the position of the N/C         
+                                "HISCD2",       #for the ambiguity of the position of the N/C
+                                "METSD",        #http://pubs.acs.org/doi/abs/10.1021/jz300207k and pubid 19089987
+                                "CYSSG",        #pubid 19089987, also when they from di-sulfide (Cys-Cys, fig 8 paper)
+                                "SEROG",        #isostar plots
+                                "THROG1",       #isostar plots
+                                "TYROH"         #isostar plots
+                                ]
+        ,
+        "weak hbond acceptor": [
+                                "ALAO",         # all the carbonyl Oxygens in the main chain
+                                "ARGO",
+                                "ASNO",
+                                "ASPO",
+                                "CYSO",
+                                "GLNO",
+                                "GLUO",
+                                "GLYO",
+                                "HISO",
+                                "ILEO",
+                                "LEUO",
+                                "LYSO",
+                                "METO",
+                                "PHEO",
+                                "PROO",
+                                "SERO",
+                                "THRO",
+                                "TRPO",
+                                "TYRO",
+                                "VALO",
+                                "ALAOXT",         # all the carbonyl Oxygens terminals
+                                "ARGOXT",
+                                "ASNOXT",
+                                "ASPOXT",
+                                "CYSOXT",
+                                "GLNOXT",
+                                "GLUOXT",
+                                "GLYOXT",
+                                "HISOXT",
+                                "ILEOXT",
+                                "LEUOXT",
+                                "LYSOXT",
+                                "METOXT",
+                                "PHEOXT",
+                                "PROOXT",
+                                "SEROXT",
+                                "THROXT",
+                                "TRPOXT",
+                                "TYROXT",
+                                "VALOXT",
+                                "ASNOD1",  
+                                "ASNND2",       #for the ambiguity of the position of the N and O
+                                "ASPOD1",
+                                "ASPOD2",
+                                "GLNOE1"
+                                "GLNNE2",       #for the ambiguity of the position of the N and O
+                                "GLUOE1",
+                                "GLUOE2",
+                                "HISND1",       #for the ambiguity of the position of the N/C
+                                "HISCE1",       #for the ambiguity of the position of the N/C
+                                "HISNE2",       #for the ambiguity of the position of the N/C         
+                                "HISCD2",       #for the ambiguity of the position of the N/C
+                                "METSD",        #http://pubs.acs.org/doi/abs/10.1021/jz300207k and pubid 19089987
+                                "CYSSG",        #pubid 19089987, also when they from di-sulfide (Cys-Cys, fig 8 paper)
+                                "SEROG",        #isostar plots
+                                "THROG1",       #isostar plots
+                                "TYROH"         #isostar plots
+                                ]
+        ,
+        "weak hbond donor": [
+                                "ALACA",         # all the c-alphas 
+                                "ARGCA",
+                                "ASNCA",
+                                "ASPCA",
+                                "CYSCA",
+                                "GLNCA",
+                                "GLUCA",
+                                "GLYCA",
+                                "HISCA",
+                                "ILECA",
+                                "LEUCA",
+                                "LYSCA",
+                                "METCA",
+                                "PHECA",
+                                "PROCA",
+                                "SERCA",
+                                "THRCA",
+                                "TRPCA",
+                                "TYRCA",
+                                "VALCA",
+                                "ALACB",         #cb and further down
+                                "ARGCB",
+                                "ARGCG",
+                                "ARGCD",
+                                "ASNCB",
+                                "ASPCB",
+                                "CYSCB",
+                                "GLNCB",
+                                "GLNCG",
+                                "GLUCB",
+                                "GLUCG",
+                                "GLNCB",
+                                "HISCB",
+                                "ILECB",
+                                "ILECG1",
+                                "ILECD1",
+                                "ILECG2",
+                                "LEUCB",
+                                "LEUCG",
+                                "LEUCD1",
+                                "LEUCD2",
+                                "LYSCB",
+                                "LYSCG",
+                                "LYSCD",
+                                "LYSCE",
+                                "METCB",
+                                "METCG",
+                                "METCE",
+                                "PHECB",
+                                "PHECG",
+                                "PHECD1",
+                                "PHECD2",
+                                "PHECE1",
+                                "PHECE2",
+                                "PHECZ",
+                                "PROCB",
+                                "PROCG",
+                                "PROCD",
+                                "SERCB",
+                                "THRCB",
+                                "THRCG2",
+                                "TRPCB",
+                                "TRPCD1"
+                                "TRPCE3",
+                                "TRPCZ3",
+                                "TRPCH2",
+                                "TRPCZ2",                                
+                                "TYRCB",
+                                "TYRCD1",
+                                "TYRCD2",
+                                "TYRCE1",
+                                "TYRCE2",
+                                "TRYCB",
+                                "VALCB",
+                                "VALCG1",
+                                "VALCG2"
+        ]
+        ,
+        "pos ionisable":   [
+                                "ARGNE",
+                                "ARGCZ",
+                                "ARGNH1",
+                                "ARGNH2",
+                                "HISCG",
+                                "HISND1",
+                                "HISCE1",
+                                "HISNE2",
+                                "HISCD2",
+                                "LYSNZ"
+        ]
+        ,
+        "neg ionisable": [
+                                "ASPOD1",
+                                "ASPOD2",
+                                "GLUOE1",
+                                "GLUOE2"
+        ]
+        ,
+        "hydrophobe": [
+                                "ALACB",        
+                                "ARGCB",
+                                "ARGCG",
+                                "ASNCB",
+                                "ASPCB",
+                                "CYSCB",     #sulfur in Cys has an Hydrogen, it is polarised
+                                "GLNCB",
+                                "GLNCG",
+                                "GLUCB",
+                                "GLUCG",
+                                "GLNCB",
+                                "HISCB",
+                                "ILECB",
+                                "ILECG1",
+                                "ILECD1",
+                                "ILECG2",
+                                "LEUCB",
+                                "LEUCG",
+                                "LEUCD1",
+                                "LEUCD2",
+                                "LYSCB",
+                                "LYSCG",
+                                "LYSCD",
+                                "METCB",
+                                "METCG",
+                                "METSD",
+                                "METCE",
+                                "PHECB",
+                                "PHECG",
+                                "PHECD1",
+                                "PHECD2",
+                                "PHECE1",
+                                "PHECE2",
+                                "PHECZ",
+                                "PROCB",
+                                "PROCG",
+                                "THRCG2",
+                                "TRPCB",
+                                "TRPCG",
+                                "TRPCD2",
+                                "TRPCE3",
+                                "TRPCZ3",
+                                "TRPCH2",
+                                "TRPCZ2",                                
+                                "TRYCB",
+                                "TYRCG",
+                                "TYRCD1",
+                                "TYRCD2",
+                                "TYRCE1",
+                                "TYRCE2",
+                                "VALCB",
+                                "VALCG1",
+                                "VALCG2"
+        ]
+        ,
+        "carbonyl oxygen":  [
+                                "ALAO",         # all the carbonyl Oxygens in the main chain
+                                "ARGO",
+                                "ASNO",
+                                "ASPO",
+                                "CYSO",
+                                "GLNO",
+                                "GLUO",
+                                "GLYO",
+                                "HISO",
+                                "ILEO",
+                                "LEUO",
+                                "LYSO",
+                                "METO",
+                                "PHEO",
+                                "PROO",
+                                "SERO",
+                                "THRO",
+                                "TRPO",
+                                "TYRO",
+                                "VALO"
+        ]
+        ,
+        "carbonyl carbon": [
+                                "ALAC",         
+                                "ARGC",
+                                "ASNC",
+                                "ASPC",
+                                "CYSC",
+                                "GLNC",
+                                "GLUC",
+                                "GLYC",
+                                "HISC",
+                                "ILEC",
+                                "LEUC",
+                                "LYSC",
+                                "METC",
+                                "PHEC",
+                                "PROC",
+                                "SERC",
+                                "THRC",
+                                "TRPC",
+                                "TYRC",
+                                "VALC"
+        ]
+        ,
+        "aromatic": [
+                                "HISCG",
+                                "HISND1",
+                                "HISCE1",
+                                "HISNE2",
+                                "HISCD2",
+                                "PHECG",
+                                "PHECD1",
+                                "PHECD2",
+                                "PHECE1",
+                                "PHECE2",
+                                "PHECZ",
+                                "TRPCG",
+                                "TRPCD1",
+                                "TRPCD2",
+                                "TRPNE1",
+                                "TRPCE2",
+                                "TRPCE3",
+                                "TRPCZ2",
+                                "TRPCZ3",
+                                "TRPCH2",
+                                "TYRCG",
+                                "TYRCD1",
+                                "TYRCD2",
+                                "TYRCE1",
+                                "TYRCE2",
+                                "TYRCZ"
+  
+        ]
 }
 
 CONTACT_TYPES_DIST_MAX = 4.5
@@ -147,7 +625,15 @@ CONTACT_TYPES = {
         {
             "distance": 4.0,
             "centroid_distance": 6.0,
-            "atom_aromatic_distance": 4.5
+            "atom_aromatic_distance": 4.5,
+            "met_sulphur_aromatic_distance": 6.0
+        },
+        
+        "amide":
+        {
+             "centroid_distance": 6.0,
+             "angle degree": 30.0,
+             "angle rad": 0.52
         },
 
         "xbond":
@@ -181,3 +667,5 @@ CONTACT_TYPES = {
             "distance": 2.8
         }
 }
+
+THETA_REQUIRED = set(['CARBONPI', 'CATIONPI', 'DONORPI', 'HALOGENPI'])

@@ -62,6 +62,7 @@ pymol_config = {
 
             "ionic":
             {
+                "covalent": "yellow",
                 "vdwclash": "yellow",
                 "vdw": "maize",
                 "proximal": "cream"
@@ -145,6 +146,7 @@ pymol_config = {
 
             "ionic":
             {
+                "covalent": 0.16,
                 "vdwclash": 0.12,
                 "vdw": 0.08,
                 "proximal": 0.04
@@ -228,6 +230,7 @@ pymol_config = {
 
             "ionic":
             {
+                "covalent": 0.20,
                 "vdwclash": 0.25,
                 "vdw": 0.35,
                 "proximal": 0.45
@@ -311,6 +314,7 @@ pymol_config = {
 
             "ionic":
             {
+                "covalent": 0.10,
                 "vdwclash": 0.08,
                 "vdw": 0.06,
                 "proximal": 0.04
@@ -382,6 +386,7 @@ if __name__ == '__main__':
     parser.add_argument('-op', type=str, default='', help='The output postfix you used with Arpeggio (if any).')
     parser.add_argument('-xml', '--xml-rpc', action='store_true', help='Interact with PyMOL by XML-RPC server (`pymol -R`).')
     parser.add_argument('-s', '--script', action='store_true', help='Output a PyMOL script with the relevant commands.')
+    parser.add_argument('-bs', '--use-all-binding-site', action='store_true', help='Use all the binding site contacts instead of just the INTER ones. Only works if you used a selection when running Arpeggio.')
     
     args = parser.parse_args()
     
@@ -392,10 +397,17 @@ if __name__ == '__main__':
     
     output_postfix = args.op
     
-    contacts_filename = pdb_filename.replace('.pdb', output_postfix + '.contacts')
+    contacts_extension = '.contacts'
+    
+    if args.use_all_binding_site:
+        contacts_extension = '.bs_contacts'
+    
+    contacts_filename = pdb_filename.replace('.pdb', output_postfix + contacts_extension)
     rings_filename = pdb_filename.replace('.pdb', output_postfix + '.rings')
     ari_filename = pdb_filename.replace('.pdb', output_postfix + '.ari') # ATOM-RING INTERACTIONS
     ri_filename = pdb_filename.replace('.pdb', output_postfix + '.ri') # RING-RING INTERACTIONS
+    amri_filename = pdb_filename.replace('.pdb', output_postfix + '.amri') # AMIDE-RING INTERACTIONS
+    amam_filename = pdb_filename.replace('.pdb', output_postfix + '.amam') # AMIDE-AMIDE INTERACTIONS
     
     script_filename = pdb_filename.replace('.pdb', output_postfix + '.pml')
     
@@ -540,7 +552,9 @@ if __name__ == '__main__':
                 dist_flag = 'covalent'
                 
                 # SKIPPING COVALENTS FOR NOW
-                continue
+                # UNLESS METAL COMPLEX
+                if not SIFt[9]:
+                    continue
             
             # VDW_CLASH
             elif SIFt[2]:
@@ -643,6 +657,9 @@ if __name__ == '__main__':
         for line in fo:
             line = line.strip().split('\t')
             
+            if line[8] == 'INTRA_NON_SELECTION':
+                continue
+            
             do('pseudoatom pt1, pos={}'.format(line[2]))
             do('pseudoatom pt2, pos={}'.format(line[5]))
             
@@ -662,6 +679,9 @@ if __name__ == '__main__':
             
             do('pseudoatom pt1, pos={}'.format(line[3]))
             
+            if line[6] == 'INTRA_NON_SELECTION':
+                continue
+            
             if type(eval(line[4])) is list:
             
                 for itype in eval(line[4]):
@@ -676,6 +696,49 @@ if __name__ == '__main__':
     do('color blue, DONORPI')
     do('color green, HALOGENPI')
     do('color red, CATIONPI')
+    do('color yellow, METSULPHURPI')
+    
+    # AMIDE-RING INTERACTIONS
+    with open(amri_filename, 'rb') as fo:
+        for line in fo:
+            line = line.strip().split('\t')
+            
+            if line[8] == 'INTRA_NON_SELECTION':
+                continue
+            
+            do('pseudoatom pt1, pos={}'.format(line[2]))
+            do('pseudoatom pt2, pos={}'.format(line[5]))
+            
+            do('distance amide-ring, pt1, pt2')
+            
+            do('delete pt1')
+            do('delete pt2')
+    
+    do('set dash_radius, 0.25, amide-ring')
+    do('set dash_gap, 0.2, amide-ring')
+    do('set dash_length, 0.5, amide-ring')
+    do('color white, amide-ring')
+    
+    # AMIDE-AMIDE INTERACTIONS
+    with open(amam_filename, 'rb') as fo:
+        for line in fo:
+            line = line.strip().split('\t')
+            
+            if line[8] == 'INTRA_NON_SELECTION':
+                continue
+            
+            do('pseudoatom pt1, pos={}'.format(line[2]))
+            do('pseudoatom pt2, pos={}'.format(line[5]))
+            
+            do('distance amide-amide, pt1, pt2')
+            
+            do('delete pt1')
+            do('delete pt2')
+    
+    do('set dash_radius, 0.25, amide-amide')
+    do('set dash_gap, 0.2, amide-amide')
+    do('set dash_length, 0.5, amide-amide')
+    do('color blue, amide-amide')
     
     # PRETTINESS
     do('hide labels')
@@ -687,6 +750,7 @@ if __name__ == '__main__':
     do('hide everything, het')
     do('show sticks, het')
     do('show spheres, het')
+    do('disable undefined-proximal')
     
     # UPDATE PYMOL NOW
     do('set defer_update, 0')

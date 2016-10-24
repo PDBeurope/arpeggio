@@ -38,7 +38,10 @@ import openbabel as ob
 # CONSTANTS #
 #############
 
-from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, VALENCE, MAINCHAIN_ATOMS
+from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, \
+                   HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, VALENCE, \
+                   MAINCHAIN_ATOMS, THETA_REQUIRED, STD_RES, PROT_ATOM_TYPES, \
+                   AMIDE_SMARTS
 
 ###########
 # CLASSES #
@@ -51,8 +54,13 @@ class HydrogenError(Exception):
 
 class OBBioMatchError(Exception):
     
-    def __init__(self):
-        logging.error('An OpenBabel atom could not be matched to a BioPython counterpart.')
+    def __init__(self, serial=''):
+        
+        if not serial:
+            logging.error('An OpenBabel atom could not be matched to a BioPython counterpart.')
+        
+        else:
+            logging.error('OpenBabel OBAtom with PDB serial number {} could not be matched to a BioPython counterpart.'.format(serial))
 
 class AtomSerialError(Exception):
     
@@ -323,15 +331,15 @@ def get_angle(point_a, point_b, point_c):
     
     return angle
 
-def ring_angle(ring, point_coords, degrees=False, signed=False):
+def group_angle(group, point_coords, degrees=False, signed=False):
     '''
     Adapted from CREDO: `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
     
-    `ring` should be a dict with Numpy array 'center' and 'normal' attributes.
+    `group` should be a dict with Numpy array 'center' and 'normal' attributes.
     `point_coords` should be a Numpy array.
     '''
     
-    cosangle = np.dot(ring['normal'], point_coords) / (np.linalg.norm(ring['normal']) * np.linalg.norm(point_coords))
+    cosangle = np.dot(group['normal'], point_coords) / (np.linalg.norm(group['normal']) * np.linalg.norm(point_coords))
 
     # GET THE ANGLE AS RADIANS
     rad = np.arccos(cosangle)
@@ -347,14 +355,14 @@ def ring_angle(ring, point_coords, degrees=False, signed=False):
         # RETURN DEGREES
         return rad * 180 / np.pi
     
-def ring_ring_angle(ring, ring2, degrees=False, signed=False):
+def group_group_angle(group, group2, degrees=False, signed=False):
     '''
     Adapted from CREDO: `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
     
-    `ring` and `ring2` should be a dict with Numpy array 'center' and 'normal' attributes.
+    `group` and `group2` should be a dict with Numpy array 'center' and 'normal' attributes.
     '''
     
-    cosangle = np.dot(ring['normal'], ring2['normal']) / (np.linalg.norm(ring['normal']) * np.linalg.norm(ring2['normal']))
+    cosangle = np.dot(group['normal'], group2['normal']) / (np.linalg.norm(group['normal']) * np.linalg.norm(group2['normal']))
 
     # GET THE ANGLE AS RADIANS
     rad = np.arccos(cosangle)
@@ -627,6 +635,8 @@ Dependencies:
     parser.add_argument('-co', '--vdw-comp', type=float, default=0.1, help='Compensation factor for VdW radii dependent interaction types.')    
     parser.add_argument('-i', '--interacting', type=float, default=5.0, help='Distance cutoff for grid points to be \'interacting\' with the entity.')
     parser.add_argument('-ph', type=float, default=7.4, help='pH for hydrogen addition.')
+    parser.add_argument('-sa', '--include-sequence-adjacent', action='store_true', help='For intra-polypeptide interactions, include non-bonding interactions between residues that are next to each other in sequence; this is not done by default.')
+    parser.add_argument('-a', '--use-ambiguities', action='store_true', help='Turn on abiguous definitions for ambiguous contacts.')
     #parser.add_argument('-sr', '--solvent_radius', type=float, default=1.4, help='Radius of solvent probe for accessibility calculations.')
     #parser.add_argument('-ssp', '--solvent-sphere-points', type=int, default=960, help='Number of points to use for solvent shell spheres for accessibility calculations.')
     #parser.add_argument('-st', '--sasa-threshold', type=float, default=1.0, help='Floating point solvent accessible surface area threshold (squared Angstroms) for considering an atom as \'accessible\' or not.')
@@ -653,6 +663,23 @@ Dependencies:
     
     logging.info('Program begin.')
     
+    # ADDRESS AMBIGUITIES
+    if not args.use_ambiguities:
+        
+        # REMOVE IF NOT USING THE AMBIGUITIES (DEFAULT)
+        
+        # REMOVE FROM SMARTS DEFINITIONS
+        ATOM_TYPES['hbond acceptor'].pop('NH2 terminal amide', None)
+        ATOM_TYPES['hbond donor'].pop('oxygen amide term', None)
+        ATOM_TYPES['xbond acceptor'].pop('NH2 terminal amide', None)
+        ATOM_TYPES['weak hbond acceptor'].pop('NH2 terminal amide', None)
+        
+        # REMOVE FROM PROTEIN ATOM DEFINITIONS
+        PROT_ATOM_TYPES['hbond acceptor'] = [x for x in PROT_ATOM_TYPES['hbond acceptor'] if x not in ('ASNND2', 'GLNNE2', 'HISCE1', 'HISCD2')]
+        PROT_ATOM_TYPES['hbond donor'] = [x for x in PROT_ATOM_TYPES['hbond donor'] if x not in ('ASNOD1', 'GLNOE1', 'HISCE1', 'HISCD2')]
+        PROT_ATOM_TYPES['xbond acceptor'] = [x for x in PROT_ATOM_TYPES['xbond acceptor'] if x not in ('ASNND2', 'GLNNE2', 'HISCE1', 'HISCD2')]
+        PROT_ATOM_TYPES['weak hbond acceptor'] = [x for x in PROT_ATOM_TYPES['weak hbond acceptor'] if x not in ('ASNND2', 'GLNNE2', 'HISCE1', 'HISCD2')]
+    
     # LOAD STRUCTURE (BIOPYTHON)
     pdb_parser = PDBParser()
     s = pdb_parser.get_structure('structure', pdb_filename)
@@ -660,15 +687,13 @@ Dependencies:
 
     logging.info('Loaded PDB structure (BioPython)')
     
-    # CHECK FOR HYDROGENS AND RAISE ERROR IF THEY
-    # EXIST. HYDROGENS INTERFERE WITH CONTACT CALCULATION.
-    # COULD MAKE THIS A SMOOTHER PROCESS IN THE FUTURE.
-    # FOR NOW REMOVE ANY HYDROGENS FROM THE INPUT FILE.
-    
+    # CHECK FOR HYDROGENS IN THE INPUT STRUCTURE
+    input_has_hydrogens = False
     hydrogens = [x for x in s_atoms if x.element == 'H']
  
     if hydrogens:
-        raise HydrogenError
+        logging.info('Detected that the input structure contains hydrogens. Hydrogen addition will be skipped.')
+        input_has_hydrogens = True
     
     # LOAD STRUCTURE (OPENBABEL)
     ob_conv = ob.OBConversion()
@@ -708,7 +733,7 @@ Dependencies:
         
         except KeyError:
             # ERRORWORTHY IF WE CAN'T MATCH AN OB ATOM TO A BIOPYTHON ONE
-            raise OBBioMatchError
+            raise OBBioMatchError(serial)
         
         # `Id` IS A UNIQUE AND STABLE ID IN OPENBABEL
         # CAN RECOVER THE ATOM WITH `mol.GetAtomById(id)`
@@ -742,9 +767,10 @@ Dependencies:
     # ADD EXPLICIT HYDROGEN COORDS FOR H-BONDING INTERACTIONS
     # ADDING HYDROGENS DOESN'T SEEM TO INTERFERE WITH ATOM SERIALS (THEY GET ADDED AS 0)
     # SO WE CAN STILL GET BACK TO THE PERSISTENT BIOPYTHON ATOMS THIS WAY.
-    mol.AddHydrogens(False, True, args.ph) # polaronly, correctForPH, pH
-    
-    logging.info('Added hydrogens.')
+    if not input_has_hydrogens:
+        mol.AddHydrogens(False, True, args.ph) # polaronly, correctForPH, pH
+        
+        logging.info('Added hydrogens.')
     
     # ATOM TYPING VIA OPENBABEL
     # ITERATE OVER ATOM TYPE SMARTS DEFINITIONS
@@ -790,6 +816,25 @@ Dependencies:
         atom.atom_types.add('hbond acceptor')
         atom.atom_types.add('hbond donor')
     
+    # OVERRIDE PROTEIN ATOM TYPING FROM DICTIONARY
+    for residue in s.get_residues():
+        
+        if residue.resname in STD_RES:
+            
+            for atom in residue.child_list:
+                
+                # REMOVE TYPES IF ALREADY ASSIGNED FROM SMARTS
+                for atom_type in PROT_ATOM_TYPES.keys():
+                    atom.atom_types.discard(atom_type)
+                
+                # ADD ATOM TYPES FROM DICTIONARY
+                for atom_type, atom_ids in PROT_ATOM_TYPES.iteritems():
+                    
+                    atom_id = residue.resname.strip() + atom.name.strip()
+                    
+                    if atom_id in atom_ids:
+                        atom.atom_types.add(atom_type)
+    
     with open(pdb_filename.replace('.pdb', '.atomtypes'), 'wb') as fo:
         for atom in s_atoms:
             fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom), sorted(tuple(atom.atom_types))]])))
@@ -799,8 +844,9 @@ Dependencies:
     # DETERMINE ATOM VALENCES AND EXPLICIT HYDROGEN COUNTS
     for ob_atom in ob.OBMolAtomIter(mol):
         
-        if ob_atom.IsHydrogen():
-            continue
+        if not input_has_hydrogens:
+            if ob_atom.IsHydrogen():
+                continue
         
         # `http://openbabel.org/api/2.3/classOpenBabel_1_1OBAtom.shtml`
         # CURRENT NUMBER OF EXPLICIT CONNECTIONS
@@ -949,7 +995,7 @@ Dependencies:
     # INITIALISE RESIDUE SIFTS
     for residue in s.get_residues():
         
-        # POLYPEPTIDE FLAG
+        # INITIALISE POLYPEPTIDE FLAG
         residue.is_polypeptide = False
         
         # INTEGER SIFTS
@@ -963,22 +1009,123 @@ Dependencies:
         residue.ring_ring_inter_integer_sift = [0] * 9
         
         # ATOM-RING SIFTS
-        residue.ring_atom_inter_integer_sift = [0] * 4
-        residue.atom_ring_inter_integer_sift = [0] * 4
-        residue.mc_atom_ring_inter_integer_sift = [0] * 4
-        residue.sc_atom_ring_inter_integer_sift = [0] * 4
+        residue.ring_atom_inter_integer_sift = [0] * 5
+        residue.atom_ring_inter_integer_sift = [0] * 5
+        residue.mc_atom_ring_inter_integer_sift = [0] * 5
+        residue.sc_atom_ring_inter_integer_sift = [0] * 5
         
+        # AMIDE-RING
+        residue.amide_ring_inter_integer_sift = [0]
+        residue.ring_amide_inter_integer_sift = [0]
+        
+        # AMIDE-AMIDE
+        residue.amide_amide_inter_integer_sift = [0]
     
-    # DETECT POLYPEPTIDE RESIDUES
+    logging.info('Initialised SIFts.')
+    
+    # DETECT POLYPEPTIDES, RESIDUES, CHAIN BREAKS AND TERMINI
     ppb = PPBuilder()
     polypeptides = ppb.build_peptides(s, aa_only=False)
     
+    # CHAIN BREAKS AND TERMINI
+    
+    # MAKE DATA STRUCTURES FOR CHAIN POLYPEPTIDES
+    chain_ids = set([x.id for x in s.get_chains()])
+    chain_pieces = OrderedDict()
+    chain_polypeptides = OrderedDict()
+    chain_break_residues = OrderedDict()
+    chain_termini = OrderedDict()
+    #chain_sequences = OrderedDict()
+    
+    for chain_id in chain_ids:
+        chain_pieces[chain_id] = 0
+        chain_break_residues[chain_id] = []
+        chain_polypeptides[chain_id] = []
+    
+    # GET THE CHAIN_ID(S) ASSOCIATED WITH EACH POLYPEPTIDE
+    polypeptide_chain_id_sets = [set([k.get_parent().id for k in x]) for x in polypeptides]
+    
+    for e, polypeptide_chain_id_set in enumerate(polypeptide_chain_id_sets):
+    
+        # WARN IF NOT JUST ONE CHAIN ID ASSOCIATED WITH THE POLYPEPTIDE
+        if len(polypeptide_chain_id_set) != 1:
+            logging.warn('A polypeptide had {} chains associated with it: {}'.format(len(polypeptide_chain_id_set),
+                                                                                   polypeptide_chain_id_set))
+    
+        for polypeptide_chain_id in polypeptide_chain_id_set:
+            chain_pieces[polypeptide_chain_id] = chain_pieces[polypeptide_chain_id] + 1
+    
+            # ADD FIRST AND LAST RESIDUE TO THE CHAIN BREAK RESIDUES (POLYPEPTIDE TERMINAL RESIDUES)
+            chain_break_residues[polypeptide_chain_id] = chain_break_residues[polypeptide_chain_id] + [polypeptides[e][0], polypeptides[e][-1]]
+            chain_polypeptides[polypeptide_chain_id] = chain_polypeptides[polypeptide_chain_id] + [polypeptides[e]]
+            
+    # CHAIN BREAKS AND TERMINI
+    for chain_id in chain_break_residues:
+        
+        try:
+            # GET FIRST AND LAST ("GENUINE") TERMINI
+            chain_termini[chain_id] = [chain_break_residues[chain_id][0], chain_break_residues[chain_id][-1]]
+        except IndexError:
+            logging.warn('Chain termini could not be determined for chain {}. It may not be a polypeptide chain.'.format(chain_id))
+        
+        try:
+            # POP OUT THE FIRST AND LAST RESIDUES FROM THE CHAIN BREAK RESIDUES
+            # TO REMOVE THE GENUINE TERMINI
+            chain_break_residues[chain_id] = chain_break_residues[chain_id][1:-1]
+        except IndexError:
+            logging.warn('Chain termini could not be extracted from breaks for chain {}. It may not be a polypeptide chain.'.format(chain_id))
+    
+    all_chain_break_residues = []
+    all_terminal_residues = []
+    
+    try:
+        all_chain_break_residues = reduce(operator.add, chain_break_residues.values())
+    except TypeError:
+        pass
+    
+    try:
+        all_terminal_residues = reduce(operator.add, chain_termini.values())
+    except TypeError:
+        pass
+    
+    # POLYPEPTIDE RESIDUES
     polypeptide_residues = set([])
     
     for pp in polypeptides:
+        
+        last_residue = None
+        
         for residue in pp:
+            
+            # FLAG AS POLYPEPTIDE
             polypeptide_residues.add(residue)
             residue.is_polypeptide = True
+            
+            # FLAG IF CHAIN BREAK OR TERMINAL
+            residue.is_chain_break = False
+            residue.is_terminal = False
+            residue.is_terminal_or_break = False
+            
+            if residue in all_chain_break_residues:
+                residue.is_chain_break = True
+                
+            if residue in all_terminal_residues:
+                residue.is_terminal = True
+                
+            residue.is_terminal_or_break = residue.is_terminal or residue.is_chain_break
+            
+            # DETERMINE PRECEEDING AND NEXT RESIDUES IN THE SEQUENCE
+            residue.prev_residue = None
+            residue.next_residue = None
+            
+            residue.prev_residue = last_residue
+            
+            if last_residue:
+                last_residue.next_residue = residue
+                
+            last_residue = residue
+
+    logging.info('Determined polypeptide residues, chain breaks, termini') # and amide bonds.')
     
     # PERCIEVE AROMATIC RINGS
     s.rings = OrderedDict()
@@ -1016,6 +1163,67 @@ Dependencies:
                 s.rings[e]['ob_atom_ids'].append(ob_atom.GetId())
     
     logging.info('Percieved and stored rings.')
+    
+    # DETECT AMIDE GROUPS
+    # AMIDES FOR AMIDE-RELATED NON-BONDING INTERACTIONS
+    s.amides = OrderedDict()
+    
+    # GET OPENBABEL ATOM MATCHES TO THE SMARTS PATTERN
+    ob_smart = ob.OBSmartsPattern()
+    ob_smart.Init(AMIDE_SMARTS)
+    ob_smart.Match(mol)
+    
+    matches = [x for x in ob_smart.GetMapList()]
+    
+    for e, match in enumerate(matches):
+        
+        ob_match = [mol.GetAtom(x) for x in match]
+        bio_match = [ob_to_bio[x.GetId()] for x in ob_match]
+        
+        # CHECK FOR EXPECTED BEHAVIOUR
+        assert len(bio_match) == 4
+        assert bio_match[0].element == 'N'
+        assert bio_match[1].element == 'C' # SHOULD BE BACKBONE C WHEN IN PROTEIN MAINCHAIN
+        assert bio_match[2].element == 'O'
+        assert bio_match[3].element == 'C' # SHOULD BE C-ALPHA WHEN IN PROTEIN MAINCHAIN
+        
+        # ASSIGN GROUP TO A RESIDUE
+        bio_match_residues = [x.get_parent() for x in bio_match]
+        
+        # USE THE RESIDUE OF THE MAJORITY OF ATOMS
+        # `http://stackoverflow.com/questions/1518522/python-most-common-element-in-a-list`
+        group_residue =  max(bio_match_residues, key=bio_match_residues.count)
+        
+        # GET AMIDE BOND CENTROID
+        # DETERMINED AS CENTRE OF MASS OF C-N (OR C-O-N?)
+        con = np.array([bio_match[1].coord, bio_match[2].coord, bio_match[0].coord]) # C-O-N
+        cn = np.array([bio_match[1].coord, bio_match[0].coord]) # C-N
+        amide_centroid = con.sum(0) / float(len(con))
+        bond_centroid = cn.sum(0) / float(len(cn))
+        
+        # GET AMIDE PLANE WITH SVD
+        # `http://mail.scipy.org/pipermail/numpy-discussion/2011-January/054621.html`
+        
+        cog = con - amide_centroid
+        u, s_, vh = np.linalg.svd(cog)
+        v = vh.conj().transpose()
+        a, b, c = v[:,-1]
+        d = 0 # :S
+        
+        normal = np.array([a, b, c])
+        normal_opp = -normal
+        
+        # STORE AMIDE GROUPS
+        s.amides[e] = {
+            'amide_id': e,
+            'center': bond_centroid, #amide_centroid,
+            'normal': normal,
+            'normal_opp': normal_opp,
+            'atoms': bio_match,
+            'residue': group_residue
+        }
+    
+    logging.info('Perceived and stored amide groups.')
     
     # FOR PDB OUTPUT OF OB STRUCTURES
     conv = ob.OBConversion()
@@ -1072,7 +1280,12 @@ Dependencies:
     # OUTPUT OB STRUCTURE WITH HYDROGENS IF REQUESTED
     if args.write_hydrogenated:
         conv.WriteFile(mol, pdb_filename.replace('.pdb', '_hydrogenated.pdb'))
-        logging.info('Wrote hydrogenated PDB file.')
+        
+        if not input_has_hydrogens:
+            logging.info('Wrote hydrogenated PDB file. Hydrogenation was by Arpeggio using OpenBabel defaults.')
+        
+        else:
+            logging.info('Wrote hydrogenated PDB file. Hydrogens were from the input file.')
     
     # ADD HYDROGENS TO BIOPYTHON ATOMS
     
@@ -1096,24 +1309,24 @@ Dependencies:
     # CHOOSE ENTITY FOR CALCULATION
     # AN ENTITY IS A LIST OF BIOPYTHON ATOMS
     # USING ALL THE BIOPYTHON ATOMS AS E FOR NOW
-    e = list(s_atoms)
+    entity = list(s_atoms)
     
     # ADD VDW RADII TO ENTITY ATOMS
     # USING OPENBABEL VDW RADII
-    for atom in e:
+    for atom in entity:
         atom.vdw_radius = ob.etab.GetVdwRad(mol.GetAtomById(bio_to_ob[atom]).GetAtomicNum())
     
     logging.info('Added VdW radii.')
     
     # ADD COVALENT RADII TO ENTITY ATOMS
     # USING OPENBABEL VDW RADII
-    for atom in e:
+    for atom in entity:
         atom.cov_radius = ob.etab.GetCovalentRad(mol.GetAtomById(bio_to_ob[atom]).GetAtomicNum())
     
     logging.info('Added covalent radii.')
     
     # NEIGHBORSEARCH
-    ns = NeighborSearch(e)
+    ns = NeighborSearch(entity)
     
     logging.info('Completed NeighborSearch.')
     
@@ -1156,15 +1369,16 @@ Dependencies:
     
     # ADD "LIGAND" SELECTION (SUBSET OF ATOMS) FROM
     # WITHIN THE ENTITY FOR CONTACT CALCULATION
-    selection = e[:]
+    selection = entity[:]
     selection_ring_ids = list(s.rings)
+    selection_amide_ids = list(s.amides)
     
     if args.selection:
-        selection = selection_parser(args.selection, e)
+        selection = selection_parser(args.selection, entity)
     
     elif args.selection_file:
         with open(args.selection_file, 'rb') as fo:
-            selection = selection_parser([line for line in fo], e)
+            selection = selection_parser([line for line in fo], entity)
     
     if len(selection) == 0:
         
@@ -1177,7 +1391,9 @@ Dependencies:
     
     # EXPAND THE SELECTION TO INCLUDE THE BINDING SITE
     selection_plus = set(selection)
+    selection_plus_residues = set([x.get_parent() for x in selection_plus])
     selection_plus_ring_ids = set(selection_ring_ids)
+    selection_plus_amide_ids = set(selection_amide_ids)
     
     if args.selection:
         
@@ -1186,6 +1402,7 @@ Dependencies:
         
         # MAKE A SET OF ALL RING IDS ASSOCIATED WITH THE SELECTION AND BINDING SITE
         selection_ring_ids = set([x for x in s.rings if s.rings[x]['residue'] in selection_residues])
+        selection_amide_ids = set([x for x in s.amides if s.amides[x]['residue'] in selection_residues])
         
         # EXPAND THE SELECTION TO THE BINDING SITE
         for atom_bgn, atom_end in ns.search_all(6.0):
@@ -1203,6 +1420,9 @@ Dependencies:
         
         # MAKE A SET OF ALL RING IDS ASSOCIATED WITH THE SELECTION AND BINDING SITE
         selection_plus_ring_ids = set([x for x in s.rings if s.rings[x]['residue'] in selection_plus_residues])
+        
+        # MAKE A SET OF ALL AMIDE IDS ASSOCIATED WITH THE SELECTION AND BINDING SITE
+        selection_plus_amide_ids = set([x for x in s.amides if s.amides[x]['residue'] in selection_plus_residues])
         
         logging.info('Flagged selection rings.')
         
@@ -1264,7 +1484,7 @@ Dependencies:
     #    logging.info('Calculated per-atom SASA.')
     
     # CALCULATE PAIRWISE CONTACTS
-    with open(pdb_filename.replace('.pdb', '.contacts'), 'wb') as fo:
+    with open(pdb_filename.replace('.pdb', '.contacts'), 'wb') as fo, open(pdb_filename.replace('.pdb', '.bs_contacts'), 'wb') as afo:
         for atom_bgn, atom_end in ns.search_all(INTERACTING_THRESHOLD):
            
             # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/contacts.py?at=default`
@@ -1292,6 +1512,11 @@ Dependencies:
             #if not (atom_bgn in selection_set or atom_end in selection_set):
             #    if not (atom_bgn.get_full_id()[3][0] == 'W' or atom_end.get_full_id()[3][0] == 'W'):
             #        continue
+            
+            # IGNORE ANY HYDROGENS FOR THESE CONTACTS
+            # IF HYDROGENS ARE PRESENT IN THE BIOPYTHON STRUCTURE FOR ANY REASON
+            if atom_bgn.element.strip() == 'H' or atom_end.element.strip() == 'H':
+                continue
             
             # DETERMINE CONTACT TYPE
             contact_type = ''
@@ -1327,8 +1552,22 @@ Dependencies:
             SIFt = [0] * 15
             
             # IGNORE INTRA-RESIDUE CONTACTS
-            if atom_bgn.get_parent() == atom_end.get_parent():
+            res_bgn = atom_bgn.get_parent()
+            res_end = atom_end.get_parent()
+            
+            if res_bgn is res_end:
                 continue
+            
+            # IGNORE CONTACTS TO SEQUENCE-ADJACENT RESIDUES (BY DEFAULT)
+            if not args.include_sequence_adjacent:
+                if res_end.is_polypeptide and res_end.is_polypeptide:
+                    
+                    if hasattr(res_bgn, 'prev_residue') and hasattr(res_bgn, 'next_residue') and \
+                       hasattr(res_end, 'prev_residue') and hasattr(res_end,'next_residue'):
+                        
+                        if res_bgn.next_residue is res_end or res_bgn.prev_residue is res_end or \
+                           res_end.next_residue is res_bgn or res_end.prev_residue is res_bgn:
+                            continue
             
             #print contact_type
             
@@ -1361,9 +1600,19 @@ Dependencies:
             # PROXIMAL
             else:
                 SIFt[4] = 1
+
+            # METAL COMPLEX
+            # CAN BE COVALENT SO GO HERE
+            if distance <= CONTACT_TYPES['metal']['distance']:
+                
+                if 'hbond acceptor' in atom_bgn.atom_types and atom_end.is_metal:
+                    SIFt[9] = 1
+                    
+                elif 'hbond acceptor' in atom_end.atom_types and atom_bgn.is_metal:
+                    SIFt[9] = 1
             
             # FEATURE CONTACTS
-            if not any(SIFt[:2]) and distance <= CONTACT_TYPES_DIST_MAX:
+            if not any(SIFt[:1]) and distance <= CONTACT_TYPES_DIST_MAX:
                 
                 # HBOND
                 
@@ -1483,15 +1732,6 @@ Dependencies:
                     
                     elif 'neg ionisable' in atom_bgn.atom_types and 'pos ionisable' in atom_end.atom_types:
                         SIFt[8] = 1
-                    
-                # METAL COMPLEX
-                if distance <= CONTACT_TYPES['metal']['distance']:
-                    
-                    if 'hbond acceptor' in atom_bgn.atom_types and atom_end.is_metal:
-                        SIFt[9] = 1
-                        
-                    elif 'hbond acceptor' in atom_end.atom_types and atom_bgn.is_metal:
-                        SIFt[9] = 1
                 
                 # CARBONYL
                 if distance <= CONTACT_TYPES['carbonyl']['distance']:
@@ -1527,6 +1767,8 @@ Dependencies:
             if args.selection:
                 if contact_type in ('INTER', 'SELECTION_WATER', 'WATER_WATER'):
                     fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt + [contact_type]])))
+                
+                afo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt + [contact_type]])))
             
             else:
                 fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt + [contact_type]])))
@@ -1623,6 +1865,9 @@ Dependencies:
                 if not ring_key in selection_ring_ids and not ring_key2 in selection_ring_ids:
                     contact_type = 'INTRA_NON_SELECTION'
                     
+                if ring_key in selection_plus_ring_ids and ring_key2 in selection_plus_ring_ids:
+                    contact_type = 'INTRA_BINDING_SITE'
+                    
                 if ring_key in selection_ring_ids and ring_key2 in selection_ring_ids:
                     contact_type = 'INTRA_SELECTION'
                     
@@ -1641,8 +1886,8 @@ Dependencies:
                 # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
                 #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
                 #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
-                dihedral = abs(ring_ring_angle(ring, ring2, True, True))
-                theta = abs(ring_angle(ring, theta_point, True, True))
+                dihedral = abs(group_group_angle(ring, ring2, True, True))
+                theta = abs(group_angle(ring, theta_point, True, True))
                 
                 #logging.info('Dihedral = {}     Theta = {}'.format(dihedral, theta))
                 
@@ -1723,7 +1968,12 @@ Dependencies:
             if ring_key not in selection_plus_ring_ids:
                 continue
             
-            for atom in ns.search(ring['center'], CONTACT_TYPES['aromatic']['atom_aromatic_distance']):
+            for atom in ns.search(ring['center'], CONTACT_TYPES['aromatic']['met_sulphur_aromatic_distance']):
+                
+                # IGNORE ANY HYDROGENS FOR THESE CONTACTS
+                # IF HYDROGENS ARE PRESENT IN THE BIOPYTHON STRUCTURE FOR ANY REASON
+                if atom.element.strip() == 'H':
+                    continue
                 
                 # CHECK THAT THE ATOM IS INVOLVED IN THE SELECTION OR BINDING SITE
                 if atom not in selection_plus:
@@ -1732,7 +1982,8 @@ Dependencies:
                 # GET DISTANCE AND CHECK IF FAR ENOUGH
                 distance = np.linalg.norm(atom.coord - ring['center'])
                 
-                if distance > CONTACT_TYPES['aromatic']['atom_aromatic_distance'] or 'aromatic' in atom.atom_types:
+                # NO AROMATIC ATOM-RING INTERACTIONS
+                if 'aromatic' in atom.atom_types:
                     continue
                 
                 # CHECK IF INTRA-RESIDUE
@@ -1746,7 +1997,10 @@ Dependencies:
                 
                 if not ring_key in selection_ring_ids and not atom in selection_set:
                     contact_type = 'INTRA_NON_SELECTION'
-                    
+                
+                if ring_key in selection_plus_ring_ids and atom in selection_plus:
+                    contact_type = 'INTRA_BINDING_SITE'
+                
                 if ring_key in selection_ring_ids and atom in selection_set:
                     contact_type = 'INTRA_SELECTION'
                     
@@ -1756,72 +2010,75 @@ Dependencies:
                 # DETERMINE INTERACTIONS
                 potential_interactions = set([])
                 
-                if atom.element == 'C' and 'weak hbond donor' in atom.atom_types:
-                    potential_interactions.add('CARBONPI')
+                # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
+                #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
+                #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
+                theta = abs(group_angle(ring, ring['center'] - atom.coord, True, True)) # CHECK IF `atom.coord` or `ring['center'] - atom.coord`
                 
-                if 'pos ionisable' in atom.atom_types:
-                    potential_interactions.add('CATIONPI')
+                if distance <= CONTACT_TYPES['aromatic']['atom_aromatic_distance'] and theta <= 30.0:
+                
+                    if atom.element == 'C' and 'weak hbond donor' in atom.atom_types:
+                        potential_interactions.add('CARBONPI')
                     
-                if 'hbond donor' in atom.atom_types:
-                    potential_interactions.add('DONORPI')
+                    if 'pos ionisable' in atom.atom_types:
+                        potential_interactions.add('CATIONPI')
+                        
+                    if 'hbond donor' in atom.atom_types:
+                        potential_interactions.add('DONORPI')
+                    
+                    if 'xbond donor' in atom.atom_types:
+                        potential_interactions.add('HALOGENPI')
                 
-                if 'xbond donor' in atom.atom_types:
-                    potential_interactions.add('HALOGENPI')
+                if distance <= CONTACT_TYPES['aromatic']['met_sulphur_aromatic_distance']:
+                
+                    if atom.get_parent().resname == 'MET' and atom.element == 'S':
+                        potential_interactions.add('METSULPHURPI')
                 
                 if not potential_interactions:
                     continue
                 
-                if len(potential_interactions) != 1:
-                    logging.warn('More than one atom-ring interaction type for <atom: {}>:<ring: {}>.'.format(make_pymol_string(atom), ring_key))
-                
                 interaction_type = list(potential_interactions)[0]
-                
-                # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
-                #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
-                #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
-                theta = abs(ring_angle(ring, ring['center'] - atom.coord, True, True)) # CHECK IF `atom.coord` or `ring['center'] - atom.coord`
                 
                 # OUTPUT INTRA/INTER RESIDUE AS TEXT RATHER THAN BOOLEAN
                 intra_residue_text = 'INTER_RESIDUE'
                 
                 if intra_residue:
                     intra_residue_text = 'INTRA_RESIDUE'
+                    
+                #logging.info('Atom: <{}>   Ring: <{}>  Theta = {}'.format(atom.get_full_id(), ring['ring_id'], theta))
                 
-                if theta <= 30.0:
-                    
-                    #logging.info('Atom: <{}>     Theta = {}'.format(atom.get_full_id(), theta))
-                    
-                    # RESIDUE RING-ATOM SIFT
-                    if contact_type == 'INTER':
-                    
-                        for k, i_type in enumerate(('CARBONPI', 'CATIONPI', 'DONORPI', 'HALOGENPI')):
+                # RESIDUE RING-ATOM SIFT
+                if contact_type == 'INTER':
+                
+                    for k, i_type in enumerate(('CARBONPI', 'CATIONPI', 'DONORPI', 'HALOGENPI', 'METSULPHURPI')):
+                        
+                        for potential_interaction in potential_interactions:
                             
-                            for potential_interaction in potential_interactions:
+                            if potential_interaction == i_type:
                                 
-                                if potential_interaction == i_type:
+                                ring['residue'].ring_atom_inter_integer_sift[k] = ring['residue'].ring_atom_inter_integer_sift[k] + 1
+                                atom.get_parent().atom_ring_inter_integer_sift[k] = atom.get_parent().atom_ring_inter_integer_sift[k] + 1
+                                
+                                if atom.get_parent() in polypeptide_residues:
                                     
-                                    ring['residue'].ring_atom_inter_integer_sift[k] = ring['residue'].ring_atom_inter_integer_sift[k] + 1
-                                    atom.get_parent().atom_ring_inter_integer_sift[k] = atom.get_parent().atom_ring_inter_integer_sift[k] + 1
+                                    if atom.name in MAINCHAIN_ATOMS:
+                                        atom.get_parent().mc_atom_ring_inter_integer_sift[k] = atom.get_parent().mc_atom_ring_inter_integer_sift[k] + 1
                                     
-                                    if atom.get_parent() in polypeptide_residues:
-                                        
-                                        if atom.name in MAINCHAIN_ATOMS:
-                                            atom.get_parent().mc_atom_ring_inter_integer_sift[k] = atom.get_parent().mc_atom_ring_inter_integer_sift[k] + 1
-                                        
-                                        else:
-                                            atom.get_parent().sc_atom_ring_inter_integer_sift[k] = atom.get_parent().sc_atom_ring_inter_integer_sift[k] + 1
+                                    else:
+                                        atom.get_parent().sc_atom_ring_inter_integer_sift[k] = atom.get_parent().sc_atom_ring_inter_integer_sift[k] + 1
                     
-                    # WRITE ATOM-RING INTERACTION TO FILE
-                    output = [
-                        make_pymol_string(atom),
-                        ring['ring_id'],
-                        make_pymol_string(ring['residue']),
-                        list(ring['center']),
-                        sorted(list(potential_interactions)),
-                        intra_residue_text
-                    ]
-                    
-                    fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
+                # WRITE ATOM-RING INTERACTION TO FILE
+                output = [
+                    make_pymol_string(atom),
+                    ring['ring_id'],
+                    make_pymol_string(ring['residue']),
+                    list(ring['center']),
+                    sorted(list(potential_interactions)),
+                    intra_residue_text,
+                    contact_type
+                ]
+                
+                fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
             
             # WRITE RING OUT TO RING FILE
             output = [
@@ -1832,10 +2089,193 @@ Dependencies:
             
             ring_fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
     
+    # AMIDE-RING INTERACTIONS
+    with open(pdb_filename.replace('.pdb', '.amri'), 'wb') as fo:
+        for amide in s.amides:
+            
+            amide_key = amide
+            amide = s.amides[amide]
+            
+            # CHECK AMIDE IS INVOLVED IN THE SELECTION OR BINDING SITE
+            if amide_key not in selection_plus_amide_ids:
+                continue
+            
+            for ring in s.rings:
+                
+                ring_key = ring
+                ring = s.rings[ring]
+                
+                # CHECK RING IS INVOLVED WITH THE SELECTION OR BINDING SITE
+                if ring_key not in selection_plus_ring_ids:
+                    continue
+                
+                # CHECK IF INTERACTION IS WITHIN SAME RESIDUE
+                intra_residue = False
+                
+                if amide['residue'] == ring['residue']:
+                    intra_residue = True
+                
+                # OUTPUT INTRA/INTER RESIDUE AS TEXT RATHER THAN BOOLEAN
+                intra_residue_text = 'INTER_RESIDUE'
+                
+                if intra_residue:
+                    intra_residue_text = 'INTRA_RESIDUE'
+                
+                # DETERMINE CONTACT TYPE
+                contact_type = ''
+                
+                if not amide_key in selection_amide_ids and not ring_key in selection_ring_ids:
+                    contact_type = 'INTRA_NON_SELECTION'
+                    
+                if amide_key in selection_plus_amide_ids and ring_key in selection_plus_ring_ids:
+                    contact_type = 'INTRA_BINDING_SITE'
+                    
+                if amide_key in selection_amide_ids and ring_key in selection_ring_ids:
+                    contact_type = 'INTRA_SELECTION'
+                    
+                if (amide_key in selection_amide_ids and not ring_key in selection_ring_ids) or (ring_key in selection_ring_ids and not amide_key in selection_amide_ids):
+                    contact_type = 'INTER'
+                    
+                # DETERMINE AMIDE-RING DISTANCE
+                distance = np.linalg.norm(amide['center'] - ring['center'])
+                
+                if distance > CONTACT_TYPES['amide']['centroid_distance']:
+                    continue
+                
+                theta_point = amide['center'] - ring['center']
+                
+                # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
+                #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
+                #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
+                dihedral = abs(group_group_angle(amide, ring, True, True))
+                theta = abs(group_angle(amide, theta_point, True, True))
+                
+                # FACE-ON ORIENTATION ONLY
+                if dihedral > 30.0 or theta > 30.0:
+                    continue
+                
+                # IF IT'S SURVIVED SO FAR...(!)
+                
+                int_type = 'AMIDERING'
+                
+                # SIFTs
+                amide['residue'].amide_ring_inter_integer_sift[0] = amide['residue'].amide_ring_inter_integer_sift[0] + 1
+                ring['residue'].ring_amide_inter_integer_sift[0] = ring['residue'].ring_amide_inter_integer_sift[0] + 1
+                
+                # WRITE TO FILE
+                output = [
+                    amide['amide_id'],
+                    make_pymol_string(amide['residue']),
+                    list(amide['center']),
+                    ring['ring_id'],
+                    make_pymol_string(ring['residue']),
+                    list(ring['center']),
+                    int_type,
+                    intra_residue_text,
+                    contact_type,
+                    #dihedral,
+                    #theta,
+                    #list(theta_point)
+                ]
+                
+                fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
+    
+    # AMIDE-AMIDE INTERACTIONS
+    with open(pdb_filename.replace('.pdb', '.amam'), 'wb') as fo:
+        for amide in s.amides:
+            
+            amide_key = amide
+            amide = s.amides[amide]
+            
+            # CHECK AMIDE IS INVOLVED IN THE SELECTION OR BINDING SITE
+            if amide_key not in selection_plus_amide_ids:
+                continue
+            
+            for amide2 in s.amides:
+                
+                amide_key2 = amide2
+                amide2 = s.amides[amide2]
+                
+                # NO SELFIES
+                if amide_key == amide_key2:
+                    continue
+                
+                # CHECK RING IS INVOLVED WITH THE SELECTION OR BINDING SITE
+                if amide_key2 not in selection_plus_amide_ids:
+                    continue
+                
+                # CHECK IF INTERACTION IS WITHIN SAME RESIDUE
+                intra_residue = False
+                
+                if amide['residue'] == amide2['residue']:
+                    intra_residue = True
+                
+                # OUTPUT INTRA/INTER RESIDUE AS TEXT RATHER THAN BOOLEAN
+                intra_residue_text = 'INTER_RESIDUE'
+                
+                if intra_residue:
+                    intra_residue_text = 'INTRA_RESIDUE'
+                
+                # DETERMINE CONTACT TYPE
+                contact_type = ''
+                
+                if not amide_key in selection_amide_ids and not amide_key2 in selection_amide_ids:
+                    contact_type = 'INTRA_NON_SELECTION'
+                    
+                if amide_key in selection_plus_amide_ids and amide_key2 in selection_plus_amide_ids:
+                    contact_type = 'INTRA_BINDING_SITE'
+                    
+                if amide_key in selection_amide_ids and amide_key2 in selection_amide_ids:
+                    contact_type = 'INTRA_SELECTION'
+                    
+                if (amide_key in selection_amide_ids and not amide_key2 in selection_amide_ids) or (amide_key2 in selection_amide_ids and not amide_key in selection_amide_ids):
+                    contact_type = 'INTER'
+                    
+                # DETERMINE AMIDE-RING DISTANCE
+                distance = np.linalg.norm(amide['center'] - amide2['center'])
+                
+                if distance > CONTACT_TYPES['amide']['centroid_distance']:
+                    continue
+                
+                theta_point = amide['center'] - amide2['center']
+                
+                # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
+                #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
+                #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
+                dihedral = abs(group_group_angle(amide, amide2, True, True))
+                theta = abs(group_angle(amide, theta_point, True, True))
+                
+                # FACE-ON ORIENTATION ONLY
+                if dihedral > 30.0 or theta > 30.0:
+                    continue
+                
+                # IF IT'S SURVIVED SO FAR...(!)
+                
+                int_type = 'AMIDEAMIDE'
+                
+                # SIFT
+                amide['residue'].amide_amide_inter_integer_sift[0] = amide['residue'].amide_amide_inter_integer_sift[0] + 1
+                
+                # WRITE TO FILE
+                output = [
+                    amide['amide_id'],
+                    make_pymol_string(amide['residue']),
+                    list(amide['center']),
+                    amide2['amide_id'],
+                    make_pymol_string(amide2['residue']),
+                    list(amide2['center']),
+                    int_type,
+                    intra_residue_text,
+                    contact_type,
+                    #dihedral,
+                    #theta,
+                    #list(theta_point)
+                ]
+                
+                fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
+    
     # RESIDUE LEVEL OUTPUTS
     # CALCULATE INTEGER SIFTS, FLATTEN THEM TO BINARY SIFTS
-    # TODO: OUTPUT MC/SC SPECIFIC SIFTS FOR POLYPEPTIDE RESIDUES
-    # TODO: INCLUDE RING INTERACTIONS IN RESIDUE SIFT
     for residue in s.get_residues():
         
         # WHOLE RESIDUE SIFTS
@@ -1932,6 +2372,11 @@ Dependencies:
         residue.mc_atom_ring_inter_sift = [1 if x else 0 for x in residue.mc_atom_ring_inter_integer_sift]
         residue.sc_atom_ring_inter_sift = [1 if x else 0 for x in residue.sc_atom_ring_inter_integer_sift]
         
+        # FLATTEN AMIDE RELATED SIFTS
+        residue.amide_ring_inter_sift = [1 if x else 0 for x in residue.amide_ring_inter_integer_sift]
+        residue.ring_amide_inter_sift = [1 if x else 0 for x in residue.ring_amide_inter_integer_sift]
+        residue.amide_amide_inter_sift = [1 if x else 0 for x in residue.amide_amide_inter_integer_sift]
+        
     with open(pdb_filename.replace('.pdb', '.residue_sifts'), 'wb') as fo:
         
         for residue in selection_plus_residues:
@@ -1941,11 +2386,16 @@ Dependencies:
             for sift in (residue.sift, residue.sift_inter_only, residue.sift_intra_only, residue.sift_water_only,
                          residue.mc_sift, residue.mc_sift_inter_only, residue.mc_sift_intra_only, residue.mc_sift_water_only,
                          residue.sc_sift, residue.sc_sift_inter_only, residue.sc_sift_intra_only, residue.sc_sift_water_only,
+                         
                          residue.integer_sift, residue.integer_sift_inter_only, residue.integer_sift_intra_only, residue.integer_sift_water_only,
                          residue.mc_integer_sift, residue.mc_integer_sift_inter_only, residue.mc_integer_sift_intra_only, residue.mc_integer_sift_water_only,
                          residue.sc_integer_sift, residue.sc_integer_sift_inter_only, residue.sc_integer_sift_intra_only, residue.sc_integer_sift_water_only,
+                         
                          residue.ring_ring_inter_sift, residue.ring_atom_inter_sift, residue.atom_ring_inter_sift, residue.mc_atom_ring_inter_sift, residue.sc_atom_ring_inter_sift,
-                         residue.ring_ring_inter_integer_sift, residue.ring_atom_inter_integer_sift, residue.atom_ring_inter_integer_sift, residue.mc_atom_ring_inter_integer_sift, residue.sc_atom_ring_inter_integer_sift
+                         residue.ring_ring_inter_integer_sift, residue.ring_atom_inter_integer_sift, residue.atom_ring_inter_integer_sift, residue.mc_atom_ring_inter_integer_sift, residue.sc_atom_ring_inter_integer_sift,
+                         
+                         residue.amide_ring_inter_sift, residue.ring_amide_inter_sift, residue.amide_amide_inter_sift,
+                         residue.amide_ring_inter_integer_sift, residue.ring_amide_inter_integer_sift, residue.amide_amide_inter_integer_sift
                          ):
                 output_list = output_list + sift
             
