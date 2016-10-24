@@ -114,3 +114,26 @@ Entity interactions:
 - `SELECTION_WATER`: Between an atom in the user's selection and a water molecule
 - `NON_SELECTION_WATER`: Between an atom that is not in the user's selection and a water molecule
 - `WATER_WATER`: Between two water molecules
+
+### `*.sift`
+
+Interaction fingerprints for individual atoms. These are binary (i.e., on/off) indications of an atom's interaction, not counts.
+
+| Column | Datatype | Description |
+| ------ | -------- | ----------- |
+| Atom | string `<chain_id>/<res_num><ins_code (stripped)>/<atom_name>` | Uniquely identifies the atom |
+| Clash | boolean::integer | Denotes if the atom is involved in a steric clash |
+| Covalent | boolean::integer | Denotes if the atom appears to be covalently bonded |
+| VdW Clash | boolean::integer | Denotes if the van der Waals radius of the atom is clashing with one or more other atoms |
+| VdW | boolean::integer | Denotes if the van der Waals radius of the the atom is interacting with one or more other atoms |
+| Proximal | boolean::integer | Denotes if the atom is > the VdW interaction distance, but with in 5 Angstroms of other atom(s) |
+| Hydrogen Bond | boolean::integer | Denotes if the atom forms a hydrogen bond |
+| Weak Hydrogen Bond | boolean::integer | Denotes if the atom forms a weak hydrogen bond |
+| Halogen Bond | boolean::integer | Denotes if the atom forms a halogen bond |
+| Ionic | boolean::integer | Denotes if the atom may interact via charges |
+| Metal Complex | boolean::integer | Denotes if the atom is part of a metal complex |
+| Aromatic | boolean::integer | Denotes an aromatic ring atom interacting with another aromatic ring atom |
+| Hydrophobic | boolean::integer | Denotes hydrophobic interaction |
+| Carbonyl | boolean::integer | Denotes a carbonyl-carbon:carbonyl-carbon interaction |
+| Polar | boolean::integer | Less strict hydrogen bonding (without angle terms) |
+| Weak Polar | boolean::integer | Less strict weak hydrogen bonding (without angle terms) |
