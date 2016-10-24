@@ -137,3 +137,9 @@ Interaction fingerprints for individual atoms. These are binary (i.e., on/off) i
 | Carbonyl | boolean::integer | Denotes a carbonyl-carbon:carbonyl-carbon interaction |
 | Polar | boolean::integer | Less strict hydrogen bonding (without angle terms) |
 | Weak Polar | boolean::integer | Less strict weak hydrogen bonding (without angle terms) |
+
+### `*.specific.sift`
+
+Interaction fingerprints for individual atoms. These are binary (i.e., on/off) indications of an atom's interaction, not counts.
+
+The columns match the `*.sift` files, but the first 15 columns (after the atom identifier) denote only interactions between the selection made by the user, and non-selection atoms; the second 15 columns indicate interactions made within the selection made by the user; and the third 15 columns indicate interactions made with water only.
