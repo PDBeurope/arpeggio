@@ -104,7 +104,7 @@ Pairwise contacts between two individual atoms.
 | Weak Polar | boolean::integer | Less strict weak hydrogen bonding (without angle terms) |
 | Interacting entities | string from (`INTER`, `INTRA_NON_SELECTION`, `INTRA_SELECTION`, `SELECTION_WATER`, `NON_SELECTION_WATER`, `WATER_WATER`) | Distinguishes how this atom pair relates to the selected atoms: see below |
 
-**Clash, Covalent, VdW Clash, VdW and Proximal interactions are mutually exclusive: Other interactions can occur simulataneously.**
+**Clash, Covalent, VdW Clash, VdW and Proximal interactions are mutually exclusive: Other interactions can occur simultaneously.**
 
 Entity interactions:
 
@@ -114,6 +114,10 @@ Entity interactions:
 - `SELECTION_WATER`: Between an atom in the user's selection and a water molecule
 - `NON_SELECTION_WATER`: Between an atom that is not in the user's selection and a water molecule
 - `WATER_WATER`: Between two water molecules
+
+### `*.bs_contacts`
+
+As with `*.contacts`, but only including interactions in the binding site (i.e. interactions involving atoms that were selected by the user, with atoms not selected by the user, as opposed to any intra-selection interactions.
 
 ### `*.sift`
 
