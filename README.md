@@ -52,13 +52,23 @@ Aromatic ring-aromatic ring interactions.
 | Column | Datatype | Description |
 | ------ | -------- | ----------- |
 | Ring 1 ID | integer | Internal number used to identify the first aromatic ring |
-| Ring 1 Residue   | string `<chain_id>/<res_num>` | Uniquely identifies an the first ring's residue |
+| Ring 1 Residue   | string `<chain_id>/<res_num>` | Uniquely identifies the first ring's residue |
 | Ring 1 centroid | list | 3D coordinates of the centre of the first ring |
 | Ring 2 ID | integer | Internal number used to identify the second aromatic ring |
 | Ring 2 Residue   | string `<chain_id>/<res_num>` | Uniquely identifies an the second ring's residue |
 | Ring 2 centroid | list | 3D coordinates of the centre of the second ring |
 | Inter or intra residue | string from (`INTER`, `INTRA_RESIDUE`) | States whether this ring-ring interaction is within the same residue (e.g. within a small molecule ligand), or between two different residues |
 | Interacting entities | string from (`INTER`, `INTRA_NON_SELECTION`, `INTRA_SELECTION`) | Distinguishes how this interacting ring pair relates to the selected atoms: see below |
+
+### `*.rings`
+
+Aromatic rings found in the structure
+
+| Column | Datatype | Description |
+| ------ | -------- | ----------- |
+| Ring ID | integer | Internal number used to identify the ring |
+| Ring Residue   | string `<chain_id>/<res_num>` | Uniquely identifies the ring's residue |
+| Ring centroid | list | 3D coordinates of the centre of the ring |
 
 ### `*.atomtypes`
 
