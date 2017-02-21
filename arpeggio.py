@@ -18,7 +18,10 @@ import collections
 import logging
 #import math
 import operator
-import resource
+try:
+    import resource
+except ImportError:
+    logging.info('Resource module not available, resource usage info won\'t be logged.')
 import sys
 
 from collections import OrderedDict
@@ -300,7 +303,10 @@ def max_mem_usage():
     Returns maximum memory usage of the program thus far, in megabytes, as a string.
     '''
 
-    return str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000.0) + ' MB'
+    try:
+        return str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000.0) + ' MB'
+    except Exception as err:
+        logging.warn('Resource usage information not available ().'.format(str(err)))
 
 def get_angle(point_a, point_b, point_c):
     '''
