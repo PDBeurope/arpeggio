@@ -1964,7 +1964,7 @@ Dependencies:
                 'ring_end_id',
                 'ring_end_residue',
                 'ring_end_centroid',
-                'interation_type',
+                'interaction_type',
                 'residue_interaction',
                 'contact_type'
                 ]
@@ -2102,7 +2102,7 @@ Dependencies:
                 'ring_id',
                 'ring_residue',
                 'ring_centroid',
-                'interations',
+                'interactions',
                 'residue_interactions',
                 'contact_type'
                 ]
