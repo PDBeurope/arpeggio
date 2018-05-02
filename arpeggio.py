@@ -2204,7 +2204,7 @@ Dependencies:
                 #logging.info('Atom: <{}>   Ring: <{}>  Theta = {}'.format(atom.get_full_id(), ring['ring_id'], theta))
 
                 # RESIDUE RING-ATOM SIFT
-                if contact_type == 'INTER':
+                if contact_type == 'INTER' and not intra_residue:
 
                     for k, i_type in enumerate(('CARBONPI', 'CATIONPI', 'DONORPI', 'HALOGENPI', 'METSULPHURPI')):
 
@@ -2331,8 +2331,9 @@ Dependencies:
                 int_type = 'AMIDERING'
 
                 # SIFTs
-                amide['residue'].amide_ring_inter_integer_sift[0] = amide['residue'].amide_ring_inter_integer_sift[0] + 1
-                ring['residue'].ring_amide_inter_integer_sift[0] = ring['residue'].ring_amide_inter_integer_sift[0] + 1
+                if contact_type == 'INTER' and not intra_residue:
+                    amide['residue'].amide_ring_inter_integer_sift[0] = amide['residue'].amide_ring_inter_integer_sift[0] + 1
+                    ring['residue'].ring_amide_inter_integer_sift[0] = ring['residue'].ring_amide_inter_integer_sift[0] + 1
 
                 # WRITE TO FILE
                 output = [
@@ -2441,7 +2442,8 @@ Dependencies:
                 int_type = 'AMIDEAMIDE'
 
                 # SIFT
-                amide['residue'].amide_amide_inter_integer_sift[0] = amide['residue'].amide_amide_inter_integer_sift[0] + 1
+                if contact_type == 'INTER' and not intra_residue:
+                    amide['residue'].amide_amide_inter_integer_sift[0] = amide['residue'].amide_amide_inter_integer_sift[0] + 1
 
                 # WRITE TO FILE
                 output = [
