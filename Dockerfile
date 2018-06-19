@@ -29,6 +29,6 @@ WORKDIR /arpeggio
 COPY requirements.txt /arpeggio
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY config.py /arpeggio/
-COPY arpeggio.py /arpeggio/
-COPY show_contacts.py /arpeggio/
+COPY config.py /arpeggio
+COPY arpeggio.py /arpeggio
+COPY show_contacts.py /arpeggio
