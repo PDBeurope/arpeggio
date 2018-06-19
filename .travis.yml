@@ -6,7 +6,7 @@ services:
   - docker
 
 before_install:
-  docker build -t harryjubb/arpeggio
+  docker build -t harryjubb/arpeggio .
 
 script:
   # SMOKE TEST
