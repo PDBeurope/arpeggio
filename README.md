@@ -31,6 +31,15 @@ Use `python arpeggio.py -h` for available options.
 
 Arpeggio doesn't do any checking of your PDB structure, other than what BioPython does by default. Alternate locations and missing density are not explicitly accounted for and may result in anomalous results. Please use with caution.
 
+Frequently Asked Questions
+--------------------------
+
+**BioPython/OpenBabel are complaining about my structure, what's happening?**
+
+Both can be picky about the format of PDB files, for example atom serials must be unique (to map between BioPython and OpenBabel structures), and other issues can raise BioPython errors.
+
+The `clean_pdb.py` script in https://github.com/harryjubb/pdbtools resolves a number of common errors; if your structure doesn't work, try using that first before trying Arpeggio on the cleaned structure.
+
 Output Files
 ------------
 
