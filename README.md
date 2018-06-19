@@ -20,9 +20,38 @@ https://doi.org/10.1016/j.jmb.2016.12.004.
 Getting Started
 ---------------
 
+## Web Interface
+
 If you would like to run Arpeggio on a small number of individual structures, the easiest way to get started is to use the [web interface](http://biosig.unimelb.edu.au/arpeggioweb/).
 
-If you need to use Arpeggio programmatically or to run for many structures, please see requirements below for running the Python program.
+## Programmatically
+
+If you need to use Arpeggio programmatically or to run for many structures:
+
+The easiest way to get set up with Arpeggio is using Docker.
+
+With Docker installed, you can build the docker image from inside this repository with:
+
+    docker build -t 'arpeggio' .
+
+Once built, Arpeggio can be run using the Docker image:
+
+    docker run --rm -v "$(pwd)":/run -it arpeggio python arpeggio.py /run/1XKK.pdb -s RESNAME:FMM -v
+
+Breaking this down:
+
+- `docker run`: to run the image
+- `--rm`: to clean up the Docker container when the run is finished
+- `-v`: to bind-mount a host machine directory in the container (with your input files, and where your output files will appear). In this case, the current working directory will be mounted to `/run` in the container
+- `-it`: interactive run with a pseudo-TTY terminal
+- `arpeggio`: the name of the built Docker image
+- `python arpeggio.py`: run Arpeggio
+- `/run/1XKK.pdb`: a PDB file in our mounted host directory
+- `-s RESNAME:FMM -v`: options passed to Arpeggio, in this case, to calculate interactions for residue with name FMM, and show verbose output
+
+We will be publishing the image to Dockerhub shortly.
+
+If it is not possible to use Docker, please read on for dependencies for manual installation.
 
 Dependencies
 ------------
