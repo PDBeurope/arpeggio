@@ -10,4 +10,4 @@ before_install:
 
 script:
   # SMOKE TEST
-  - docker run --rm -it arpeggio python arpeggio.py -h
+  - docker run --rm -it harryjubb/arpeggio python arpeggio.py -h
