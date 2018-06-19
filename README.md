@@ -5,6 +5,25 @@ Outline
 
 Arpeggio calculates interatomic contacts based on the rules defined in [CREDO](http://marid.bioc.cam.ac.uk/credo). The program is freely available and requires only Open Source dependencies.
 
+If you make use of Arpeggio, please cite the following article:
+
+Harry C Jubb, Alicia P Higueruelo, Bernardo Ochoa-Montaño, Will R Pitt, David B Ascher, Tom L Blundell,
+Arpeggio: A Web Server for Calculating and Visualising Interatomic Interactions in Protein Structures,
+Journal of Molecular Biology,
+Volume 429, Issue 3,
+2017,
+Pages 365-371,
+ISSN 0022-2836,
+https://doi.org/10.1016/j.jmb.2016.12.004.
+(http://www.sciencedirect.com/science/article/pii/S0022283616305332)
+
+Getting Started
+---------------
+
+If you would like to run Arpeggio on a small number of individual structures, the easiest way to get started is to use the [web interface](http://biosig.unimelb.edu.au/arpeggioweb/).
+
+If you need to use Arpeggio programmatically or to run for many structures, please see requirements below for running the Python program.
+
 Dependencies
 ------------
 
