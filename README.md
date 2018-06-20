@@ -1,5 +1,7 @@
 # Arpeggio
 
+[![Build Status](https://travis-ci.org/harryjubb/arpeggio.svg?branch=master)](https://travis-ci.org/harryjubb/arpeggio)
+
 Outline
 --------
 
