@@ -24,12 +24,15 @@ except ImportError:
     logging.info('Resource module not available, resource usage info won\'t be logged.')
 import sys
 
+from os import path
+
 from collections import OrderedDict
 
 import numpy as np
 
 #from Bio.PDB import PDBIO
 from Bio.PDB.PDBParser import PDBParser
+from Bio.PDB.MMCIFParser import MMCIFParser
 from Bio.PDB import NeighborSearch
 from Bio.PDB.Atom import Atom
 from Bio.PDB.Residue import Residue
@@ -63,7 +66,7 @@ class OBBioMatchError(Exception):
             logging.error('An OpenBabel atom could not be matched to a BioPython counterpart.')
 
         else:
-            logging.error('OpenBabel OBAtom with PDB serial number {} could not be matched to a BioPython counterpart.'.format(serial))
+            logging.error('OpenBabel OBAtom with serial number {} could not be matched to a BioPython counterpart.'.format(serial))
 
 class AtomSerialError(Exception):
 
@@ -83,6 +86,16 @@ class SelectionError(Exception):
 #############
 # FUNCTIONS #
 #############
+
+def rename_output_file(original_filename, new_extension):
+    ''''''
+
+    original_extension = path.splitext(original_filename)[-1]
+
+    if original_extension:
+        return path.splitext(original_filename)[0] + new_extension
+    else:
+        return original_filename + new_extension
 
 def int2(x):
     '''
@@ -642,14 +655,15 @@ Dependencies:
 
 ''', formatter_class=argparse.RawTextHelpFormatter)
 
-    parser.add_argument('pdb', type=str, help='Path to the PDB file to be analysed.')
+    parser.add_argument('filename', type=str, help='Path to the file to be analysed.')
 
     selection_group = parser.add_mutually_exclusive_group(required=False)
     selection_group.add_argument('-s', '--selection', type=str, nargs='+', help='Select the "ligand" for interactions, using selection syntax: /<chain_id>/<res_num>[<ins_code>]/<atom_name> or RESNAME:<het_id>. Fields can be omitted.')
     selection_group.add_argument('-sf', '--selection-file', type=str, help='Selections as above, but listed in a file.')
 
 
-    parser.add_argument('-wh', '--write-hydrogenated', action='store_true', help='Write a PDB file including the added hydrogen coordinates.')
+    parser.add_argument('-ft', '--file-type', type=str, choices=('pdb', 'mmcif'), help='Force the type of file being processed. Without this option, will attempt to detect from the file extension, or otherwise default to pdb.')
+    parser.add_argument('-wh', '--write-hydrogenated', action='store_true', help='Write an output file including the added hydrogen coordinates.')
     parser.add_argument('-mh', '--minimise-hydrogens', action='store_true', help='Energy minimise OpenBabel added hydrogens.')
     parser.add_argument('-ms', '--minimisation-steps', type=int, default=50, help='Number of hydrogen minimisation steps to perform.')
     parser.add_argument('-mf', '--minimisation-forcefield', type=str, choices=('MMFF94', 'UFF', 'Ghemical'), default='MMFF94', help='Choose the forcefield to minimise hydrogens with. Ghemical is not recommended.')
@@ -664,19 +678,11 @@ Dependencies:
     #parser.add_argument('-ssp', '--solvent-sphere-points', type=int, default=960, help='Number of points to use for solvent shell spheres for accessibility calculations.')
     #parser.add_argument('-st', '--sasa-threshold', type=float, default=1.0, help='Floating point solvent accessible surface area threshold (squared Angstroms) for considering an atom as \'accessible\' or not.')
     #parser.add_argument('-ca', '--consider-all', action='store_true', help='Consider all entity/selection atoms, not just solvent accessible ones. If this is set, SASAs won\'t be calculated.')
-    #parser.add_argument('-spdb', '--sasa-pdb', action='store_true', help='Store a PDB with atom b-factors set based on boolean solvent accessibility.')
+    #parser.add_argument('-spdb', '--sasa-pdb', action='store_true', help='Store a structure with atom b-factors set based on boolean solvent accessibility.')
     parser.add_argument('-op', '--output-postfix', type=str, help='Custom text to append to output filename (but before .extension).')
     parser.add_argument('-v', '--verbose', action='store_true', help='Be chatty.')
 
     args = parser.parse_args()
-
-    pdb_filename = args.pdb
-
-    VDW_COMP_FACTOR = args.vdw_comp
-    INTERACTING_THRESHOLD = args.interacting
-    #SOLVENT_RADIUS = args.solvent_radius
-    #NUM_SOLVENT_SPHERE_POINTS = args.solvent_sphere_points
-    #SASA_THRESHOLD = args.sasa_threshold
 
     # LOGGING
     if args.verbose:
@@ -685,6 +691,33 @@ Dependencies:
         logging.basicConfig(level=logging.WARN, format='%(levelname)s//%(asctime)s.%(msecs).03d//%(message)s', datefmt='%H:%M:%S')
 
     logging.info('Program begin.')
+
+    filename = args.filename
+
+    # CHOOSE OR DETECT FILE TYPE
+    filetype = 'pdb'
+
+    if args.file_type:
+        filetype = args.file_type
+        logging.info('Given filetype: {}'.format(filetype))
+    else:
+        if filename.endswith('.pdb') or filename.endswith('.ent'):
+            filetype = 'pdb'
+            logging.info('Detected filetype: {}'.format(filetype))
+        elif filename.endswith('.mmcif') or filename.endswith('.cif'):
+            filetype = 'mmcif'
+            logging.info('Detected filetype: {}'.format(filetype))
+        else:
+            logging.info('Defaulted to filetype: {}'.format(filetype))
+
+    # GET FILE EXTENSION IF EXISTS
+    extension = path.splitext(filename)[-1]
+
+    VDW_COMP_FACTOR = args.vdw_comp
+    INTERACTING_THRESHOLD = args.interacting
+    #SOLVENT_RADIUS = args.solvent_radius
+    #NUM_SOLVENT_SPHERE_POINTS = args.solvent_sphere_points
+    #SASA_THRESHOLD = args.sasa_threshold
 
     # ADDRESS AMBIGUITIES
     if not args.use_ambiguities:
@@ -704,11 +737,11 @@ Dependencies:
         PROT_ATOM_TYPES['weak hbond acceptor'] = [x for x in PROT_ATOM_TYPES['weak hbond acceptor'] if x not in ('ASNND2', 'GLNNE2', 'HISCE1', 'HISCD2')]
 
     # LOAD STRUCTURE (BIOPYTHON)
-    pdb_parser = PDBParser()
-    s = pdb_parser.get_structure('structure', pdb_filename)
+    bio_parser = PDBParser() if filetype == 'pdb' else MMCIFParser()
+    s = bio_parser.get_structure('structure', filename)
     s_atoms = list(s.get_atoms())
 
-    logging.info('Loaded PDB structure (BioPython)')
+    logging.info('Loaded structure (BioPython)')
 
     # CHECK FOR HYDROGENS IN THE INPUT STRUCTURE
     input_has_hydrogens = False
@@ -720,20 +753,21 @@ Dependencies:
 
     # LOAD STRUCTURE (OPENBABEL)
     ob_conv = ob.OBConversion()
-    ob_conv.SetInFormat('pdb')
+    ob_conv.SetInFormat(filetype)
     mol = ob.OBMol()
-    ob_conv.ReadFile(mol, pdb_filename)
+    ob_conv.ReadFile(mol, filename)
 
-    logging.info('Loaded PDB structure (OpenBabel)')
+    logging.info('Loaded structure (OpenBabel)')
 
     # RENAME FOR OUTPUTS IF REQUESTED
     if args.output_postfix:
-        pdb_filename = pdb_filename.replace('.pdb', args.output_postfix + '.pdb')
+        filename = rename_output_file(filename, args.output_postfix + extension)
 
     # CHECK THAT EACH ATOM HAS A UNIQUE SERIAL NUMBER
     all_serials = [x.serial_number for x in s_atoms]
 
     if len(all_serials) > len(set(all_serials)):
+        logging.error('Atoms do not have unique serial numbers. Duplicates: {}'.format(str([serial for serial, count in collections.Counter(all_serials).items() if count > 1])))
         raise AtomSerialError
 
     # MAPPING OB ATOMS TO BIOPYTHON ATOMS AND VICE VERSA
@@ -858,7 +892,7 @@ Dependencies:
                     if atom_id in atom_ids:
                         atom.atom_types.add(atom_type)
 
-    with open(pdb_filename.replace('.pdb', '.atomtypes'), 'wb') as fo:
+    with open(rename_output_file(filename, '.atomtypes'), 'wb') as fo:
 
         if args.headers:
             fo.write('{}\n'.format('\t'.join(
@@ -1254,9 +1288,9 @@ Dependencies:
 
     logging.info('Perceived and stored amide groups.')
 
-    # FOR PDB OUTPUT OF OB STRUCTURES
+    # FOR OUTPUT OF OB STRUCTURES
     conv = ob.OBConversion()
-    conv.SetInAndOutFormats('pdb', 'pdb')
+    conv.SetInAndOutFormats(filetype, filetype)
 
     if args.minimise_hydrogens:
         # MINIMIZE HYDROGENS ONLY
@@ -1308,13 +1342,13 @@ Dependencies:
 
     # OUTPUT OB STRUCTURE WITH HYDROGENS IF REQUESTED
     if args.write_hydrogenated:
-        conv.WriteFile(mol, pdb_filename.replace('.pdb', '_hydrogenated.pdb'))
+        conv.WriteFile(mol, rename_output_file(filename, '_hydrogenated' + extension))
 
         if not input_has_hydrogens:
-            logging.info('Wrote hydrogenated PDB file. Hydrogenation was by Arpeggio using OpenBabel defaults.')
+            logging.info('Wrote hydrogenated structure file. Hydrogenation was by Arpeggio using OpenBabel defaults.')
 
         else:
-            logging.info('Wrote hydrogenated PDB file. Hydrogens were from the input file.')
+            logging.info('Wrote hydrogenated structure file. Hydrogens were from the input file.')
 
     # ADD HYDROGENS TO BIOPYTHON ATOMS
 
@@ -1513,7 +1547,7 @@ Dependencies:
     #    logging.info('Calculated per-atom SASA.')
 
     # CALCULATE PAIRWISE CONTACTS
-    with open(pdb_filename.replace('.pdb', '.contacts'), 'wb') as fo, open(pdb_filename.replace('.pdb', '.bs_contacts'), 'wb') as afo:
+    with open(rename_output_file(filename, '.contacts'), 'wb') as fo, open(rename_output_file(filename, '.bs_contacts'), 'wb') as afo:
 
         if args.headers:
             fo.write('{}\n'.format('\t'.join(
@@ -1851,7 +1885,7 @@ Dependencies:
         logging.info('Calculated pairwise contacts.')
 
     # WRITE OUT PER-ATOM SIFTS
-    with open(pdb_filename.replace('.pdb', '.sift'), 'wb') as fo, open(pdb_filename.replace('.pdb', '.specific.sift'), 'wb') as specific_fo:
+    with open(rename_output_file(filename, '.sift'), 'wb') as fo, open(rename_output_file(filename, '.specific.sift'), 'wb') as specific_fo:
 
         if args.headers:
             fo.write('{}\n'.format('\t'.join(
@@ -1903,7 +1937,7 @@ Dependencies:
 
     # WRITE OUT SIFT MATCHING
     # LIGAND AND BINDING SITE (`selection_plus`)
-    with open(pdb_filename.replace('.pdb', '.siftmatch'), 'wb') as fo, open(pdb_filename.replace('.pdb', '.specific.siftmatch'), 'wb') as specific_fo:
+    with open(rename_output_file(filename, '.siftmatch'), 'wb') as fo, open(rename_output_file(filename, '.specific.siftmatch'), 'wb') as specific_fo:
         for atom in selection_plus:
 
             sift_match = sift_match_base3(atom.potential_fsift, atom.actual_fsift) # WHICH SIFT TO USE?
@@ -1926,7 +1960,7 @@ Dependencies:
                                                        [human_sift_match(sift_match_water)]])))
 
     # WRITE OUT HBONDS/POLAR MATCHING
-    with open(pdb_filename.replace('.pdb', '.polarmatch'), 'wb') as fo, open(pdb_filename.replace('.pdb', '.specific.polarmatch'), 'wb') as specific_fo:
+    with open(rename_output_file(filename, '.polarmatch'), 'wb') as fo, open(rename_output_file(filename, '.specific.polarmatch'), 'wb') as specific_fo:
         for atom in selection_plus:
 
             # SUBJECT TO CHANGE
@@ -1953,7 +1987,7 @@ Dependencies:
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/sql/populate.sql?at=default`
     # `http://marid.bioc.cam.ac.uk/credo/about`
-    with open(pdb_filename.replace('.pdb', '.ri'), 'wb') as fo:
+    with open(rename_output_file(filename, '.ri'), 'wb') as fo:
 
         if args.headers:
 
@@ -2093,7 +2127,7 @@ Dependencies:
                 fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
 
     # RINGS AND ATOM-RING INTERACTIONS
-    with open(pdb_filename.replace('.pdb', '.ari'), 'wb') as fo, open(pdb_filename.replace('.pdb', '.rings'), 'wb') as ring_fo:
+    with open(rename_output_file(filename, '.ari'), 'wb') as fo, open(rename_output_file(filename, '.rings'), 'wb') as ring_fo:
 
         if args.headers:
 
@@ -2246,7 +2280,7 @@ Dependencies:
             ring_fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
 
     # AMIDE-RING INTERACTIONS
-    with open(pdb_filename.replace('.pdb', '.amri'), 'wb') as fo:
+    with open(rename_output_file(filename, '.amri'), 'wb') as fo:
 
         if args.headers:
 
@@ -2354,7 +2388,7 @@ Dependencies:
                 fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
 
     # AMIDE-AMIDE INTERACTIONS
-    with open(pdb_filename.replace('.pdb', '.amam'), 'wb') as fo:
+    with open(rename_output_file(filename, '.amam'), 'wb') as fo:
 
         if args.headers:
             fo.write('{}\n'.format('\t'.join(
@@ -2566,7 +2600,7 @@ Dependencies:
         residue.ring_amide_inter_sift = [1 if x else 0 for x in residue.ring_amide_inter_integer_sift]
         residue.amide_amide_inter_sift = [1 if x else 0 for x in residue.amide_amide_inter_integer_sift]
 
-    with open(pdb_filename.replace('.pdb', '.residue_sifts'), 'wb') as fo:
+    with open(rename_output_file(filename, '.residue_sifts'), 'wb') as fo:
 
         if args.headers:
 
