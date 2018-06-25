@@ -18,6 +18,7 @@ import collections
 import logging
 #import math
 import operator
+from functools import reduce
 try:
     import resource
 except ImportError:
@@ -45,18 +46,20 @@ import openbabel as ob
 #############
 
 from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, \
-                   HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, VALENCE, \
-                   MAINCHAIN_ATOMS, THETA_REQUIRED, STD_RES, PROT_ATOM_TYPES, \
-                   AMIDE_SMARTS, COMMON_SOLVENTS, STANDARD_NUCLEOTIDES
+    HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, VALENCE, \
+    MAINCHAIN_ATOMS, THETA_REQUIRED, STD_RES, PROT_ATOM_TYPES, \
+    AMIDE_SMARTS, COMMON_SOLVENTS, STANDARD_NUCLEOTIDES
 
 ###########
 # CLASSES #
 ###########
 
+
 class HydrogenError(Exception):
 
     def __init__(self):
         logging.error('Please remove all hydrogens from the structure then re-run.')
+
 
 class OBBioMatchError(Exception):
 
@@ -68,15 +71,18 @@ class OBBioMatchError(Exception):
         else:
             logging.error('OpenBabel OBAtom with serial number {} could not be matched to a BioPython counterpart.'.format(serial))
 
+
 class AtomSerialError(Exception):
 
     def __init__(self):
         logging.error('One or more atom serial numbers are duplicated.')
 
+
 class SiftMatchError(Exception):
 
     def __init__(self):
         logging.error('Seeing is not believing.')
+
 
 class SelectionError(Exception):
 
@@ -87,6 +93,7 @@ class SelectionError(Exception):
 # FUNCTIONS #
 #############
 
+
 def rename_output_file(original_filename, new_extension):
     ''''''
 
@@ -96,6 +103,7 @@ def rename_output_file(original_filename, new_extension):
         return path.splitext(original_filename)[0] + new_extension
     else:
         return original_filename + new_extension
+
 
 def int2(x):
     '''
@@ -111,6 +119,7 @@ def int2(x):
 
     return int(x, 2)
 
+
 def int3(x):
     '''
     Return integer from base 3 number.
@@ -124,6 +133,7 @@ def int3(x):
         x = str(x)
 
     return int(x, 3)
+
 
 def selection_parser(selection_list, atom_list):
     '''
@@ -144,16 +154,16 @@ def selection_parser(selection_list, atom_list):
 
     for selection in selection_list:
 
-        #selection_dict = {
+        # selection_dict = {
         #    'chain': None,
         #    'residue_number': None,
         #    'atom_name': None
-        #}
+        # }
 
         chain = None
         residue_number = None
         insertion_code = ' '
-        #residue_range = None # TODO
+        # residue_range = None # TODO
         atom_name = None
 
         current_atom_list = atom_list[:]
@@ -178,13 +188,13 @@ def selection_parser(selection_list, atom_list):
         elif selection.startswith('LIGANDS'):
 
             current_atom_list = [x for x in current_atom_list if
-                                 x.get_parent().is_polypeptide == False and # MUST NOT BE POLYPEPTIDE
-                                 len(x.get_parent().child_list) >= 5 and # MIN NUMBER OF ATOMS
-                                 len(x.get_parent().child_list) <= 100 and # MAX NUMBER OF ATOMS
-                                 'C' in set([y.element for y in x.get_parent().child_list]) and # MUST CONTAIN CARBON
-                                 x.get_parent().resname.strip().upper() not in COMMON_SOLVENTS and # MUST NOT BE COMMON SOLVENT
-                                 x.get_parent().resname.strip().upper() not in STANDARD_NUCLEOTIDES and # MUST NOT BE NUCLEOTIDE
-                                 not x.get_parent().resname.startswith('+') # MUST NOT BE MODIFIED NUCLEOTIDE
+                                 not x.get_parent().is_polypeptide  # MUST NOT BE POLYPEPTIDE
+                                 and len(x.get_parent().child_list) >= 5  # MIN NUMBER OF ATOMS
+                                 and len(x.get_parent().child_list) <= 100  # MAX NUMBER OF ATOMS
+                                 and 'C' in set([y.element for y in x.get_parent().child_list])  # MUST CONTAIN CARBON
+                                 and x.get_parent().resname.strip().upper() not in COMMON_SOLVENTS  # MUST NOT BE COMMON SOLVENT
+                                 and x.get_parent().resname.strip().upper() not in STANDARD_NUCLEOTIDES  # MUST NOT BE NUCLEOTIDE
+                                 and not x.get_parent().resname.startswith('+')  # MUST NOT BE MODIFIED NUCLEOTIDE
                                  ]
 
             for selected_atom in current_atom_list:
@@ -194,7 +204,7 @@ def selection_parser(selection_list, atom_list):
 
             selection = selection.lstrip('/').split('/')
 
-            #print selection
+            # print selection
 
             if len(selection) != 3:
                 raise SelectionError(original_selection)
@@ -257,6 +267,7 @@ def selection_parser(selection_list, atom_list):
 
     return list(final_atom_list)
 
+
 def make_pymol_string(entity):
     '''
     Feed me a BioPython atom or BioPython residue.
@@ -287,11 +298,12 @@ def make_pymol_string(entity):
     if residue.id[2] != ' ':
         res_num = str(res_num) + residue.id[2]
 
-    macro =  '{}/{}/{}'.format(chain.id,
-                               res_num,
-                               atom_name)
+    macro = '{}/{}/{}'.format(chain.id,
+                              res_num,
+                              atom_name)
 
     return macro
+
 
 def get_single_bond_neighbour(ob_atom):
     '''
@@ -311,6 +323,7 @@ def get_single_bond_neighbour(ob_atom):
 
     return None
 
+
 def max_mem_usage():
     '''
     Returns maximum memory usage of the program thus far, in megabytes, as a string.
@@ -319,7 +332,8 @@ def max_mem_usage():
     try:
         return str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000.0) + ' MB'
     except Exception as err:
-        logging.warn('Resource usage information not available ().'.format(str(err)))
+        logging.warn('Resource usage information not available {}'.format(str(err)))
+
 
 def get_angle(point_a, point_b, point_c):
     '''
@@ -329,16 +343,16 @@ def get_angle(point_a, point_b, point_c):
     http://stackoverflow.com/questions/19729831/angle-between-3-points-in-3d-space
     '''
 
-    #In pseudo-code, the vector BA (call it v1) is:
+    # In pseudo-code, the vector BA (call it v1) is:
     #v1 = {A.x - B.x, A.y - B.y, A.z - B.z}
     v1 = point_a - point_b
 
-    #Similarly the vector BC (call it v2) is:
+    # Similarly the vector BC (call it v2) is:
     #v2 = {C.x - B.x, C.y - B.y, C.z - B.z}
     v2 = point_c - point_b
 
-    #The dot product of v1 and v2 is a function of the cosine of the angle between them
-    #(it's scaled by the product of their magnitudes). So first normalize v1 and v2:
+    # The dot product of v1 and v2 is a function of the cosine of the angle between them
+    # (it's scaled by the product of their magnitudes). So first normalize v1 and v2:
 
     #v1mag = sqrt(v1.x * v1.x + v1.y * v1.y + v1.z * v1.z)
     v1_mag = np.sqrt(v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2])
@@ -352,12 +366,12 @@ def get_angle(point_a, point_b, point_c):
     #v2norm = {v2.x / v2mag, v2.y / v2mag, v2.z / v2mag}
     v2_norm = np.array([v2[0] / v2_mag, v2[1] / v2_mag, v2[2] / v2_mag])
 
-    #Then calculate the dot product:
+    # Then calculate the dot product:
 
     #res = v1norm.x * v2norm.x + v1norm.y * v2norm.y + v1norm.z * v2norm.z
     res = v1_norm[0] * v2_norm[0] + v1_norm[1] * v2_norm[1] + v1_norm[2] * v2_norm[2]
 
-    #And finally, recover the angle:
+    # And finally, recover the angle:
     angle = np.arccos(res)
 
     if np.isnan(angle):
@@ -365,6 +379,7 @@ def get_angle(point_a, point_b, point_c):
         angle = np.pi
 
     return angle
+
 
 def group_angle(group, point_coords, degrees=False, signed=False):
     '''
@@ -379,16 +394,19 @@ def group_angle(group, point_coords, degrees=False, signed=False):
     # GET THE ANGLE AS RADIANS
     rad = np.arccos(cosangle)
 
-    if not degrees: return rad
+    if not degrees:
+        return rad
 
     # CONVERT RADIANS INTO DEGREES
     else:
 
         # CONVERT INTO A SIGNED ANGLE
-        if signed: rad = rad -np.pi if rad > np.pi / 2 else rad
+        if signed:
+            rad = rad - np.pi if rad > np.pi / 2 else rad
 
         # RETURN DEGREES
         return rad * 180 / np.pi
+
 
 def group_group_angle(group, group2, degrees=False, signed=False):
     '''
@@ -402,22 +420,24 @@ def group_group_angle(group, group2, degrees=False, signed=False):
     # GET THE ANGLE AS RADIANS
     rad = np.arccos(cosangle)
 
-    if not degrees: return rad
+    if not degrees:
+        return rad
 
     # CONVERT RADIANS INTO DEGREES
     else:
 
         # CONVERT INTO A SIGNED ANGLE
-        if signed: rad = rad -np.pi if rad > np.pi / 2 else rad
+        if signed:
+            rad = rad - np.pi if rad > np.pi / 2 else rad
 
         # RETURN DEGREES
         return rad * 180 / np.pi
 
-## GOLDEN SECTION SPIRAL
-## THANK YOU BOSCOH!
-## http://boscoh.com/protein/calculating-the-solvent-accessible-surface-area-asa.html
-## http://boscoh.com/protein/asapy.html
-#def points_on_sphere(n):
+# GOLDEN SECTION SPIRAL
+# THANK YOU BOSCOH!
+# http://boscoh.com/protein/calculating-the-solvent-accessible-surface-area-asa.html
+# http://boscoh.com/protein/asapy.html
+# def points_on_sphere(n):
 #    pts = np.empty((int(n), 3))
 #    n = float(n)
 #
@@ -437,6 +457,7 @@ def group_group_angle(group, group2, degrees=False, signed=False):
 
 # CONTACT FUNCTIONS
 
+
 def is_hbond(donor, acceptor):
     '''
     Feed me BioPython atoms.
@@ -454,6 +475,7 @@ def is_hbond(donor, acceptor):
 
     return 0
 
+
 def is_weak_hbond(donor, acceptor):
     '''
     Feed me BioPython atoms.
@@ -470,6 +492,7 @@ def is_weak_hbond(donor, acceptor):
                 return 1
 
     return 0
+
 
 def is_halogen_weak_hbond(donor, halogen, ob_mol):
     '''
@@ -492,6 +515,7 @@ def is_halogen_weak_hbond(donor, halogen, ob_mol):
 
     return 0
 
+
 def is_xbond(donor, acceptor, ob_mol):
     '''
     Feed me BioPython atoms and the OpenBabel molecule.
@@ -506,6 +530,7 @@ def is_xbond(donor, acceptor, ob_mol):
         return 1
 
     return 0
+
 
 def update_atom_sift(atom, addition, contact_type='INTER'):
     '''
@@ -522,6 +547,7 @@ def update_atom_sift(atom, addition, contact_type='INTER'):
     if 'WATER' in contact_type:
         atom.sift_water_only = [x or y for x, y in zip(atom.sift_water_only, addition)]
 
+
 def update_atom_fsift(atom, addition, contact_type='INTER'):
     '''
     '''
@@ -536,6 +562,7 @@ def update_atom_fsift(atom, addition, contact_type='INTER'):
 
     if 'WATER' in contact_type:
         atom.actual_fsift_water_only = [x or y for x, y in zip(atom.actual_fsift_water_only, addition)]
+
 
 def update_atom_integer_sift(atom, addition, contact_type='INTER'):
     '''
@@ -552,6 +579,7 @@ def update_atom_integer_sift(atom, addition, contact_type='INTER'):
     if 'WATER' in contact_type:
         atom.integer_sift_water_only = [x + y for x, y in zip(atom.sift_water_only, addition)]
 
+
 def sift_xnor(sift1, sift2):
     '''
     '''
@@ -560,22 +588,23 @@ def sift_xnor(sift1, sift2):
 
     for x, y in zip(sift1, sift2):
 
-        if x and not y: # TF
+        if x and not y:  # TF
             out.append(0)
 
-        elif not x and not y: # FF
+        elif not x and not y:  # FF
             out.append(1)
 
-        elif x and y: # TT
+        elif x and y:  # TT
             out.append(1)
 
-        elif not x and y: # FT
+        elif not x and y:  # FT
             out.append(0)
 
         else:
             raise ValueError('Invalid SIFts for matching: {} and {}'.format(sift1, sift2))
 
     return out
+
 
 def sift_match_base3(sift1, sift2):
     '''
@@ -590,22 +619,23 @@ def sift_match_base3(sift1, sift2):
 
     for x, y in zip(sift1, sift2):
 
-        if x and not y: # TF
-            out.append(0) # UNMATCHED
+        if x and not y:  # TF
+            out.append(0)  # UNMATCHED
 
-        elif not x and not y: # FF
-            out.append(2) # MATCH NOT POSSIBLE
+        elif not x and not y:  # FF
+            out.append(2)  # MATCH NOT POSSIBLE
 
-        elif x and y: # TT
-            out.append(1) # MATCHED
+        elif x and y:  # TT
+            out.append(1)  # MATCHED
 
-        elif not x and y: # FT
+        elif not x and y:  # FT
             raise SiftMatchError
 
         else:
             raise ValueError('Invalid SIFts for matching: {} and {}'.format(sift1, sift2))
 
     return out
+
 
 def human_sift_match(sift_match, feature_sift=FEATURE_SIFT):
     '''
@@ -616,7 +646,7 @@ def human_sift_match(sift_match, feature_sift=FEATURE_SIFT):
 
     for e, fp in enumerate(sift_match):
 
-        if fp == 2: # MATCH NOT POSSIBLE
+        if fp == 2:  # MATCH NOT POSSIBLE
             continue
 
         elif fp == 1:
@@ -634,6 +664,7 @@ def human_sift_match(sift_match, feature_sift=FEATURE_SIFT):
 ########
 # MAIN #
 ########
+
 
 if __name__ == '__main__':
 
@@ -661,7 +692,6 @@ Dependencies:
     selection_group.add_argument('-s', '--selection', type=str, nargs='+', help='Select the "ligand" for interactions, using selection syntax: /<chain_id>/<res_num>[<ins_code>]/<atom_name> or RESNAME:<het_id>. Fields can be omitted.')
     selection_group.add_argument('-sf', '--selection-file', type=str, help='Selections as above, but listed in a file.')
 
-
     parser.add_argument('-ft', '--file-type', type=str, choices=('pdb', 'mmcif'), help='Force the type of file being processed. Without this option, will attempt to detect from the file extension, or otherwise default to pdb.')
     parser.add_argument('-wh', '--write-hydrogenated', action='store_true', help='Write an output file including the added hydrogen coordinates.')
     parser.add_argument('-mh', '--minimise-hydrogens', action='store_true', help='Energy minimise OpenBabel added hydrogens.')
@@ -686,9 +716,9 @@ Dependencies:
 
     # LOGGING
     if args.verbose:
-        logging.basicConfig(level=logging.INFO, format='%(levelname)s//%(asctime)s.%(msecs).03d//%(message)s', datefmt='%H:%M:%S')
+        logging.basicConfig(level=logging.DEBUG, format='%(levelname)s//%(asctime)s.%(msecs).03d//%(message)s', datefmt='%H:%M:%S')
     else:
-        logging.basicConfig(level=logging.WARN, format='%(levelname)s//%(asctime)s.%(msecs).03d//%(message)s', datefmt='%H:%M:%S')
+        logging.basicConfig(level=logging.WARNING, format='%(levelname)s//%(asctime)s.%(msecs).03d//%(message)s', datefmt='%H:%M:%S')
 
     logging.info('Program begin.')
 
@@ -767,7 +797,7 @@ Dependencies:
     all_serials = [x.serial_number for x in s_atoms]
 
     if len(all_serials) > len(set(all_serials)):
-        logging.error('Atoms do not have unique serial numbers. Duplicates: {}'.format(str([serial for serial, count in collections.Counter(all_serials).items() if count > 1])))
+        logging.error('Atoms do not have unique serial numbers. Duplicates: {}'.format(str([serial for serial, count in list(collections.Counter(all_serials).items()) if count > 1])))
         raise AtomSerialError
 
     # MAPPING OB ATOMS TO BIOPYTHON ATOMS AND VICE VERSA
@@ -825,18 +855,18 @@ Dependencies:
     # ADDING HYDROGENS DOESN'T SEEM TO INTERFERE WITH ATOM SERIALS (THEY GET ADDED AS 0)
     # SO WE CAN STILL GET BACK TO THE PERSISTENT BIOPYTHON ATOMS THIS WAY.
     if not input_has_hydrogens:
-        mol.AddHydrogens(False, True, args.ph) # polaronly, correctForPH, pH
+        mol.AddHydrogens(False, True, args.ph)  # polaronly, correctForPH, pH
 
         logging.info('Added hydrogens.')
 
     # ATOM TYPING VIA OPENBABEL
     # ITERATE OVER ATOM TYPE SMARTS DEFINITIONS
-    for atom_type, smartsdict in ATOM_TYPES.items():
+    for atom_type, smartsdict in list(ATOM_TYPES.items()):
 
         #logging.info('Typing: {}'.format(atom_type))
 
         # FOR EACH ATOM TYPE SMARTS STRING
-        for smarts in smartsdict.values():
+        for smarts in list(smartsdict.values()):
 
             #logging.info('Smarts: {}'.format(smarts))
 
@@ -881,18 +911,18 @@ Dependencies:
             for atom in residue.child_list:
 
                 # REMOVE TYPES IF ALREADY ASSIGNED FROM SMARTS
-                for atom_type in PROT_ATOM_TYPES.keys():
+                for atom_type in list(PROT_ATOM_TYPES.keys()):
                     atom.atom_types.discard(atom_type)
 
                 # ADD ATOM TYPES FROM DICTIONARY
-                for atom_type, atom_ids in PROT_ATOM_TYPES.iteritems():
+                for atom_type, atom_ids in PROT_ATOM_TYPES.items():
 
                     atom_id = residue.resname.strip() + atom.name.strip()
 
                     if atom_id in atom_ids:
                         atom.atom_types.add(atom_type)
 
-    with open(rename_output_file(filename, '.atomtypes'), 'wb') as fo:
+    with open(rename_output_file(filename, '.atomtypes'), 'w') as fo:
 
         if args.headers:
             fo.write('{}\n'.format('\t'.join(
@@ -950,9 +980,9 @@ Dependencies:
     # 7: 2: HALOGEN_BOND
     # 8: 3: IONIC
     # 9: 4: METAL_COMPLEX
-    #10: 5: AROMATIC
-    #11: 6: HYDROPHOBIC
-    #12: 7: CARBONYL
+    # 10: 5: AROMATIC
+    # 11: 6: HYDROPHOBIC
+    # 12: 7: CARBONYL
 
     # 8: POLAR - H-BONDS WITHOUT ANGLES
     # 9: WEAK POLAR - WEAK H-BONDS WITHOUT ANGLES
@@ -1113,7 +1143,7 @@ Dependencies:
         # WARN IF NOT JUST ONE CHAIN ID ASSOCIATED WITH THE POLYPEPTIDE
         if len(polypeptide_chain_id_set) != 1:
             logging.warn('A polypeptide had {} chains associated with it: {}'.format(len(polypeptide_chain_id_set),
-                                                                                   polypeptide_chain_id_set))
+                                                                                     polypeptide_chain_id_set))
 
         for polypeptide_chain_id in polypeptide_chain_id_set:
             chain_pieces[polypeptide_chain_id] = chain_pieces[polypeptide_chain_id] + 1
@@ -1142,12 +1172,12 @@ Dependencies:
     all_terminal_residues = []
 
     try:
-        all_chain_break_residues = reduce(operator.add, chain_break_residues.values())
+        all_chain_break_residues = reduce(operator.add, list(chain_break_residues.values()))
     except TypeError:
         pass
 
     try:
-        all_terminal_residues = reduce(operator.add, chain_termini.values())
+        all_terminal_residues = reduce(operator.add, list(chain_termini.values()))
     except TypeError:
         pass
 
@@ -1188,7 +1218,7 @@ Dependencies:
 
             last_residue = residue
 
-    logging.info('Determined polypeptide residues, chain breaks, termini') # and amide bonds.')
+    logging.info('Determined polypeptide residues, chain breaks, termini')  # and amide bonds.')
 
     # PERCIEVE AROMATIC RINGS
     s.rings = OrderedDict()
@@ -1246,21 +1276,21 @@ Dependencies:
         # CHECK FOR EXPECTED BEHAVIOUR
         assert len(bio_match) == 4
         assert bio_match[0].element == 'N'
-        assert bio_match[1].element == 'C' # SHOULD BE BACKBONE C WHEN IN PROTEIN MAINCHAIN
+        assert bio_match[1].element == 'C'  # SHOULD BE BACKBONE C WHEN IN PROTEIN MAINCHAIN
         assert bio_match[2].element == 'O'
-        assert bio_match[3].element == 'C' # SHOULD BE C-ALPHA WHEN IN PROTEIN MAINCHAIN
+        assert bio_match[3].element == 'C'  # SHOULD BE C-ALPHA WHEN IN PROTEIN MAINCHAIN
 
         # ASSIGN GROUP TO A RESIDUE
         bio_match_residues = [x.get_parent() for x in bio_match]
 
         # USE THE RESIDUE OF THE MAJORITY OF ATOMS
         # `http://stackoverflow.com/questions/1518522/python-most-common-element-in-a-list`
-        group_residue =  max(bio_match_residues, key=bio_match_residues.count)
+        group_residue = max(bio_match_residues, key=bio_match_residues.count)
 
         # GET AMIDE BOND CENTROID
         # DETERMINED AS CENTRE OF MASS OF C-N (OR C-O-N?)
-        con = np.array([bio_match[1].coord, bio_match[2].coord, bio_match[0].coord]) # C-O-N
-        cn = np.array([bio_match[1].coord, bio_match[0].coord]) # C-N
+        con = np.array([bio_match[1].coord, bio_match[2].coord, bio_match[0].coord])  # C-O-N
+        cn = np.array([bio_match[1].coord, bio_match[0].coord])  # C-N
         amide_centroid = con.sum(0) / float(len(con))
         bond_centroid = cn.sum(0) / float(len(cn))
 
@@ -1270,8 +1300,8 @@ Dependencies:
         cog = con - amide_centroid
         u, s_, vh = np.linalg.svd(cog)
         v = vh.conj().transpose()
-        a, b, c = v[:,-1]
-        d = 0 # :S
+        a, b, c = v[:, -1]
+        d = 0  # :S
 
         normal = np.array([a, b, c])
         normal_opp = -normal
@@ -1279,7 +1309,7 @@ Dependencies:
         # STORE AMIDE GROUPS
         s.amides[e] = {
             'amide_id': e,
-            'center': bond_centroid, #amide_centroid,
+            'center': bond_centroid,  # amide_centroid,
             'normal': normal,
             'normal_opp': normal_opp,
             'atoms': bio_match,
@@ -1311,20 +1341,20 @@ Dependencies:
         logging.info('Constrained non-hydrogen atoms.')
 
         # INITIALISE THE FORCEFIELD
-        ff = ob.OBForceField.FindForceField(args.minimisation_forcefield) # MMFF94, UFF, Ghemical
+        ff = ob.OBForceField.FindForceField(args.minimisation_forcefield)  # MMFF94, UFF, Ghemical
 
         logging.info('Initialised forcefield.')
 
         # TODO: MAKE LOGGING A COMMAND LINE FLAG
-        ff.SetLogLevel(ob.OBFF_LOGLVL_NONE) # OBFF_LOGLVL_LOW
+        ff.SetLogLevel(ob.OBFF_LOGLVL_NONE)  # OBFF_LOGLVL_LOW
         ff.SetLogToStdErr()
 
-        if ff.Setup(mol, constraints) == 0: #, constraints)
+        if ff.Setup(mol, constraints) == 0:  # , constraints)
             logging.warn('Could not setup the hydrogen minimisation forcefield. Skipping hydrogen minimisation.')
         else:
 
             # DOESN'T WORK
-            #for ob_atom in ob.OBMolAtomIter(mol):
+            # for ob_atom in ob.OBMolAtomIter(mol):
             #
             #    if not ob_atom.IsHydrogen():
             #        ff.SetFixAtom(ob_atom.GetIdx())
@@ -1397,11 +1427,11 @@ Dependencies:
     for ring_id in s.rings:
 
         ring_centroid = s.rings[ring_id]['center']
-        atoms_near_ring = ns.search(ring_centroid, 3.0) # MORE THAN REASONABLE FOR PICKING UP THE RESIDUE THE RING IS IN
-                                                        # UNLESS THERE ARE BIG PROBLEMS IN THE PDB, IN WHICH CASE THE RING
-                                                        # RESIDUE ASSIGNMENT IS THE LEAST OF CONCERNS ;)
+        atoms_near_ring = ns.search(ring_centroid, 3.0)  # MORE THAN REASONABLE FOR PICKING UP THE RESIDUE THE RING IS IN
+        # UNLESS THERE ARE BIG PROBLEMS IN THE PDB, IN WHICH CASE THE RING
+        # RESIDUE ASSIGNMENT IS THE LEAST OF CONCERNS ;)
 
-        closest_atom = (None, None) # (ATOM, DISTANCE)
+        closest_atom = (None, None)  # (ATOM, DISTANCE)
 
         for nearby_atom in atoms_near_ring:
 
@@ -1494,7 +1524,7 @@ Dependencies:
 
         logging.info('Completed new NeighbourSearch.')
 
-    #if not args.consider_all:
+    # if not args.consider_all:
     #    # CALCULATE PER-ATOM SOLVENT ACCESSIBILITY
     #    #
     #    # Using the Shrake-Rupley Algorithm.
@@ -1547,51 +1577,51 @@ Dependencies:
     #    logging.info('Calculated per-atom SASA.')
 
     # CALCULATE PAIRWISE CONTACTS
-    with open(rename_output_file(filename, '.contacts'), 'wb') as fo, open(rename_output_file(filename, '.bs_contacts'), 'wb') as afo:
+    with open(rename_output_file(filename, '.contacts'), 'w') as fo, open(rename_output_file(filename, '.bs_contacts'), 'w') as afo:
 
         if args.headers:
             fo.write('{}\n'.format('\t'.join(
                 ['atom_bgn',
-                'atom_end',
-                'clash',
-                'covalent',
-                'vdw_clash',
-                'vdw',
-                'proximal',
-                'hbond',
-                'weak_hbond',
-                'xbond',
-                'ionic',
-                'metal_complex',
-                'aromatic',
-                'hydrophobic',
-                'carbonyl',
-                'polar',
-                'weak_polar',
-                'interacting_entities'
-                ]
+                 'atom_end',
+                 'clash',
+                 'covalent',
+                 'vdw_clash',
+                 'vdw',
+                 'proximal',
+                 'hbond',
+                 'weak_hbond',
+                 'xbond',
+                 'ionic',
+                 'metal_complex',
+                 'aromatic',
+                 'hydrophobic',
+                 'carbonyl',
+                 'polar',
+                 'weak_polar',
+                 'interacting_entities'
+                 ]
             )))
 
             afo.write('{}\n'.format('\t'.join(
                 ['atom_bgn',
-                'atom_end',
-                'clash',
-                'covalent',
-                'vdw_clash',
-                'vdw',
-                'proximal',
-                'hbond',
-                'weak_hbond',
-                'xbond',
-                'ionic',
-                'metal_complex',
-                'aromatic',
-                'hydrophobic',
-                'carbonyl',
-                'polar',
-                'weak_polar',
-                'interacting_entities'
-                ]
+                 'atom_end',
+                 'clash',
+                 'covalent',
+                 'vdw_clash',
+                 'vdw',
+                 'proximal',
+                 'hbond',
+                 'weak_hbond',
+                 'xbond',
+                 'ionic',
+                 'metal_complex',
+                 'aromatic',
+                 'hydrophobic',
+                 'carbonyl',
+                 'polar',
+                 'weak_polar',
+                 'interacting_entities'
+                 ]
             )))
 
         for atom_bgn, atom_end in ns.search_all(INTERACTING_THRESHOLD):
@@ -1608,17 +1638,17 @@ Dependencies:
             # 7: HALOGEN_BOND
             # 8: IONIC
             # 9: METAL_COMPLEX
-            #10: AROMATIC
-            #11: HYDROPHOBIC
-            #12: CARBONYL
+            # 10: AROMATIC
+            # 11: HYDROPHOBIC
+            # 12: CARBONYL
 
-            #13: POLAR - HBONDS WITHOUT ANGLES
-            #14: WEAK POLAR - WEAK HBONDS WITHOUT ANGLES
+            # 13: POLAR - HBONDS WITHOUT ANGLES
+            # 14: WEAK POLAR - WEAK HBONDS WITHOUT ANGLES
 
             # IGNORE CONTACTS THAT EITHER:
             # - DON'T INVOLVE THE SELECTION
             # - DON'T INVOLVE WATER
-            #if not (atom_bgn in selection_set or atom_end in selection_set):
+            # if not (atom_bgn in selection_set or atom_end in selection_set):
             #    if not (atom_bgn.get_full_id()[3][0] == 'W' or atom_end.get_full_id()[3][0] == 'W'):
             #        continue
 
@@ -1630,13 +1660,13 @@ Dependencies:
             # DETERMINE CONTACT TYPE
             contact_type = ''
 
-            if not atom_bgn in selection_set and not atom_end in selection_set:
+            if atom_bgn not in selection_set and atom_end not in selection_set:
                 contact_type = 'INTRA_NON_SELECTION'
 
             if atom_bgn in selection_set and atom_end in selection_set:
                 contact_type = 'INTRA_SELECTION'
 
-            if (atom_bgn in selection_set and not atom_end in selection_set) or (atom_end in selection_set and not atom_bgn in selection_set):
+            if (atom_bgn in selection_set and atom_end not in selection_set) or (atom_end in selection_set and atom_bgn not in selection_set):
                 contact_type = 'INTER'
 
             if (atom_bgn in selection_set and atom_end.get_full_id()[3][0] == 'W') or (atom_end in selection_set and atom_bgn.get_full_id()[3][0] == 'W'):
@@ -1650,7 +1680,7 @@ Dependencies:
 
             if not contact_type:
                 logging.error('Could not assign a contact type for {}:{}'.format(atom_bgn, atom_end))
-                raise
+                raise ValueError('Could not assign a contact type for {}:{}'.format(atom_bgn, atom_end))
 
             sum_cov_radii = atom_bgn.cov_radius + atom_end.cov_radius
             sum_vdw_radii = atom_bgn.vdw_radius + atom_end.vdw_radius
@@ -1672,13 +1702,13 @@ Dependencies:
                 if res_end.is_polypeptide and res_end.is_polypeptide:
 
                     if hasattr(res_bgn, 'prev_residue') and hasattr(res_bgn, 'next_residue') and \
-                       hasattr(res_end, 'prev_residue') and hasattr(res_end,'next_residue'):
+                       hasattr(res_end, 'prev_residue') and hasattr(res_end, 'next_residue'):
 
                         if res_bgn.next_residue is res_end or res_bgn.prev_residue is res_end or \
                            res_end.next_residue is res_bgn or res_end.prev_residue is res_bgn:
                             continue
 
-            #print contact_type
+            # print contact_type
 
             distance = np.linalg.norm(atom_bgn.coord - atom_end.coord)
 
@@ -1730,7 +1760,6 @@ Dependencies:
                     if 'hbond acceptor' in atom_end.atom_types or 'hbond donor' in atom_end.atom_types:
                         SIFt[5] = 1
                         SIFt[13] = 1
-
 
                 elif atom_end.get_full_id()[3][0] == 'W' and distance <= (sum_vdw_radii + VDW_COMP_FACTOR):
                     if 'hbond acceptor' in atom_bgn.atom_types or 'hbond donor' in atom_bgn.atom_types:
@@ -1885,49 +1914,49 @@ Dependencies:
         logging.info('Calculated pairwise contacts.')
 
     # WRITE OUT PER-ATOM SIFTS
-    with open(rename_output_file(filename, '.sift'), 'wb') as fo, open(rename_output_file(filename, '.specific.sift'), 'wb') as specific_fo:
+    with open(rename_output_file(filename, '.sift'), 'w') as fo, open(rename_output_file(filename, '.specific.sift'), 'w') as specific_fo:
 
         if args.headers:
             fo.write('{}\n'.format('\t'.join(
                 ['atom',
-                'clash',
-                'covalent',
-                'vdw_clash',
-                'vdw',
-                'proximal',
-                'hbond',
-                'weak_hbond',
-                'xbond',
-                'ionic',
-                'metal_complex',
-                'aromatic',
-                'hydrophobic',
-                'carbonyl',
-                'polar',
-                'weak_polar',
-                'interacting_entities'
-                ]
+                 'clash',
+                 'covalent',
+                 'vdw_clash',
+                 'vdw',
+                 'proximal',
+                 'hbond',
+                 'weak_hbond',
+                 'xbond',
+                 'ionic',
+                 'metal_complex',
+                 'aromatic',
+                 'hydrophobic',
+                 'carbonyl',
+                 'polar',
+                 'weak_polar',
+                 'interacting_entities'
+                 ]
             )))
 
             specific_fo.write('{}\n'.format('\t'.join(
                 ['atom',
-                'clash',
-                'covalent',
-                'vdw_clash',
-                'vdw',
-                'proximal',
-                'hbond',
-                'weak_hbond',
-                'xbond',
-                'ionic',
-                'metal_complex',
-                'aromatic',
-                'hydrophobic',
-                'carbonyl',
-                'polar',
-                'weak_polar',
-                'interacting_entities'
-                ]
+                 'clash',
+                 'covalent',
+                 'vdw_clash',
+                 'vdw',
+                 'proximal',
+                 'hbond',
+                 'weak_hbond',
+                 'xbond',
+                 'ionic',
+                 'metal_complex',
+                 'aromatic',
+                 'hydrophobic',
+                 'carbonyl',
+                 'polar',
+                 'weak_polar',
+                 'interacting_entities'
+                 ]
             )))
 
         for atom in selection_plus:
@@ -1937,10 +1966,10 @@ Dependencies:
 
     # WRITE OUT SIFT MATCHING
     # LIGAND AND BINDING SITE (`selection_plus`)
-    with open(rename_output_file(filename, '.siftmatch'), 'wb') as fo, open(rename_output_file(filename, '.specific.siftmatch'), 'wb') as specific_fo:
+    with open(rename_output_file(filename, '.siftmatch'), 'w') as fo, open(rename_output_file(filename, '.specific.siftmatch'), 'w') as specific_fo:
         for atom in selection_plus:
 
-            sift_match = sift_match_base3(atom.potential_fsift, atom.actual_fsift) # WHICH SIFT TO USE?
+            sift_match = sift_match_base3(atom.potential_fsift, atom.actual_fsift)  # WHICH SIFT TO USE?
 
             sift_match_inter = sift_match_base3(atom.potential_fsift, atom.actual_fsift_inter_only)
             sift_match_intra = sift_match_base3(atom.potential_fsift, atom.actual_fsift_intra_only)
@@ -1960,7 +1989,7 @@ Dependencies:
                                                        [human_sift_match(sift_match_water)]])))
 
     # WRITE OUT HBONDS/POLAR MATCHING
-    with open(rename_output_file(filename, '.polarmatch'), 'wb') as fo, open(rename_output_file(filename, '.specific.polarmatch'), 'wb') as specific_fo:
+    with open(rename_output_file(filename, '.polarmatch'), 'w') as fo, open(rename_output_file(filename, '.specific.polarmatch'), 'w') as specific_fo:
         for atom in selection_plus:
 
             # SUBJECT TO CHANGE
@@ -1979,29 +2008,27 @@ Dependencies:
                                                         atom.actual_hbonds_water_only,
                                                         atom.actual_polars_inter_only,
                                                         atom.actual_polars_intra_only,
-                                                        atom.actual_polars_water_only
-                                                        ]
-                                                       ])))
+                                                        atom.actual_polars_water_only]])))
 
     # RING-RING INTERACTIONS
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/sql/populate.sql?at=default`
     # `http://marid.bioc.cam.ac.uk/credo/about`
-    with open(rename_output_file(filename, '.ri'), 'wb') as fo:
+    with open(rename_output_file(filename, '.ri'), 'w') as fo:
 
         if args.headers:
 
             fo.write('{}\n'.format('\t'.join(
                 ['ring_bgn_id',
-                'ring_bgn_residue',
-                'ring_bgn_centroid',
-                'ring_end_id',
-                'ring_end_residue',
-                'ring_end_centroid',
-                'interaction_type',
-                'residue_interaction',
-                'contact_type'
-                ]
+                 'ring_bgn_residue',
+                 'ring_bgn_centroid',
+                 'ring_end_id',
+                 'ring_end_residue',
+                 'ring_end_centroid',
+                 'interaction_type',
+                 'residue_interaction',
+                 'contact_type'
+                 ]
             )))
 
         for ring in s.rings:
@@ -2031,7 +2058,7 @@ Dependencies:
                 # DETERMINE CONTACT TYPE
                 contact_type = ''
 
-                if not ring_key in selection_ring_ids and not ring_key2 in selection_ring_ids:
+                if ring_key not in selection_ring_ids and ring_key2 not in selection_ring_ids:
                     contact_type = 'INTRA_NON_SELECTION'
 
                 if ring_key in selection_plus_ring_ids and ring_key2 in selection_plus_ring_ids:
@@ -2040,7 +2067,7 @@ Dependencies:
                 if ring_key in selection_ring_ids and ring_key2 in selection_ring_ids:
                     contact_type = 'INTRA_SELECTION'
 
-                if (ring_key in selection_ring_ids and not ring_key2 in selection_ring_ids) or (ring_key2 in selection_ring_ids and not ring_key in selection_ring_ids):
+                if (ring_key in selection_ring_ids and ring_key2 not in selection_ring_ids) or (ring_key2 in selection_ring_ids and ring_key not in selection_ring_ids):
                     contact_type = 'INTER'
 
                 # DETERMINE RING-RING DISTANCE
@@ -2127,26 +2154,26 @@ Dependencies:
                 fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
 
     # RINGS AND ATOM-RING INTERACTIONS
-    with open(rename_output_file(filename, '.ari'), 'wb') as fo, open(rename_output_file(filename, '.rings'), 'wb') as ring_fo:
+    with open(rename_output_file(filename, '.ari'), 'w') as fo, open(rename_output_file(filename, '.rings'), 'w') as ring_fo:
 
         if args.headers:
 
             fo.write('{}\n'.format('\t'.join(
                 ['atom',
-                'ring_id',
-                'ring_residue',
-                'ring_centroid',
-                'interactions',
-                'residue_interactions',
-                'contact_type'
-                ]
+                 'ring_id',
+                 'ring_residue',
+                 'ring_centroid',
+                 'interactions',
+                 'residue_interactions',
+                 'contact_type'
+                 ]
             )))
 
             ring_fo.write('{}\n'.format('\t'.join(
                 ['ring_id',
-                'ring_residue',
-                'ring_centroid'
-                ]
+                 'ring_residue',
+                 'ring_centroid'
+                 ]
             )))
 
         for ring in s.rings:
@@ -2185,7 +2212,7 @@ Dependencies:
                 # DETERMINE CONTACT TYPE
                 contact_type = ''
 
-                if not ring_key in selection_ring_ids and not atom in selection_set:
+                if ring_key not in selection_ring_ids and atom not in selection_set:
                     contact_type = 'INTRA_NON_SELECTION'
 
                 if ring_key in selection_plus_ring_ids and atom in selection_plus:
@@ -2194,7 +2221,7 @@ Dependencies:
                 if ring_key in selection_ring_ids and atom in selection_set:
                     contact_type = 'INTRA_SELECTION'
 
-                if (ring_key in selection_ring_ids and not atom in selection_set) or (atom in selection_set and not ring_key in selection_ring_ids):
+                if (ring_key in selection_ring_ids and atom not in selection_set) or (atom in selection_set and ring_key not in selection_ring_ids):
                     contact_type = 'INTER'
 
                 # DETERMINE INTERACTIONS
@@ -2203,7 +2230,7 @@ Dependencies:
                 # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
                 #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
                 #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
-                theta = abs(group_angle(ring, ring['center'] - atom.coord, True, True)) # CHECK IF `atom.coord` or `ring['center'] - atom.coord`
+                theta = abs(group_angle(ring, ring['center'] - atom.coord, True, True))  # CHECK IF `atom.coord` or `ring['center'] - atom.coord`
 
                 if distance <= CONTACT_TYPES['aromatic']['atom_aromatic_distance'] and theta <= 30.0:
 
@@ -2280,21 +2307,21 @@ Dependencies:
             ring_fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
 
     # AMIDE-RING INTERACTIONS
-    with open(rename_output_file(filename, '.amri'), 'wb') as fo:
+    with open(rename_output_file(filename, '.amri'), 'w') as fo:
 
         if args.headers:
 
             fo.write('{}\n'.format('\t'.join(
                 ['amide_id',
-                'residue',
-                'amide_centroid',
-                'ring_id',
-                'ring_residue',
-                'ring_centroid',
-                'interaction_type',
-                'residue_interactions',
-                'contact_type'
-                ]
+                 'residue',
+                 'amide_centroid',
+                 'ring_id',
+                 'ring_residue',
+                 'ring_centroid',
+                 'interaction_type',
+                 'residue_interactions',
+                 'contact_type'
+                 ]
             )))
 
         for amide in s.amides:
@@ -2330,7 +2357,7 @@ Dependencies:
                 # DETERMINE CONTACT TYPE
                 contact_type = ''
 
-                if not amide_key in selection_amide_ids and not ring_key in selection_ring_ids:
+                if amide_key not in selection_amide_ids and ring_key not in selection_ring_ids:
                     contact_type = 'INTRA_NON_SELECTION'
 
                 if amide_key in selection_plus_amide_ids and ring_key in selection_plus_ring_ids:
@@ -2339,7 +2366,7 @@ Dependencies:
                 if amide_key in selection_amide_ids and ring_key in selection_ring_ids:
                     contact_type = 'INTRA_SELECTION'
 
-                if (amide_key in selection_amide_ids and not ring_key in selection_ring_ids) or (ring_key in selection_ring_ids and not amide_key in selection_amide_ids):
+                if (amide_key in selection_amide_ids and ring_key not in selection_ring_ids) or (ring_key in selection_ring_ids and amide_key not in selection_amide_ids):
                     contact_type = 'INTER'
 
                 # DETERMINE AMIDE-RING DISTANCE
@@ -2380,28 +2407,28 @@ Dependencies:
                     int_type,
                     intra_residue_text,
                     contact_type,
-                    #dihedral,
-                    #theta,
-                    #list(theta_point)
+                    # dihedral,
+                    # theta,
+                    # list(theta_point)
                 ]
 
                 fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
 
     # AMIDE-AMIDE INTERACTIONS
-    with open(rename_output_file(filename, '.amam'), 'wb') as fo:
+    with open(rename_output_file(filename, '.amam'), 'w') as fo:
 
         if args.headers:
             fo.write('{}\n'.format('\t'.join(
                 ['amide_bgn_id',
-                'amide_bgn_residue',
-                'amide_bgn_centroid',
-                'amide_end_id',
-                'amide_end_residue',
-                'amide_end_centroid',
-                'interaction_type',
-                'residue_interactions',
-                'contact_type'
-                ]
+                 'amide_bgn_residue',
+                 'amide_bgn_centroid',
+                 'amide_end_id',
+                 'amide_end_residue',
+                 'amide_end_centroid',
+                 'interaction_type',
+                 'residue_interactions',
+                 'contact_type'
+                 ]
             )))
 
         for amide in s.amides:
@@ -2441,7 +2468,7 @@ Dependencies:
                 # DETERMINE CONTACT TYPE
                 contact_type = ''
 
-                if not amide_key in selection_amide_ids and not amide_key2 in selection_amide_ids:
+                if amide_key not in selection_amide_ids and amide_key2 not in selection_amide_ids:
                     contact_type = 'INTRA_NON_SELECTION'
 
                 if amide_key in selection_plus_amide_ids and amide_key2 in selection_plus_amide_ids:
@@ -2450,7 +2477,7 @@ Dependencies:
                 if amide_key in selection_amide_ids and amide_key2 in selection_amide_ids:
                     contact_type = 'INTRA_SELECTION'
 
-                if (amide_key in selection_amide_ids and not amide_key2 in selection_amide_ids) or (amide_key2 in selection_amide_ids and not amide_key in selection_amide_ids):
+                if (amide_key in selection_amide_ids and amide_key2 not in selection_amide_ids) or (amide_key2 in selection_amide_ids and amide_key not in selection_amide_ids):
                     contact_type = 'INTER'
 
                 # DETERMINE AMIDE-RING DISTANCE
@@ -2490,9 +2517,9 @@ Dependencies:
                     int_type,
                     intra_residue_text,
                     contact_type,
-                    #dihedral,
-                    #theta,
-                    #list(theta_point)
+                    # dihedral,
+                    # theta,
+                    # list(theta_point)
                 ]
 
                 fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
@@ -2600,440 +2627,440 @@ Dependencies:
         residue.ring_amide_inter_sift = [1 if x else 0 for x in residue.ring_amide_inter_integer_sift]
         residue.amide_amide_inter_sift = [1 if x else 0 for x in residue.amide_amide_inter_integer_sift]
 
-    with open(rename_output_file(filename, '.residue_sifts'), 'wb') as fo:
+    with open(rename_output_file(filename, '.residue_sifts'), 'w') as fo:
 
         if args.headers:
 
             if args.headers:
                 fo.write('{}\n'.format('\t'.join(
-            [
-'residue',
-'is_polypeptide',
-'residue_clash',
-'residue_covalent',
-'residue_vdw_clash',
-'residue_vdw',
-'residue_proximal',
-'residue_hbond',
-'residue_weak_hbond',
-'residue_halogen_bond',
-'residue_ionic',
-'residue_metal_complex',
-'residue_aromatic',
-'residue_hydrophobic',
-'residue_carbonyl',
-'residue_polar',
-'residue_weak_polar',
-'residue_inter_only_clash',
-'residue_inter_only_covalent',
-'residue_inter_only_vdw_clash',
-'residue_inter_only_vdw',
-'residue_inter_only_proximal',
-'residue_inter_only_hbond',
-'residue_inter_only_weak_hbond',
-'residue_inter_only_halogen_bond',
-'residue_inter_only_ionic',
-'residue_inter_only_metal_complex',
-'residue_inter_only_aromatic',
-'residue_inter_only_hydrophobic',
-'residue_inter_only_carbonyl',
-'residue_inter_only_polar',
-'residue_inter_only_weak_polar',
-'residue_intra_only_clash',
-'residue_intra_only_covalent',
-'residue_intra_only_vdw_clash',
-'residue_intra_only_vdw',
-'residue_intra_only_proximal',
-'residue_intra_only_hbond',
-'residue_intra_only_weak_hbond',
-'residue_intra_only_halogen_bond',
-'residue_intra_only_ionic',
-'residue_intra_only_metal_complex',
-'residue_intra_only_aromatic',
-'residue_intra_only_hydrophobic',
-'residue_intra_only_carbonyl',
-'residue_intra_only_polar',
-'residue_intra_only_weak_polar',
-'residue_water_only_clash',
-'residue_water_only_covalent',
-'residue_water_only_vdw_clash',
-'residue_water_only_vdw',
-'residue_water_only_proximal',
-'residue_water_only_hbond',
-'residue_water_only_weak_hbond',
-'residue_water_only_halogen_bond',
-'residue_water_only_ionic',
-'residue_water_only_metal_complex',
-'residue_water_only_aromatic',
-'residue_water_only_hydrophobic',
-'residue_water_only_carbonyl',
-'residue_water_only_polar',
-'residue_water_only_weak_polar',
-'residue_mc_clash',
-'residue_mc_covalent',
-'residue_mc_vdw_clash',
-'residue_mc_vdw',
-'residue_mc_proximal',
-'residue_mc_hbond',
-'residue_mc_weak_hbond',
-'residue_mc_halogen_bond',
-'residue_mc_ionic',
-'residue_mc_metal_complex',
-'residue_mc_aromatic',
-'residue_mc_hydrophobic',
-'residue_mc_carbonyl',
-'residue_mc_polar',
-'residue_mc_weak_polar',
-'residue_mc_inter_only_clash',
-'residue_mc_inter_only_covalent',
-'residue_mc_inter_only_vdw_clash',
-'residue_mc_inter_only_vdw',
-'residue_mc_inter_only_proximal',
-'residue_mc_inter_only_hbond',
-'residue_mc_inter_only_weak_hbond',
-'residue_mc_inter_only_halogen_bond',
-'residue_mc_inter_only_ionic',
-'residue_mc_inter_only_metal_complex',
-'residue_mc_inter_only_aromatic',
-'residue_mc_inter_only_hydrophobic',
-'residue_mc_inter_only_carbonyl',
-'residue_mc_inter_only_polar',
-'residue_mc_inter_only_weak_polar',
-'residue_mc_intra_only_clash',
-'residue_mc_intra_only_covalent',
-'residue_mc_intra_only_vdw_clash',
-'residue_mc_intra_only_vdw',
-'residue_mc_intra_only_proximal',
-'residue_mc_intra_only_hbond',
-'residue_mc_intra_only_weak_hbond',
-'residue_mc_intra_only_halogen_bond',
-'residue_mc_intra_only_ionic',
-'residue_mc_intra_only_metal_complex',
-'residue_mc_intra_only_aromatic',
-'residue_mc_intra_only_hydrophobic',
-'residue_mc_intra_only_carbonyl',
-'residue_mc_intra_only_polar',
-'residue_mc_intra_only_weak_polar',
-'residue_mc_water_only_clash',
-'residue_mc_water_only_covalent',
-'residue_mc_water_only_vdw_clash',
-'residue_mc_water_only_vdw',
-'residue_mc_water_only_proximal',
-'residue_mc_water_only_hbond',
-'residue_mc_water_only_weak_hbond',
-'residue_mc_water_only_halogen_bond',
-'residue_mc_water_only_ionic',
-'residue_mc_water_only_metal_complex',
-'residue_mc_water_only_aromatic',
-'residue_mc_water_only_hydrophobic',
-'residue_mc_water_only_carbonyl',
-'residue_mc_water_only_polar',
-'residue_mc_water_only_weak_polar',
-'residue_sc_clash',
-'residue_sc_covalent',
-'residue_sc_vdw_clash',
-'residue_sc_vdw',
-'residue_sc_proximal',
-'residue_sc_hbond',
-'residue_sc_weak_hbond',
-'residue_sc_halogen_bond',
-'residue_sc_ionic',
-'residue_sc_metal_complex',
-'residue_sc_aromatic',
-'residue_sc_hydrophobic',
-'residue_sc_carbonyl',
-'residue_sc_polar',
-'residue_sc_weak_polar',
-'residue_sc_inter_only_clash',
-'residue_sc_inter_only_covalent',
-'residue_sc_inter_only_vdw_clash',
-'residue_sc_inter_only_vdw',
-'residue_sc_inter_only_proximal',
-'residue_sc_inter_only_hbond',
-'residue_sc_inter_only_weak_hbond',
-'residue_sc_inter_only_halogen_bond',
-'residue_sc_inter_only_ionic',
-'residue_sc_inter_only_metal_complex',
-'residue_sc_inter_only_aromatic',
-'residue_sc_inter_only_hydrophobic',
-'residue_sc_inter_only_carbonyl',
-'residue_sc_inter_only_polar',
-'residue_sc_inter_only_weak_polar',
-'residue_sc_intra_only_clash',
-'residue_sc_intra_only_covalent',
-'residue_sc_intra_only_vdw_clash',
-'residue_sc_intra_only_vdw',
-'residue_sc_intra_only_proximal',
-'residue_sc_intra_only_hbond',
-'residue_sc_intra_only_weak_hbond',
-'residue_sc_intra_only_halogen_bond',
-'residue_sc_intra_only_ionic',
-'residue_sc_intra_only_metal_complex',
-'residue_sc_intra_only_aromatic',
-'residue_sc_intra_only_hydrophobic',
-'residue_sc_intra_only_carbonyl',
-'residue_sc_intra_only_polar',
-'residue_sc_intra_only_weak_polar',
-'residue_sc_water_only_clash',
-'residue_sc_water_only_covalent',
-'residue_sc_water_only_vdw_clash',
-'residue_sc_water_only_vdw',
-'residue_sc_water_only_proximal',
-'residue_sc_water_only_hbond',
-'residue_sc_water_only_weak_hbond',
-'residue_sc_water_only_halogen_bond',
-'residue_sc_water_only_ionic',
-'residue_sc_water_only_metal_complex',
-'residue_sc_water_only_aromatic',
-'residue_sc_water_only_hydrophobic',
-'residue_sc_water_only_carbonyl',
-'residue_sc_water_only_polar',
-'residue_sc_water_only_weak_polar',
-'residue_integer_clash',
-'residue_integer_covalent',
-'residue_integer_vdw_clash',
-'residue_integer_vdw',
-'residue_integer_proximal',
-'residue_integer_hbond',
-'residue_integer_weak_hbond',
-'residue_integer_halogen_bond',
-'residue_integer_ionic',
-'residue_integer_metal_complex',
-'residue_integer_aromatic',
-'residue_integer_hydrophobic',
-'residue_integer_carbonyl',
-'residue_integer_polar',
-'residue_integer_weak_polar',
-'residue_integer_inter_only_clash',
-'residue_integer_inter_only_covalent',
-'residue_integer_inter_only_vdw_clash',
-'residue_integer_inter_only_vdw',
-'residue_integer_inter_only_proximal',
-'residue_integer_inter_only_hbond',
-'residue_integer_inter_only_weak_hbond',
-'residue_integer_inter_only_halogen_bond',
-'residue_integer_inter_only_ionic',
-'residue_integer_inter_only_metal_complex',
-'residue_integer_inter_only_aromatic',
-'residue_integer_inter_only_hydrophobic',
-'residue_integer_inter_only_carbonyl',
-'residue_integer_inter_only_polar',
-'residue_integer_inter_only_weak_polar',
-'residue_integer_intra_only_clash',
-'residue_integer_intra_only_covalent',
-'residue_integer_intra_only_vdw_clash',
-'residue_integer_intra_only_vdw',
-'residue_integer_intra_only_proximal',
-'residue_integer_intra_only_hbond',
-'residue_integer_intra_only_weak_hbond',
-'residue_integer_intra_only_halogen_bond',
-'residue_integer_intra_only_ionic',
-'residue_integer_intra_only_metal_complex',
-'residue_integer_intra_only_aromatic',
-'residue_integer_intra_only_hydrophobic',
-'residue_integer_intra_only_carbonyl',
-'residue_integer_intra_only_polar',
-'residue_integer_intra_only_weak_polar',
-'residue_integer_water_only_clash',
-'residue_integer_water_only_covalent',
-'residue_integer_water_only_vdw_clash',
-'residue_integer_water_only_vdw',
-'residue_integer_water_only_proximal',
-'residue_integer_water_only_hbond',
-'residue_integer_water_only_weak_hbond',
-'residue_integer_water_only_halogen_bond',
-'residue_integer_water_only_ionic',
-'residue_integer_water_only_metal_complex',
-'residue_integer_water_only_aromatic',
-'residue_integer_water_only_hydrophobic',
-'residue_integer_water_only_carbonyl',
-'residue_integer_water_only_polar',
-'residue_integer_water_only_weak_polar',
-'residue_mc_integer_clash',
-'residue_mc_integer_covalent',
-'residue_mc_integer_vdw_clash',
-'residue_mc_integer_vdw',
-'residue_mc_integer_proximal',
-'residue_mc_integer_hbond',
-'residue_mc_integer_weak_hbond',
-'residue_mc_integer_halogen_bond',
-'residue_mc_integer_ionic',
-'residue_mc_integer_metal_complex',
-'residue_mc_integer_aromatic',
-'residue_mc_integer_hydrophobic',
-'residue_mc_integer_carbonyl',
-'residue_mc_integer_polar',
-'residue_mc_integer_weak_polar',
-'residue_mc_integer_inter_only_clash',
-'residue_mc_integer_inter_only_covalent',
-'residue_mc_integer_inter_only_vdw_clash',
-'residue_mc_integer_inter_only_vdw',
-'residue_mc_integer_inter_only_proximal',
-'residue_mc_integer_inter_only_hbond',
-'residue_mc_integer_inter_only_weak_hbond',
-'residue_mc_integer_inter_only_halogen_bond',
-'residue_mc_integer_inter_only_ionic',
-'residue_mc_integer_inter_only_metal_complex',
-'residue_mc_integer_inter_only_aromatic',
-'residue_mc_integer_inter_only_hydrophobic',
-'residue_mc_integer_inter_only_carbonyl',
-'residue_mc_integer_inter_only_polar',
-'residue_mc_integer_inter_only_weak_polar',
-'residue_mc_integer_intra_only_clash',
-'residue_mc_integer_intra_only_covalent',
-'residue_mc_integer_intra_only_vdw_clash',
-'residue_mc_integer_intra_only_vdw',
-'residue_mc_integer_intra_only_proximal',
-'residue_mc_integer_intra_only_hbond',
-'residue_mc_integer_intra_only_weak_hbond',
-'residue_mc_integer_intra_only_halogen_bond',
-'residue_mc_integer_intra_only_ionic',
-'residue_mc_integer_intra_only_metal_complex',
-'residue_mc_integer_intra_only_aromatic',
-'residue_mc_integer_intra_only_hydrophobic',
-'residue_mc_integer_intra_only_carbonyl',
-'residue_mc_integer_intra_only_polar',
-'residue_mc_integer_intra_only_weak_polar',
-'residue_mc_integer_water_only_clash',
-'residue_mc_integer_water_only_covalent',
-'residue_mc_integer_water_only_vdw_clash',
-'residue_mc_integer_water_only_vdw',
-'residue_mc_integer_water_only_proximal',
-'residue_mc_integer_water_only_hbond',
-'residue_mc_integer_water_only_weak_hbond',
-'residue_mc_integer_water_only_halogen_bond',
-'residue_mc_integer_water_only_ionic',
-'residue_mc_integer_water_only_metal_complex',
-'residue_mc_integer_water_only_aromatic',
-'residue_mc_integer_water_only_hydrophobic',
-'residue_mc_integer_water_only_carbonyl',
-'residue_mc_integer_water_only_polar',
-'residue_mc_integer_water_only_weak_polar',
-'residue_sc_integer_clash',
-'residue_sc_integer_covalent',
-'residue_sc_integer_vdw_clash',
-'residue_sc_integer_vdw',
-'residue_sc_integer_proximal',
-'residue_sc_integer_hbond',
-'residue_sc_integer_weak_hbond',
-'residue_sc_integer_halogen_bond',
-'residue_sc_integer_ionic',
-'residue_sc_integer_metal_complex',
-'residue_sc_integer_aromatic',
-'residue_sc_integer_hydrophobic',
-'residue_sc_integer_carbonyl',
-'residue_sc_integer_polar',
-'residue_sc_integer_weak_polar',
-'residue_sc_integer_inter_only_clash',
-'residue_sc_integer_inter_only_covalent',
-'residue_sc_integer_inter_only_vdw_clash',
-'residue_sc_integer_inter_only_vdw',
-'residue_sc_integer_inter_only_proximal',
-'residue_sc_integer_inter_only_hbond',
-'residue_sc_integer_inter_only_weak_hbond',
-'residue_sc_integer_inter_only_halogen_bond',
-'residue_sc_integer_inter_only_ionic',
-'residue_sc_integer_inter_only_metal_complex',
-'residue_sc_integer_inter_only_aromatic',
-'residue_sc_integer_inter_only_hydrophobic',
-'residue_sc_integer_inter_only_carbonyl',
-'residue_sc_integer_inter_only_polar',
-'residue_sc_integer_inter_only_weak_polar',
-'residue_sc_integer_intra_only_clash',
-'residue_sc_integer_intra_only_covalent',
-'residue_sc_integer_intra_only_vdw_clash',
-'residue_sc_integer_intra_only_vdw',
-'residue_sc_integer_intra_only_proximal',
-'residue_sc_integer_intra_only_hbond',
-'residue_sc_integer_intra_only_weak_hbond',
-'residue_sc_integer_intra_only_halogen_bond',
-'residue_sc_integer_intra_only_ionic',
-'residue_sc_integer_intra_only_metal_complex',
-'residue_sc_integer_intra_only_aromatic',
-'residue_sc_integer_intra_only_hydrophobic',
-'residue_sc_integer_intra_only_carbonyl',
-'residue_sc_integer_intra_only_polar',
-'residue_sc_integer_intra_only_weak_polar',
-'residue_sc_integer_water_only_clash',
-'residue_sc_integer_water_only_covalent',
-'residue_sc_integer_water_only_vdw_clash',
-'residue_sc_integer_water_only_vdw',
-'residue_sc_integer_water_only_proximal',
-'residue_sc_integer_water_only_hbond',
-'residue_sc_integer_water_only_weak_hbond',
-'residue_sc_integer_water_only_halogen_bond',
-'residue_sc_integer_water_only_ionic',
-'residue_sc_integer_water_only_metal_complex',
-'residue_sc_integer_water_only_aromatic',
-'residue_sc_integer_water_only_hydrophobic',
-'residue_sc_integer_water_only_carbonyl',
-'residue_sc_integer_water_only_polar',
-'residue_sc_integer_water_only_weak_polar',
-'residue_ring_ring_inter_FF',
-'residue_ring_ring_inter_OF',
-'residue_ring_ring_inter_EE',
-'residue_ring_ring_inter_FT',
-'residue_ring_ring_inter_OT',
-'residue_ring_ring_inter_ET',
-'residue_ring_ring_inter_FE',
-'residue_ring_ring_inter_OE',
-'residue_ring_ring_inter_EF',
-'residue_ring_atom_inter_carbonpi',
-'residue_ring_atom_inter_cationpi',
-'residue_ring_atom_inter_donorpi',
-'residue_ring_atom_inter_halogenpi',
-'residue_ring_atom_inter_metsulphurpi',
-'residue_atom_ring_inter_carbonpi',
-'residue_atom_ring_inter_cationpi',
-'residue_atom_ring_inter_donorpi',
-'residue_atom_ring_inter_halogenpi',
-'residue_atom_ring_inter_metsulphurpi',
-'residue_mc_atom_ring_inter_carbonpi',
-'residue_mc_atom_ring_inter_cationpi',
-'residue_mc_atom_ring_inter_donorpi',
-'residue_mc_atom_ring_inter_halogenpi',
-'residue_mc_atom_ring_inter_metsulphurpi',
-'residue_sc_atom_ring_inter_carbonpi',
-'residue_sc_atom_ring_inter_cationpi',
-'residue_sc_atom_ring_inter_donorpi',
-'residue_sc_atom_ring_inter_halogenpi',
-'residue_sc_atom_ring_inter_metsulphurpi',
-'residue_ring_ring_inter_integer_FF',
-'residue_ring_ring_inter_integer_OF',
-'residue_ring_ring_inter_integer_EE',
-'residue_ring_ring_inter_integer_FT',
-'residue_ring_ring_inter_integer_OT',
-'residue_ring_ring_inter_integer_ET',
-'residue_ring_ring_inter_integer_FE',
-'residue_ring_ring_inter_integer_OE',
-'residue_ring_ring_inter_integer_EF',
-'residue_ring_atom_inter_integer_carbonpi',
-'residue_ring_atom_inter_integer_cationpi',
-'residue_ring_atom_inter_integer_donorpi',
-'residue_ring_atom_inter_integer_halogenpi',
-'residue_ring_atom_inter_integer_metsulphurpi',
-'residue_atom_ring_inter_integer_carbonpi',
-'residue_atom_ring_inter_integer_cationpi',
-'residue_atom_ring_inter_integer_donorpi',
-'residue_atom_ring_inter_integer_halogenpi',
-'residue_atom_ring_inter_integer_metsulphurpi',
-'residue_mc_atom_ring_inter_integer_carbonpi',
-'residue_mc_atom_ring_inter_integer_cationpi',
-'residue_mc_atom_ring_inter_integer_donorpi',
-'residue_mc_atom_ring_inter_integer_halogenpi',
-'residue_mc_atom_ring_inter_integer_metsulphurpi',
-'residue_sc_atom_ring_inter_integer_carbonpi',
-'residue_sc_atom_ring_inter_integer_cationpi',
-'residue_sc_atom_ring_inter_integer_donorpi',
-'residue_sc_atom_ring_inter_integer_halogenpi',
-'residue_sc_atom_ring_inter_integer_metsulphurpi',
-'residue_amide_ring_inter',
-'residue_ring_amide_inter',
-'residue_amide_amide_inter',
-'residue_amide_ring_inter_integer',
-'residue_ring_amide_inter_integer',
-'residue_amide_amide_inter_integer'
-])))
+                    [
+                        'residue',
+                        'is_polypeptide',
+                        'residue_clash',
+                        'residue_covalent',
+                        'residue_vdw_clash',
+                        'residue_vdw',
+                        'residue_proximal',
+                        'residue_hbond',
+                        'residue_weak_hbond',
+                        'residue_halogen_bond',
+                        'residue_ionic',
+                        'residue_metal_complex',
+                        'residue_aromatic',
+                        'residue_hydrophobic',
+                        'residue_carbonyl',
+                        'residue_polar',
+                        'residue_weak_polar',
+                        'residue_inter_only_clash',
+                        'residue_inter_only_covalent',
+                        'residue_inter_only_vdw_clash',
+                        'residue_inter_only_vdw',
+                        'residue_inter_only_proximal',
+                        'residue_inter_only_hbond',
+                        'residue_inter_only_weak_hbond',
+                        'residue_inter_only_halogen_bond',
+                        'residue_inter_only_ionic',
+                        'residue_inter_only_metal_complex',
+                        'residue_inter_only_aromatic',
+                        'residue_inter_only_hydrophobic',
+                        'residue_inter_only_carbonyl',
+                        'residue_inter_only_polar',
+                        'residue_inter_only_weak_polar',
+                        'residue_intra_only_clash',
+                        'residue_intra_only_covalent',
+                        'residue_intra_only_vdw_clash',
+                        'residue_intra_only_vdw',
+                        'residue_intra_only_proximal',
+                        'residue_intra_only_hbond',
+                        'residue_intra_only_weak_hbond',
+                        'residue_intra_only_halogen_bond',
+                        'residue_intra_only_ionic',
+                        'residue_intra_only_metal_complex',
+                        'residue_intra_only_aromatic',
+                        'residue_intra_only_hydrophobic',
+                        'residue_intra_only_carbonyl',
+                        'residue_intra_only_polar',
+                        'residue_intra_only_weak_polar',
+                        'residue_water_only_clash',
+                        'residue_water_only_covalent',
+                        'residue_water_only_vdw_clash',
+                        'residue_water_only_vdw',
+                        'residue_water_only_proximal',
+                        'residue_water_only_hbond',
+                        'residue_water_only_weak_hbond',
+                        'residue_water_only_halogen_bond',
+                        'residue_water_only_ionic',
+                        'residue_water_only_metal_complex',
+                        'residue_water_only_aromatic',
+                        'residue_water_only_hydrophobic',
+                        'residue_water_only_carbonyl',
+                        'residue_water_only_polar',
+                        'residue_water_only_weak_polar',
+                        'residue_mc_clash',
+                        'residue_mc_covalent',
+                        'residue_mc_vdw_clash',
+                        'residue_mc_vdw',
+                        'residue_mc_proximal',
+                        'residue_mc_hbond',
+                        'residue_mc_weak_hbond',
+                        'residue_mc_halogen_bond',
+                        'residue_mc_ionic',
+                        'residue_mc_metal_complex',
+                        'residue_mc_aromatic',
+                        'residue_mc_hydrophobic',
+                        'residue_mc_carbonyl',
+                        'residue_mc_polar',
+                        'residue_mc_weak_polar',
+                        'residue_mc_inter_only_clash',
+                        'residue_mc_inter_only_covalent',
+                        'residue_mc_inter_only_vdw_clash',
+                        'residue_mc_inter_only_vdw',
+                        'residue_mc_inter_only_proximal',
+                        'residue_mc_inter_only_hbond',
+                        'residue_mc_inter_only_weak_hbond',
+                        'residue_mc_inter_only_halogen_bond',
+                        'residue_mc_inter_only_ionic',
+                        'residue_mc_inter_only_metal_complex',
+                        'residue_mc_inter_only_aromatic',
+                        'residue_mc_inter_only_hydrophobic',
+                        'residue_mc_inter_only_carbonyl',
+                        'residue_mc_inter_only_polar',
+                        'residue_mc_inter_only_weak_polar',
+                        'residue_mc_intra_only_clash',
+                        'residue_mc_intra_only_covalent',
+                        'residue_mc_intra_only_vdw_clash',
+                        'residue_mc_intra_only_vdw',
+                        'residue_mc_intra_only_proximal',
+                        'residue_mc_intra_only_hbond',
+                        'residue_mc_intra_only_weak_hbond',
+                        'residue_mc_intra_only_halogen_bond',
+                        'residue_mc_intra_only_ionic',
+                        'residue_mc_intra_only_metal_complex',
+                        'residue_mc_intra_only_aromatic',
+                        'residue_mc_intra_only_hydrophobic',
+                        'residue_mc_intra_only_carbonyl',
+                        'residue_mc_intra_only_polar',
+                        'residue_mc_intra_only_weak_polar',
+                        'residue_mc_water_only_clash',
+                        'residue_mc_water_only_covalent',
+                        'residue_mc_water_only_vdw_clash',
+                        'residue_mc_water_only_vdw',
+                        'residue_mc_water_only_proximal',
+                        'residue_mc_water_only_hbond',
+                        'residue_mc_water_only_weak_hbond',
+                        'residue_mc_water_only_halogen_bond',
+                        'residue_mc_water_only_ionic',
+                        'residue_mc_water_only_metal_complex',
+                        'residue_mc_water_only_aromatic',
+                        'residue_mc_water_only_hydrophobic',
+                        'residue_mc_water_only_carbonyl',
+                        'residue_mc_water_only_polar',
+                        'residue_mc_water_only_weak_polar',
+                        'residue_sc_clash',
+                        'residue_sc_covalent',
+                        'residue_sc_vdw_clash',
+                        'residue_sc_vdw',
+                        'residue_sc_proximal',
+                        'residue_sc_hbond',
+                        'residue_sc_weak_hbond',
+                        'residue_sc_halogen_bond',
+                        'residue_sc_ionic',
+                        'residue_sc_metal_complex',
+                        'residue_sc_aromatic',
+                        'residue_sc_hydrophobic',
+                        'residue_sc_carbonyl',
+                        'residue_sc_polar',
+                        'residue_sc_weak_polar',
+                        'residue_sc_inter_only_clash',
+                        'residue_sc_inter_only_covalent',
+                        'residue_sc_inter_only_vdw_clash',
+                        'residue_sc_inter_only_vdw',
+                        'residue_sc_inter_only_proximal',
+                        'residue_sc_inter_only_hbond',
+                        'residue_sc_inter_only_weak_hbond',
+                        'residue_sc_inter_only_halogen_bond',
+                        'residue_sc_inter_only_ionic',
+                        'residue_sc_inter_only_metal_complex',
+                        'residue_sc_inter_only_aromatic',
+                        'residue_sc_inter_only_hydrophobic',
+                        'residue_sc_inter_only_carbonyl',
+                        'residue_sc_inter_only_polar',
+                        'residue_sc_inter_only_weak_polar',
+                        'residue_sc_intra_only_clash',
+                        'residue_sc_intra_only_covalent',
+                        'residue_sc_intra_only_vdw_clash',
+                        'residue_sc_intra_only_vdw',
+                        'residue_sc_intra_only_proximal',
+                        'residue_sc_intra_only_hbond',
+                        'residue_sc_intra_only_weak_hbond',
+                        'residue_sc_intra_only_halogen_bond',
+                        'residue_sc_intra_only_ionic',
+                        'residue_sc_intra_only_metal_complex',
+                        'residue_sc_intra_only_aromatic',
+                        'residue_sc_intra_only_hydrophobic',
+                        'residue_sc_intra_only_carbonyl',
+                        'residue_sc_intra_only_polar',
+                        'residue_sc_intra_only_weak_polar',
+                        'residue_sc_water_only_clash',
+                        'residue_sc_water_only_covalent',
+                        'residue_sc_water_only_vdw_clash',
+                        'residue_sc_water_only_vdw',
+                        'residue_sc_water_only_proximal',
+                        'residue_sc_water_only_hbond',
+                        'residue_sc_water_only_weak_hbond',
+                        'residue_sc_water_only_halogen_bond',
+                        'residue_sc_water_only_ionic',
+                        'residue_sc_water_only_metal_complex',
+                        'residue_sc_water_only_aromatic',
+                        'residue_sc_water_only_hydrophobic',
+                        'residue_sc_water_only_carbonyl',
+                        'residue_sc_water_only_polar',
+                        'residue_sc_water_only_weak_polar',
+                        'residue_integer_clash',
+                        'residue_integer_covalent',
+                        'residue_integer_vdw_clash',
+                        'residue_integer_vdw',
+                        'residue_integer_proximal',
+                        'residue_integer_hbond',
+                        'residue_integer_weak_hbond',
+                        'residue_integer_halogen_bond',
+                        'residue_integer_ionic',
+                        'residue_integer_metal_complex',
+                        'residue_integer_aromatic',
+                        'residue_integer_hydrophobic',
+                        'residue_integer_carbonyl',
+                        'residue_integer_polar',
+                        'residue_integer_weak_polar',
+                        'residue_integer_inter_only_clash',
+                        'residue_integer_inter_only_covalent',
+                        'residue_integer_inter_only_vdw_clash',
+                        'residue_integer_inter_only_vdw',
+                        'residue_integer_inter_only_proximal',
+                        'residue_integer_inter_only_hbond',
+                        'residue_integer_inter_only_weak_hbond',
+                        'residue_integer_inter_only_halogen_bond',
+                        'residue_integer_inter_only_ionic',
+                        'residue_integer_inter_only_metal_complex',
+                        'residue_integer_inter_only_aromatic',
+                        'residue_integer_inter_only_hydrophobic',
+                        'residue_integer_inter_only_carbonyl',
+                        'residue_integer_inter_only_polar',
+                        'residue_integer_inter_only_weak_polar',
+                        'residue_integer_intra_only_clash',
+                        'residue_integer_intra_only_covalent',
+                        'residue_integer_intra_only_vdw_clash',
+                        'residue_integer_intra_only_vdw',
+                        'residue_integer_intra_only_proximal',
+                        'residue_integer_intra_only_hbond',
+                        'residue_integer_intra_only_weak_hbond',
+                        'residue_integer_intra_only_halogen_bond',
+                        'residue_integer_intra_only_ionic',
+                        'residue_integer_intra_only_metal_complex',
+                        'residue_integer_intra_only_aromatic',
+                        'residue_integer_intra_only_hydrophobic',
+                        'residue_integer_intra_only_carbonyl',
+                        'residue_integer_intra_only_polar',
+                        'residue_integer_intra_only_weak_polar',
+                        'residue_integer_water_only_clash',
+                        'residue_integer_water_only_covalent',
+                        'residue_integer_water_only_vdw_clash',
+                        'residue_integer_water_only_vdw',
+                        'residue_integer_water_only_proximal',
+                        'residue_integer_water_only_hbond',
+                        'residue_integer_water_only_weak_hbond',
+                        'residue_integer_water_only_halogen_bond',
+                        'residue_integer_water_only_ionic',
+                        'residue_integer_water_only_metal_complex',
+                        'residue_integer_water_only_aromatic',
+                        'residue_integer_water_only_hydrophobic',
+                        'residue_integer_water_only_carbonyl',
+                        'residue_integer_water_only_polar',
+                        'residue_integer_water_only_weak_polar',
+                        'residue_mc_integer_clash',
+                        'residue_mc_integer_covalent',
+                        'residue_mc_integer_vdw_clash',
+                        'residue_mc_integer_vdw',
+                        'residue_mc_integer_proximal',
+                        'residue_mc_integer_hbond',
+                        'residue_mc_integer_weak_hbond',
+                        'residue_mc_integer_halogen_bond',
+                        'residue_mc_integer_ionic',
+                        'residue_mc_integer_metal_complex',
+                        'residue_mc_integer_aromatic',
+                        'residue_mc_integer_hydrophobic',
+                        'residue_mc_integer_carbonyl',
+                        'residue_mc_integer_polar',
+                        'residue_mc_integer_weak_polar',
+                        'residue_mc_integer_inter_only_clash',
+                        'residue_mc_integer_inter_only_covalent',
+                        'residue_mc_integer_inter_only_vdw_clash',
+                        'residue_mc_integer_inter_only_vdw',
+                        'residue_mc_integer_inter_only_proximal',
+                        'residue_mc_integer_inter_only_hbond',
+                        'residue_mc_integer_inter_only_weak_hbond',
+                        'residue_mc_integer_inter_only_halogen_bond',
+                        'residue_mc_integer_inter_only_ionic',
+                        'residue_mc_integer_inter_only_metal_complex',
+                        'residue_mc_integer_inter_only_aromatic',
+                        'residue_mc_integer_inter_only_hydrophobic',
+                        'residue_mc_integer_inter_only_carbonyl',
+                        'residue_mc_integer_inter_only_polar',
+                        'residue_mc_integer_inter_only_weak_polar',
+                        'residue_mc_integer_intra_only_clash',
+                        'residue_mc_integer_intra_only_covalent',
+                        'residue_mc_integer_intra_only_vdw_clash',
+                        'residue_mc_integer_intra_only_vdw',
+                        'residue_mc_integer_intra_only_proximal',
+                        'residue_mc_integer_intra_only_hbond',
+                        'residue_mc_integer_intra_only_weak_hbond',
+                        'residue_mc_integer_intra_only_halogen_bond',
+                        'residue_mc_integer_intra_only_ionic',
+                        'residue_mc_integer_intra_only_metal_complex',
+                        'residue_mc_integer_intra_only_aromatic',
+                        'residue_mc_integer_intra_only_hydrophobic',
+                        'residue_mc_integer_intra_only_carbonyl',
+                        'residue_mc_integer_intra_only_polar',
+                        'residue_mc_integer_intra_only_weak_polar',
+                        'residue_mc_integer_water_only_clash',
+                        'residue_mc_integer_water_only_covalent',
+                        'residue_mc_integer_water_only_vdw_clash',
+                        'residue_mc_integer_water_only_vdw',
+                        'residue_mc_integer_water_only_proximal',
+                        'residue_mc_integer_water_only_hbond',
+                        'residue_mc_integer_water_only_weak_hbond',
+                        'residue_mc_integer_water_only_halogen_bond',
+                        'residue_mc_integer_water_only_ionic',
+                        'residue_mc_integer_water_only_metal_complex',
+                        'residue_mc_integer_water_only_aromatic',
+                        'residue_mc_integer_water_only_hydrophobic',
+                        'residue_mc_integer_water_only_carbonyl',
+                        'residue_mc_integer_water_only_polar',
+                        'residue_mc_integer_water_only_weak_polar',
+                        'residue_sc_integer_clash',
+                        'residue_sc_integer_covalent',
+                        'residue_sc_integer_vdw_clash',
+                        'residue_sc_integer_vdw',
+                        'residue_sc_integer_proximal',
+                        'residue_sc_integer_hbond',
+                        'residue_sc_integer_weak_hbond',
+                        'residue_sc_integer_halogen_bond',
+                        'residue_sc_integer_ionic',
+                        'residue_sc_integer_metal_complex',
+                        'residue_sc_integer_aromatic',
+                        'residue_sc_integer_hydrophobic',
+                        'residue_sc_integer_carbonyl',
+                        'residue_sc_integer_polar',
+                        'residue_sc_integer_weak_polar',
+                        'residue_sc_integer_inter_only_clash',
+                        'residue_sc_integer_inter_only_covalent',
+                        'residue_sc_integer_inter_only_vdw_clash',
+                        'residue_sc_integer_inter_only_vdw',
+                        'residue_sc_integer_inter_only_proximal',
+                        'residue_sc_integer_inter_only_hbond',
+                        'residue_sc_integer_inter_only_weak_hbond',
+                        'residue_sc_integer_inter_only_halogen_bond',
+                        'residue_sc_integer_inter_only_ionic',
+                        'residue_sc_integer_inter_only_metal_complex',
+                        'residue_sc_integer_inter_only_aromatic',
+                        'residue_sc_integer_inter_only_hydrophobic',
+                        'residue_sc_integer_inter_only_carbonyl',
+                        'residue_sc_integer_inter_only_polar',
+                        'residue_sc_integer_inter_only_weak_polar',
+                        'residue_sc_integer_intra_only_clash',
+                        'residue_sc_integer_intra_only_covalent',
+                        'residue_sc_integer_intra_only_vdw_clash',
+                        'residue_sc_integer_intra_only_vdw',
+                        'residue_sc_integer_intra_only_proximal',
+                        'residue_sc_integer_intra_only_hbond',
+                        'residue_sc_integer_intra_only_weak_hbond',
+                        'residue_sc_integer_intra_only_halogen_bond',
+                        'residue_sc_integer_intra_only_ionic',
+                        'residue_sc_integer_intra_only_metal_complex',
+                        'residue_sc_integer_intra_only_aromatic',
+                        'residue_sc_integer_intra_only_hydrophobic',
+                        'residue_sc_integer_intra_only_carbonyl',
+                        'residue_sc_integer_intra_only_polar',
+                        'residue_sc_integer_intra_only_weak_polar',
+                        'residue_sc_integer_water_only_clash',
+                        'residue_sc_integer_water_only_covalent',
+                        'residue_sc_integer_water_only_vdw_clash',
+                        'residue_sc_integer_water_only_vdw',
+                        'residue_sc_integer_water_only_proximal',
+                        'residue_sc_integer_water_only_hbond',
+                        'residue_sc_integer_water_only_weak_hbond',
+                        'residue_sc_integer_water_only_halogen_bond',
+                        'residue_sc_integer_water_only_ionic',
+                        'residue_sc_integer_water_only_metal_complex',
+                        'residue_sc_integer_water_only_aromatic',
+                        'residue_sc_integer_water_only_hydrophobic',
+                        'residue_sc_integer_water_only_carbonyl',
+                        'residue_sc_integer_water_only_polar',
+                        'residue_sc_integer_water_only_weak_polar',
+                        'residue_ring_ring_inter_FF',
+                        'residue_ring_ring_inter_OF',
+                        'residue_ring_ring_inter_EE',
+                        'residue_ring_ring_inter_FT',
+                        'residue_ring_ring_inter_OT',
+                        'residue_ring_ring_inter_ET',
+                        'residue_ring_ring_inter_FE',
+                        'residue_ring_ring_inter_OE',
+                        'residue_ring_ring_inter_EF',
+                        'residue_ring_atom_inter_carbonpi',
+                        'residue_ring_atom_inter_cationpi',
+                        'residue_ring_atom_inter_donorpi',
+                        'residue_ring_atom_inter_halogenpi',
+                        'residue_ring_atom_inter_metsulphurpi',
+                        'residue_atom_ring_inter_carbonpi',
+                        'residue_atom_ring_inter_cationpi',
+                        'residue_atom_ring_inter_donorpi',
+                        'residue_atom_ring_inter_halogenpi',
+                        'residue_atom_ring_inter_metsulphurpi',
+                        'residue_mc_atom_ring_inter_carbonpi',
+                        'residue_mc_atom_ring_inter_cationpi',
+                        'residue_mc_atom_ring_inter_donorpi',
+                        'residue_mc_atom_ring_inter_halogenpi',
+                        'residue_mc_atom_ring_inter_metsulphurpi',
+                        'residue_sc_atom_ring_inter_carbonpi',
+                        'residue_sc_atom_ring_inter_cationpi',
+                        'residue_sc_atom_ring_inter_donorpi',
+                        'residue_sc_atom_ring_inter_halogenpi',
+                        'residue_sc_atom_ring_inter_metsulphurpi',
+                        'residue_ring_ring_inter_integer_FF',
+                        'residue_ring_ring_inter_integer_OF',
+                        'residue_ring_ring_inter_integer_EE',
+                        'residue_ring_ring_inter_integer_FT',
+                        'residue_ring_ring_inter_integer_OT',
+                        'residue_ring_ring_inter_integer_ET',
+                        'residue_ring_ring_inter_integer_FE',
+                        'residue_ring_ring_inter_integer_OE',
+                        'residue_ring_ring_inter_integer_EF',
+                        'residue_ring_atom_inter_integer_carbonpi',
+                        'residue_ring_atom_inter_integer_cationpi',
+                        'residue_ring_atom_inter_integer_donorpi',
+                        'residue_ring_atom_inter_integer_halogenpi',
+                        'residue_ring_atom_inter_integer_metsulphurpi',
+                        'residue_atom_ring_inter_integer_carbonpi',
+                        'residue_atom_ring_inter_integer_cationpi',
+                        'residue_atom_ring_inter_integer_donorpi',
+                        'residue_atom_ring_inter_integer_halogenpi',
+                        'residue_atom_ring_inter_integer_metsulphurpi',
+                        'residue_mc_atom_ring_inter_integer_carbonpi',
+                        'residue_mc_atom_ring_inter_integer_cationpi',
+                        'residue_mc_atom_ring_inter_integer_donorpi',
+                        'residue_mc_atom_ring_inter_integer_halogenpi',
+                        'residue_mc_atom_ring_inter_integer_metsulphurpi',
+                        'residue_sc_atom_ring_inter_integer_carbonpi',
+                        'residue_sc_atom_ring_inter_integer_cationpi',
+                        'residue_sc_atom_ring_inter_integer_donorpi',
+                        'residue_sc_atom_ring_inter_integer_halogenpi',
+                        'residue_sc_atom_ring_inter_integer_metsulphurpi',
+                        'residue_amide_ring_inter',
+                        'residue_ring_amide_inter',
+                        'residue_amide_amide_inter',
+                        'residue_amide_ring_inter_integer',
+                        'residue_ring_amide_inter_integer',
+                        'residue_amide_amide_inter_integer'
+                    ])))
 
         for residue in selection_plus_residues:
 
@@ -3055,8 +3082,6 @@ Dependencies:
                          ):
                 output_list = output_list + sift
 
-
             fo.write('{}\n'.format('\t'.join([str(x) for x in output_list])))
-
 
     logging.info('Program End. Maximum memory usage was {}.'.format(max_mem_usage()))
