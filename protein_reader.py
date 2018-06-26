@@ -3,7 +3,7 @@ import numpy
 
 from mmCif.mmcifIO import MMCIF2Dict
 from Bio.PDB.StructureBuilder import StructureBuilder
-from Bio.PDB import PDBIO, PDBParser
+
 """
 mmCIF reading module.
 """
