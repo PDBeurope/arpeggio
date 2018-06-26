@@ -18,37 +18,37 @@ import collections
 import logging
 #import math
 import operator
+import sys
+from collections import OrderedDict
 from functools import reduce
+from os import path
+
+import numpy as np
+import openbabel as ob
+from Bio.PDB import NeighborSearch
+from Bio.PDB.Atom import Atom
+#from Bio.PDB import PDBIO
+from Bio.PDB.PDBParser import PDBParser
+from Bio.PDB.Polypeptide import PPBuilder
+from Bio.PDB.Residue import Residue
+
+import protein_reader
+from config import (AMIDE_SMARTS, ATOM_TYPES, COMMON_SOLVENTS, CONTACT_TYPES,
+                    CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, HALOGENS,
+                    MAINCHAIN_ATOMS, METALS, PROT_ATOM_TYPES,
+                    STANDARD_NUCLEOTIDES, STD_RES, THETA_REQUIRED, VALENCE,
+                    VDW_RADII)
+
 try:
     import resource
 except ImportError:
     logging.info('Resource module not available, resource usage info won\'t be logged.')
-import sys
 
-from os import path
-
-from collections import OrderedDict
-
-import numpy as np
-
-#from Bio.PDB import PDBIO
-from Bio.PDB.PDBParser import PDBParser
-from Bio.PDB.MMCIFParser import MMCIFParser
-from Bio.PDB import NeighborSearch
-from Bio.PDB.Atom import Atom
-from Bio.PDB.Residue import Residue
-from Bio.PDB.Polypeptide import PPBuilder
-
-import openbabel as ob
 
 #############
 # CONSTANTS #
 #############
 
-from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, \
-    HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, VALENCE, \
-    MAINCHAIN_ATOMS, THETA_REQUIRED, STD_RES, PROT_ATOM_TYPES, \
-    AMIDE_SMARTS, COMMON_SOLVENTS, STANDARD_NUCLEOTIDES
 
 ###########
 # CLASSES #
@@ -679,7 +679,7 @@ A program for calculating interactions,
 using only Open Source dependencies.
 
 Dependencies:
-- Python (v2.7)
+- Python (v3.0)
 - Numpy
 - BioPython (>= v1.60)
 - OpenBabel (with Python bindings)
@@ -767,8 +767,9 @@ Dependencies:
         PROT_ATOM_TYPES['weak hbond acceptor'] = [x for x in PROT_ATOM_TYPES['weak hbond acceptor'] if x not in ('ASNND2', 'GLNNE2', 'HISCE1', 'HISCD2')]
 
     # LOAD STRUCTURE (BIOPYTHON)
-    bio_parser = PDBParser() if filetype == 'pdb' else MMCIFParser()
-    s = bio_parser.get_structure('structure', filename)
+    s = (PDBParser().get_structure('structure', filename)
+         if filetype == 'pdb'
+         else protein_reader.read_protein_from_file(filename))
     s_atoms = list(s.get_atoms())
 
     logging.info('Loaded structure (BioPython)')
