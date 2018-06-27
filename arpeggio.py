@@ -1471,7 +1471,7 @@ Dependencies:
         selection = selection_parser(args.selection, entity)
 
     elif args.selection_file:
-        with open(args.selection_file, 'rb') as fo:
+        with open(args.selection_file, 'r') as fo:
             selection = selection_parser([line for line in fo], entity)
 
     if len(selection) == 0:
