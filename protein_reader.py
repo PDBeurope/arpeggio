@@ -98,7 +98,7 @@ def _parse_atom_site(atom_sites, builder):
     for i in range(len(atom_sites['id'])):
         res_id = int(atom_sites['pdbe_label_seq_id'][i]
                      if 'pdbe_label_seq_id' in atom_sites
-                     else atom_sites['label_seq_id'][i])
+                     else atom_sites['auth_seq_id'][i])
         hetero_flag = _get_hetero_flag(atom_sites['group_PDB'][i], atom_sites['label_comp_id'][i])
         ins_code = ' ' if atom_sites['pdbx_PDB_ins_code'][i] == '?' else atom_sites['pdbx_PDB_ins_code'][i]
 
