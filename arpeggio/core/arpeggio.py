@@ -16,7 +16,6 @@
 import argparse
 import collections
 import logging
-#import math
 import operator
 import sys
 from collections import OrderedDict
@@ -27,17 +26,16 @@ import numpy as np
 import openbabel as ob
 from Bio.PDB import NeighborSearch
 from Bio.PDB.Atom import Atom
-#from Bio.PDB import PDBIO
 from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB.Polypeptide import PPBuilder
 from Bio.PDB.Residue import Residue
 
+import arpeggio.core.config as config
 import protein_reader
-from config import (AMIDE_SMARTS, ATOM_TYPES, COMMON_SOLVENTS, CONTACT_TYPES,
-                    CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, HALOGENS,
-                    MAINCHAIN_ATOMS, METALS, PROT_ATOM_TYPES,
-                    STANDARD_NUCLEOTIDES, STD_RES, THETA_REQUIRED, VALENCE,
-                    VDW_RADII)
+
+# from Bio.PDB import PDBIO
+# import math
+
 
 try:
     import resource
@@ -192,8 +190,8 @@ def selection_parser(selection_list, atom_list):
                                  and len(x.get_parent().child_list) >= 5  # MIN NUMBER OF ATOMS
                                  and len(x.get_parent().child_list) <= 100  # MAX NUMBER OF ATOMS
                                  and 'C' in set([y.element for y in x.get_parent().child_list])  # MUST CONTAIN CARBON
-                                 and x.get_parent().resname.strip().upper() not in COMMON_SOLVENTS  # MUST NOT BE COMMON SOLVENT
-                                 and x.get_parent().resname.strip().upper() not in STANDARD_NUCLEOTIDES  # MUST NOT BE NUCLEOTIDE
+                                 and x.get_parent().resname.strip().upper() not in config.COMMON_SOLVENTS  # MUST NOT BE COMMON SOLVENT
+                                 and x.get_parent().resname.strip().upper() not in config.STANDARD_NUCLEOTIDES  # MUST NOT BE NUCLEOTIDE
                                  and not x.get_parent().resname.startswith('+')  # MUST NOT BE MODIFIED NUCLEOTIDE
                                  ]
 
@@ -344,31 +342,31 @@ def get_angle(point_a, point_b, point_c):
     '''
 
     # In pseudo-code, the vector BA (call it v1) is:
-    #v1 = {A.x - B.x, A.y - B.y, A.z - B.z}
+    # v1 = {A.x - B.x, A.y - B.y, A.z - B.z}
     v1 = point_a - point_b
 
     # Similarly the vector BC (call it v2) is:
-    #v2 = {C.x - B.x, C.y - B.y, C.z - B.z}
+    # v2 = {C.x - B.x, C.y - B.y, C.z - B.z}
     v2 = point_c - point_b
 
     # The dot product of v1 and v2 is a function of the cosine of the angle between them
     # (it's scaled by the product of their magnitudes). So first normalize v1 and v2:
 
-    #v1mag = sqrt(v1.x * v1.x + v1.y * v1.y + v1.z * v1.z)
+    # v1mag = sqrt(v1.x * v1.x + v1.y * v1.y + v1.z * v1.z)
     v1_mag = np.sqrt(v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2])
 
-    #v1norm = {v1.x / v1mag, v1.y / v1mag, v1.z / v1mag}
+    # v1norm = {v1.x / v1mag, v1.y / v1mag, v1.z / v1mag}
     v1_norm = np.array([v1[0] / v1_mag, v1[1] / v1_mag, v1[2] / v1_mag])
 
-    #v2mag = sqrt(v2.x * v2.x + v2.y * v2.y + v2.z * v2.z)
+    # v2mag = sqrt(v2.x * v2.x + v2.y * v2.y + v2.z * v2.z)
     v2_mag = np.sqrt(v2[0] * v2[0] + v2[1] * v2[1] + v2[2] * v2[2])
 
-    #v2norm = {v2.x / v2mag, v2.y / v2mag, v2.z / v2mag}
+    # v2norm = {v2.x / v2mag, v2.y / v2mag, v2.z / v2mag}
     v2_norm = np.array([v2[0] / v2_mag, v2[1] / v2_mag, v2[2] / v2_mag])
 
     # Then calculate the dot product:
 
-    #res = v1norm.x * v2norm.x + v1norm.y * v2norm.y + v1norm.z * v2norm.z
+    # res = v1norm.x * v2norm.x + v1norm.y * v2norm.y + v1norm.z * v2norm.z
     res = v1_norm[0] * v2_norm[0] + v1_norm[1] * v2_norm[1] + v1_norm[2] * v2_norm[2]
 
     # And finally, recover the angle:
@@ -467,9 +465,9 @@ def is_hbond(donor, acceptor):
 
         h_dist = np.linalg.norm(hydrogen_coord - acceptor.coord)
 
-        if h_dist <= VDW_RADII['H'] + acceptor.vdw_radius + VDW_COMP_FACTOR:
+        if h_dist <= config.VDW_RADII['H'] + acceptor.vdw_radius + VDW_COMP_FACTOR:
 
-            if get_angle(donor.coord, hydrogen_coord, acceptor.coord) >= CONTACT_TYPES['hbond']['angle rad']:
+            if get_angle(donor.coord, hydrogen_coord, acceptor.coord) >= config.CONTACT_TYPES['hbond']['angle rad']:
 
                 return 1
 
@@ -485,9 +483,9 @@ def is_weak_hbond(donor, acceptor):
 
         h_dist = np.linalg.norm(hydrogen_coord - acceptor.coord)
 
-        if h_dist <= VDW_RADII['H'] + acceptor.vdw_radius + VDW_COMP_FACTOR:
+        if h_dist <= config.VDW_RADII['H'] + acceptor.vdw_radius + VDW_COMP_FACTOR:
 
-            if get_angle(donor.coord, hydrogen_coord, acceptor.coord) >= CONTACT_TYPES['weak hbond']['angle rad']:
+            if get_angle(donor.coord, hydrogen_coord, acceptor.coord) >= config.CONTACT_TYPES['weak hbond']['angle rad']:
 
                 return 1
 
@@ -507,9 +505,9 @@ def is_halogen_weak_hbond(donor, halogen, ob_mol):
 
         h_dist = np.linalg.norm(halogen.coord - hydrogen_coord)
 
-        if h_dist <= VDW_RADII['H'] + halogen.vdw_radius + VDW_COMP_FACTOR:
+        if h_dist <= config.VDW_RADII['H'] + halogen.vdw_radius + VDW_COMP_FACTOR:
 
-            if CONTACT_TYPES['weak hbond']['cx angle min rad'] <= get_angle(nbr.coord, halogen.coord, hydrogen_coord) <= CONTACT_TYPES['weak hbond']['cx angle max rad']:
+            if config.CONTACT_TYPES['weak hbond']['cx angle min rad'] <= get_angle(nbr.coord, halogen.coord, hydrogen_coord) <= config.CONTACT_TYPES['weak hbond']['cx angle max rad']:
 
                 return 1
 
@@ -526,7 +524,7 @@ def is_xbond(donor, acceptor, ob_mol):
     nbr = ob_to_bio[get_single_bond_neighbour(ob_mol.GetAtomById(bio_to_ob[donor])).GetId()]
     theta = get_angle(nbr.coord, donor.coord, acceptor.coord)
 
-    if (theta >= CONTACT_TYPES['xbond']['angle theta 1 rad']):
+    if (theta >= config.CONTACT_TYPES['xbond']['angle theta 1 rad']):
         return 1
 
     return 0
@@ -637,7 +635,7 @@ def sift_match_base3(sift1, sift2):
     return out
 
 
-def human_sift_match(sift_match, feature_sift=FEATURE_SIFT):
+def human_sift_match(sift_match, feature_sift=config.FEATURE_SIFT):
     '''
     Takes a base-3 SIFt indicating contact matched-ness and converts it to a human readable form.
     '''
@@ -704,11 +702,11 @@ Dependencies:
     parser.add_argument('-sa', '--include-sequence-adjacent', action='store_true', help='For intra-polypeptide interactions, include non-bonding interactions between residues that are next to each other in sequence; this is not done by default.')
     parser.add_argument('-a', '--use-ambiguities', action='store_true', help='Turn on abiguous definitions for ambiguous contacts.')
     parser.add_argument('-he', '--headers', action='store_true', help='Write out column headers in output files.')
-    #parser.add_argument('-sr', '--solvent_radius', type=float, default=1.4, help='Radius of solvent probe for accessibility calculations.')
-    #parser.add_argument('-ssp', '--solvent-sphere-points', type=int, default=960, help='Number of points to use for solvent shell spheres for accessibility calculations.')
-    #parser.add_argument('-st', '--sasa-threshold', type=float, default=1.0, help='Floating point solvent accessible surface area threshold (squared Angstroms) for considering an atom as \'accessible\' or not.')
-    #parser.add_argument('-ca', '--consider-all', action='store_true', help='Consider all entity/selection atoms, not just solvent accessible ones. If this is set, SASAs won\'t be calculated.')
-    #parser.add_argument('-spdb', '--sasa-pdb', action='store_true', help='Store a structure with atom b-factors set based on boolean solvent accessibility.')
+    # parser.add_argument('-sr', '--solvent_radius', type=float, default=1.4, help='Radius of solvent probe for accessibility calculations.')
+    # parser.add_argument('-ssp', '--solvent-sphere-points', type=int, default=960, help='Number of points to use for solvent shell spheres for accessibility calculations.')
+    # parser.add_argument('-st', '--sasa-threshold', type=float, default=1.0, help='Floating point solvent accessible surface area threshold (squared Angstroms) for considering an atom as \'accessible\' or not.')
+    # parser.add_argument('-ca', '--consider-all', action='store_true', help='Consider all entity/selection atoms, not just solvent accessible ones. If this is set, SASAs won\'t be calculated.')
+    # parser.add_argument('-spdb', '--sasa-pdb', action='store_true', help='Store a structure with atom b-factors set based on boolean solvent accessibility.')
     parser.add_argument('-op', '--output-postfix', type=str, help='Custom text to append to output filename (but before .extension).')
     parser.add_argument('-v', '--verbose', action='store_true', help='Be chatty.')
 
@@ -745,9 +743,9 @@ Dependencies:
 
     VDW_COMP_FACTOR = args.vdw_comp
     INTERACTING_THRESHOLD = args.interacting
-    #SOLVENT_RADIUS = args.solvent_radius
-    #NUM_SOLVENT_SPHERE_POINTS = args.solvent_sphere_points
-    #SASA_THRESHOLD = args.sasa_threshold
+    # SOLVENT_RADIUS = args.solvent_radius
+    # NUM_SOLVENT_SPHERE_POINTS = args.solvent_sphere_points
+    # SASA_THRESHOLD = args.sasa_threshold
 
     # ADDRESS AMBIGUITIES
     if not args.use_ambiguities:
@@ -755,16 +753,16 @@ Dependencies:
         # REMOVE IF NOT USING THE AMBIGUITIES (DEFAULT)
 
         # REMOVE FROM SMARTS DEFINITIONS
-        ATOM_TYPES['hbond acceptor'].pop('NH2 terminal amide', None)
-        ATOM_TYPES['hbond donor'].pop('oxygen amide term', None)
-        ATOM_TYPES['xbond acceptor'].pop('NH2 terminal amide', None)
-        ATOM_TYPES['weak hbond acceptor'].pop('NH2 terminal amide', None)
+        config.ATOM_TYPES['hbond acceptor'].pop('NH2 terminal amide', None)
+        config.ATOM_TYPES['hbond donor'].pop('oxygen amide term', None)
+        config.ATOM_TYPES['xbond acceptor'].pop('NH2 terminal amide', None)
+        config.ATOM_TYPES['weak hbond acceptor'].pop('NH2 terminal amide', None)
 
         # REMOVE FROM PROTEIN ATOM DEFINITIONS
-        PROT_ATOM_TYPES['hbond acceptor'] = [x for x in PROT_ATOM_TYPES['hbond acceptor'] if x not in ('ASNND2', 'GLNNE2', 'HISCE1', 'HISCD2')]
-        PROT_ATOM_TYPES['hbond donor'] = [x for x in PROT_ATOM_TYPES['hbond donor'] if x not in ('ASNOD1', 'GLNOE1', 'HISCE1', 'HISCD2')]
-        PROT_ATOM_TYPES['xbond acceptor'] = [x for x in PROT_ATOM_TYPES['xbond acceptor'] if x not in ('ASNND2', 'GLNNE2', 'HISCE1', 'HISCD2')]
-        PROT_ATOM_TYPES['weak hbond acceptor'] = [x for x in PROT_ATOM_TYPES['weak hbond acceptor'] if x not in ('ASNND2', 'GLNNE2', 'HISCE1', 'HISCD2')]
+        config.PROT_ATOM_TYPES['hbond acceptor'] = [x for x in config.PROT_ATOM_TYPES['hbond acceptor'] if x not in ('ASNND2', 'GLNNE2', 'HISCE1', 'HISCD2')]
+        config.PROT_ATOM_TYPES['hbond donor'] = [x for x in config.PROT_ATOM_TYPES['hbond donor'] if x not in ('ASNOD1', 'GLNOE1', 'HISCE1', 'HISCD2')]
+        config.PROT_ATOM_TYPES['xbond acceptor'] = [x for x in config.PROT_ATOM_TYPES['xbond acceptor'] if x not in ('ASNND2', 'GLNNE2', 'HISCE1', 'HISCD2')]
+        config.PROT_ATOM_TYPES['weak hbond acceptor'] = [x for x in config.PROT_ATOM_TYPES['weak hbond acceptor'] if x not in ('ASNND2', 'GLNNE2', 'HISCE1', 'HISCD2')]
 
     # LOAD STRUCTURE (BIOPYTHON)
     s = (PDBParser().get_structure('structure', filename)
@@ -841,13 +839,13 @@ Dependencies:
         atom.h_coords = []
 
         # DETECT METALS
-        if atom.element.upper() in METALS:
+        if atom.element.upper() in config.METALS:
             atom.is_metal = True
         else:
             atom.is_metal = False
 
         # DETECT HALOGENS
-        if atom.element.upper() in HALOGENS:
+        if atom.element.upper() in config.HALOGENS:
             atom.is_halogen = True
         else:
             atom.is_halogen = False
@@ -862,42 +860,42 @@ Dependencies:
 
     # ATOM TYPING VIA OPENBABEL
     # ITERATE OVER ATOM TYPE SMARTS DEFINITIONS
-    for atom_type, smartsdict in list(ATOM_TYPES.items()):
+    for atom_type, smartsdict in list(config.ATOM_TYPES.items()):
 
-        #logging.info('Typing: {}'.format(atom_type))
+        # logging.info('Typing: {}'.format(atom_type))
 
         # FOR EACH ATOM TYPE SMARTS STRING
         for smarts in list(smartsdict.values()):
 
-            #logging.info('Smarts: {}'.format(smarts))
+            # logging.info('Smarts: {}'.format(smarts))
 
             # GET OPENBABEL ATOM MATCHES TO THE SMARTS PATTERN
             ob_smart = ob.OBSmartsPattern()
             ob_smart.Init(str(smarts))
 
-            #logging.info('Initialised for: {}'.format(smarts))
+            # logging.info('Initialised for: {}'.format(smarts))
 
             ob_smart.Match(mol)
 
-            #logging.info('Matched for: {}'.format(smarts))
+            # logging.info('Matched for: {}'.format(smarts))
 
             matches = [x for x in ob_smart.GetMapList()]
 
-            #logging.info('List comp matches: {}'.format(smarts))
+            # logging.info('List comp matches: {}'.format(smarts))
 
             if matches:
 
                 # REDUCE TO A SINGLE LIST
                 matches = set(reduce(operator.add, matches))
 
-                #logging.info('Set reduce matches: {}'.format(smarts))
+                # logging.info('Set reduce matches: {}'.format(smarts))
 
                 for match in matches:
 
                     atom = mol.GetAtom(match)
                     ob_to_bio[atom.GetId()].atom_types.add(atom_type)
 
-                #logging.info('Assigned types: {}'.format(smarts))
+                # logging.info('Assigned types: {}'.format(smarts))
 
     # ALL WATER MOLECULES ARE HYDROGEN BOND DONORS AND ACCEPTORS
     for atom in (x for x in s_atoms if x.get_full_id()[3][0] == 'W'):
@@ -907,16 +905,16 @@ Dependencies:
     # OVERRIDE PROTEIN ATOM TYPING FROM DICTIONARY
     for residue in s.get_residues():
 
-        if residue.resname in STD_RES:
+        if residue.resname in config.STD_RES:
 
             for atom in residue.child_list:
 
                 # REMOVE TYPES IF ALREADY ASSIGNED FROM SMARTS
-                for atom_type in list(PROT_ATOM_TYPES.keys()):
+                for atom_type in list(config.PROT_ATOM_TYPES.keys()):
                     atom.atom_types.discard(atom_type)
 
                 # ADD ATOM TYPES FROM DICTIONARY
-                for atom_type, atom_ids in PROT_ATOM_TYPES.items():
+                for atom_type, atom_ids in config.PROT_ATOM_TYPES.items():
 
                     atom_id = residue.resname.strip() + atom.name.strip()
 
@@ -1038,7 +1036,7 @@ Dependencies:
             if 'hbond acceptor' in atom.atom_types:
 
                 # NUMBER OF LONE PAIRS
-                lone_pairs = VALENCE[atom.atomic_number] - atom.bond_order - atom.formal_charge
+                lone_pairs = config.VALENCE[atom.atomic_number] - atom.bond_order - atom.formal_charge
 
                 if lone_pairs != 0:
                     lone_pairs = lone_pairs / 2
@@ -1129,7 +1127,7 @@ Dependencies:
     chain_polypeptides = OrderedDict()
     chain_break_residues = OrderedDict()
     chain_termini = OrderedDict()
-    #chain_sequences = OrderedDict()
+    # chain_sequences = OrderedDict()
 
     for chain_id in chain_ids:
         chain_pieces[chain_id] = 0
@@ -1264,7 +1262,7 @@ Dependencies:
 
     # GET OPENBABEL ATOM MATCHES TO THE SMARTS PATTERN
     ob_smart = ob.OBSmartsPattern()
-    ob_smart.Init(AMIDE_SMARTS)
+    ob_smart.Init(config.AMIDE_SMARTS)
     ob_smart.Match(mol)
 
     matches = [x for x in ob_smart.GetMapList()]
@@ -1743,7 +1741,7 @@ Dependencies:
 
             # METAL COMPLEX
             # CAN BE COVALENT SO GO HERE
-            if distance <= CONTACT_TYPES['metal']['distance']:
+            if distance <= config.CONTACT_TYPES['metal']['distance']:
 
                 if 'hbond acceptor' in atom_bgn.atom_types and atom_end.is_metal:
                     SIFt[9] = 1
@@ -1752,7 +1750,7 @@ Dependencies:
                     SIFt[9] = 1
 
             # FEATURE CONTACTS
-            if not any(SIFt[:1]) and distance <= CONTACT_TYPES_DIST_MAX:
+            if not any(SIFt[:1]) and distance <= config.CONTACT_TYPES_DIST_MAX:
 
                 # HBOND
 
@@ -1775,7 +1773,7 @@ Dependencies:
                         SIFt[5] = is_hbond(atom_bgn, atom_end)
 
                         # CHECK DISTANCE FOR POLARS
-                        if distance <= CONTACT_TYPES["hbond"]["polar distance"]:
+                        if distance <= config.CONTACT_TYPES["hbond"]["polar distance"]:
                             SIFt[13] = 1
 
                     # ATOM_END IS DONOR
@@ -1784,7 +1782,7 @@ Dependencies:
                         SIFt[5] = is_hbond(atom_end, atom_bgn)
 
                         # CHECK DISTANCE FOR POLARS
-                        if distance <= CONTACT_TYPES["hbond"]["polar distance"]:
+                        if distance <= config.CONTACT_TYPES["hbond"]["polar distance"]:
                             SIFt[13] = 1
 
                 # UPDATE ATOM HBOND/POLAR COUNTS
@@ -1827,7 +1825,7 @@ Dependencies:
                     SIFt[6] = is_weak_hbond(atom_end, atom_bgn)
 
                     # CHECK DISTANCE FOR WEAK POLARS
-                    if distance <= CONTACT_TYPES["weak hbond"]["weak polar distance"]:
+                    if distance <= config.CONTACT_TYPES["weak hbond"]["weak polar distance"]:
                         SIFt[14] = 1
 
                 # ATOM_BGN IS CARBON, ATOM_END IS ACCEPTOR
@@ -1835,7 +1833,7 @@ Dependencies:
                     SIFt[6] = is_weak_hbond(atom_bgn, atom_end)
 
                     # CHECK DISTANCE FOR WEAK POLARS
-                    if distance <= CONTACT_TYPES["weak hbond"]["weak polar distance"]:
+                    if distance <= config.CONTACT_TYPES["weak hbond"]["weak polar distance"]:
                         SIFt[14] = 1
 
                 # ATOM_BGN IS HALOGEN WEAK ACCEPTOR
@@ -1843,7 +1841,7 @@ Dependencies:
                     SIFt[6] = is_halogen_weak_hbond(atom_end, atom_bgn, mol)
 
                     # CHECK DISTANCE FOR WEAK POLARS
-                    if distance <= CONTACT_TYPES["weak hbond"]["weak polar distance"]:
+                    if distance <= config.CONTACT_TYPES["weak hbond"]["weak polar distance"]:
                         SIFt[14] = 1
 
                 # ATOM END IS HALOGEN WEAK ACCEPTOR
@@ -1851,7 +1849,7 @@ Dependencies:
                     SIFt[6] = is_halogen_weak_hbond(atom_bgn, atom_end, mol)
 
                     # CHECK DISTANCE FOR WEAK POLARS
-                    if distance <= CONTACT_TYPES["weak hbond"]["weak polar distance"]:
+                    if distance <= config.CONTACT_TYPES["weak hbond"]["weak polar distance"]:
                         SIFt[14] = 1
 
                 # XBOND
@@ -1864,7 +1862,7 @@ Dependencies:
                         SIFt[7] = is_xbond(atom_end, atom_bgn, mol)
 
                 # IONIC
-                if distance <= CONTACT_TYPES['ionic']['distance']:
+                if distance <= config.CONTACT_TYPES['ionic']['distance']:
 
                     if 'pos ionisable' in atom_bgn.atom_types and 'neg ionisable' in atom_end.atom_types:
                         SIFt[8] = 1
@@ -1873,7 +1871,7 @@ Dependencies:
                         SIFt[8] = 1
 
                 # CARBONYL
-                if distance <= CONTACT_TYPES['carbonyl']['distance']:
+                if distance <= config.CONTACT_TYPES['carbonyl']['distance']:
 
                     if 'carbonyl oxygen' in atom_bgn.atom_types and 'carbonyl carbon' in atom_end.atom_types:
                         SIFt[12] = 1
@@ -1882,11 +1880,11 @@ Dependencies:
                         SIFt[12] = 1
 
                 # AROMATIC
-                if 'aromatic' in atom_bgn.atom_types and 'aromatic' in atom_end.atom_types and distance <= CONTACT_TYPES['aromatic']['distance']:
+                if 'aromatic' in atom_bgn.atom_types and 'aromatic' in atom_end.atom_types and distance <= config.CONTACT_TYPES['aromatic']['distance']:
                     SIFt[10] = 1
 
                 # HYDROPHOBIC
-                if 'hydrophobe' in atom_bgn.atom_types and 'hydrophobe' in atom_end.atom_types and distance <= CONTACT_TYPES['hydrophobic']['distance']:
+                if 'hydrophobe' in atom_bgn.atom_types and 'hydrophobe' in atom_end.atom_types and distance <= config.CONTACT_TYPES['hydrophobic']['distance']:
                     SIFt[11] = 1
 
             # UPDATE ATOM INTEGER SIFTS
@@ -2074,11 +2072,11 @@ Dependencies:
                 # DETERMINE RING-RING DISTANCE
                 distance = np.linalg.norm(ring['center'] - ring2['center'])
 
-                if distance > CONTACT_TYPES['aromatic']['centroid_distance']:
+                if distance > config.CONTACT_TYPES['aromatic']['centroid_distance']:
                     continue
 
                 theta_point = ring['center'] - ring2['center']
-                #iota_point = ring2['center'] - ring['center']
+                # iota_point = ring2['center'] - ring['center']
 
                 # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
                 #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
@@ -2086,7 +2084,7 @@ Dependencies:
                 dihedral = abs(group_group_angle(ring, ring2, True, True))
                 theta = abs(group_angle(ring, theta_point, True, True))
 
-                #logging.info('Dihedral = {}     Theta = {}'.format(dihedral, theta))
+                # logging.info('Dihedral = {}     Theta = {}'.format(dihedral, theta))
 
                 int_type = ''
 
@@ -2186,7 +2184,7 @@ Dependencies:
             if ring_key not in selection_plus_ring_ids:
                 continue
 
-            for atom in ns.search(ring['center'], CONTACT_TYPES['aromatic']['met_sulphur_aromatic_distance']):
+            for atom in ns.search(ring['center'], config.CONTACT_TYPES['aromatic']['met_sulphur_aromatic_distance']):
 
                 # IGNORE ANY HYDROGENS FOR THESE CONTACTS
                 # IF HYDROGENS ARE PRESENT IN THE BIOPYTHON STRUCTURE FOR ANY REASON
@@ -2233,7 +2231,7 @@ Dependencies:
                 #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
                 theta = abs(group_angle(ring, ring['center'] - atom.coord, True, True))  # CHECK IF `atom.coord` or `ring['center'] - atom.coord`
 
-                if distance <= CONTACT_TYPES['aromatic']['atom_aromatic_distance'] and theta <= 30.0:
+                if distance <= config.CONTACT_TYPES['aromatic']['atom_aromatic_distance'] and theta <= 30.0:
 
                     if atom.element == 'C' and 'weak hbond donor' in atom.atom_types:
                         potential_interactions.add('CARBONPI')
@@ -2247,7 +2245,7 @@ Dependencies:
                     if 'xbond donor' in atom.atom_types:
                         potential_interactions.add('HALOGENPI')
 
-                if distance <= CONTACT_TYPES['aromatic']['met_sulphur_aromatic_distance']:
+                if distance <= config.CONTACT_TYPES['aromatic']['met_sulphur_aromatic_distance']:
 
                     if atom.get_parent().resname == 'MET' and atom.element == 'S':
                         potential_interactions.add('METSULPHURPI')
@@ -2263,7 +2261,7 @@ Dependencies:
                 if intra_residue:
                     intra_residue_text = 'INTRA_RESIDUE'
 
-                #logging.info('Atom: <{}>   Ring: <{}>  Theta = {}'.format(atom.get_full_id(), ring['ring_id'], theta))
+                # logging.info('Atom: <{}>   Ring: <{}>  Theta = {}'.format(atom.get_full_id(), ring['ring_id'], theta))
 
                 # RESIDUE RING-ATOM SIFT
                 if contact_type == 'INTER' and not intra_residue:
@@ -2279,7 +2277,7 @@ Dependencies:
 
                                 if atom.get_parent() in polypeptide_residues:
 
-                                    if atom.name in MAINCHAIN_ATOMS:
+                                    if atom.name in config.MAINCHAIN_ATOMS:
                                         atom.get_parent().mc_atom_ring_inter_integer_sift[k] = atom.get_parent().mc_atom_ring_inter_integer_sift[k] + 1
 
                                     else:
@@ -2373,7 +2371,7 @@ Dependencies:
                 # DETERMINE AMIDE-RING DISTANCE
                 distance = np.linalg.norm(amide['center'] - ring['center'])
 
-                if distance > CONTACT_TYPES['amide']['centroid_distance']:
+                if distance > config.CONTACT_TYPES['amide']['centroid_distance']:
                     continue
 
                 theta_point = amide['center'] - ring['center']
@@ -2484,7 +2482,7 @@ Dependencies:
                 # DETERMINE AMIDE-RING DISTANCE
                 distance = np.linalg.norm(amide['center'] - amide2['center'])
 
-                if distance > CONTACT_TYPES['amide']['centroid_distance']:
+                if distance > config.CONTACT_TYPES['amide']['centroid_distance']:
                     continue
 
                 theta_point = amide['center'] - amide2['center']
@@ -2576,7 +2574,7 @@ Dependencies:
 
             for atom in residue.child_list:
 
-                if atom.name in MAINCHAIN_ATOMS:
+                if atom.name in config.MAINCHAIN_ATOMS:
 
                     if hasattr(atom, 'integer_sift'):
                         residue.mc_integer_sift = [x + y for x, y in zip(residue.mc_integer_sift, atom.integer_sift)]
