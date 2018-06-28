@@ -21,6 +21,7 @@ import sys
 from collections import OrderedDict
 from functools import reduce
 from os import path
+import platform
 
 import numpy as np
 import openbabel as ob
@@ -31,7 +32,8 @@ from Bio.PDB.Polypeptide import PPBuilder
 from Bio.PDB.Residue import Residue
 
 import arpeggio.core.config as config
-import protein_reader
+from arpeggio.core import HydrogenError, OBBioMatchError, AtomSerialError, SiftMatchError, SelectionError
+from arpeggio.core import protein_reader
 
 # from Bio.PDB import PDBIO
 # import math
@@ -42,50 +44,6 @@ try:
 except ImportError:
     logging.info('Resource module not available, resource usage info won\'t be logged.')
 
-
-#############
-# CONSTANTS #
-#############
-
-
-###########
-# CLASSES #
-###########
-
-
-class HydrogenError(Exception):
-
-    def __init__(self):
-        logging.error('Please remove all hydrogens from the structure then re-run.')
-
-
-class OBBioMatchError(Exception):
-
-    def __init__(self, serial=''):
-
-        if not serial:
-            logging.error('An OpenBabel atom could not be matched to a BioPython counterpart.')
-
-        else:
-            logging.error('OpenBabel OBAtom with serial number {} could not be matched to a BioPython counterpart.'.format(serial))
-
-
-class AtomSerialError(Exception):
-
-    def __init__(self):
-        logging.error('One or more atom serial numbers are duplicated.')
-
-
-class SiftMatchError(Exception):
-
-    def __init__(self):
-        logging.error('Seeing is not believing.')
-
-
-class SelectionError(Exception):
-
-    def __init__(self, selection):
-        logging.error('Invalid selector: {}'.format(selection))
 
 #############
 # FUNCTIONS #
@@ -328,7 +286,8 @@ def max_mem_usage():
     '''
 
     try:
-        return str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000.0) + ' MB'
+        base = 1024.0 if platform.system() == 'Linux' else 1048576.0
+        return str(round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / base, 2)) + ' MB'
     except Exception as err:
         logging.warn('Resource usage information not available {}'.format(str(err)))
 
