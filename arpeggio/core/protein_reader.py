@@ -94,6 +94,7 @@ def _parse_atom_site(atom_sites, builder):
     current_model = None
     current_chain_id = None
     current_res_id = None
+    last_res_chain_id = None
 
     for i in range(len(atom_sites['id'])):
         res_id = int(atom_sites['pdbe_label_seq_id'][i]
@@ -113,7 +114,8 @@ def _parse_atom_site(atom_sites, builder):
             current_chain_id = atom_sites['label_asym_id'][i]
             builder.init_chain(current_chain_id)
 
-        if current_res_id != res_id:
+        if current_res_id != res_id or current_chain_id != last_res_chain_id:
+            last_res_chain_id = current_chain_id
             current_res_id = res_id
             builder.init_residue(atom_sites['label_comp_id'][i],
                                  hetero_flag,
