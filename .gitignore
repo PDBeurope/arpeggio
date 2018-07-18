@@ -2,3 +2,4 @@
 examples/*
 /.project
 .vscode/*
+.pytest_cache/*
