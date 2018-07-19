@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='Arpeggio',
-    version='1.0',
+    version='1.1',
     description='Arpeggio calculates interatomic contacts based on the rules defined in CREDO.',
     project_urls={
         'Source code': 'https://github.com/harryjubb/arpeggio',
@@ -33,5 +33,5 @@ setup(
     ],
     zip_safe=False,
     include_package_data=True,
-    install_requires=['pdbecif', 'numpy', 'biopython'],
+    install_requires=['pdbecif', 'numpy', 'biopython', 'openbabel'],
     tests_require=['pytest'])
