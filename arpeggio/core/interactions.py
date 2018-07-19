@@ -82,7 +82,7 @@ class InteractionComplex:
             raise AtomSerialError
 
     def address_ambiguities(self):
-        """Remove some definitions from the config
+        """Remove ambiguous definitions from the config
         """
         # REMOVE FROM SMARTS DEFINITIONS
         config.ATOM_TYPES['hbond acceptor'].pop('NH2 terminal amide', None)
@@ -187,16 +187,16 @@ class InteractionComplex:
 
             logging.info('Minimised hydrogens.')
 
-    def write_hydrogenated(self, working_directory, input_structure):
+    def write_hydrogenated(self, wd, input_structure):
         """Writes out structure with added H atoms.
 
         Args:
-            working_directory (str): working directory
+            wd (str): working directory
         """
         filetype = self._setup_filetype(input_structure)
         conv = ob.OBConversion()
         conv.SetInAndOutFormats(filetype, filetype)
-        conv.WriteFile(self.ob_mol, os.path.join(working_directory, self.id + '_hydrogenated' + '.' + filetype))
+        conv.WriteFile(self.ob_mol, os.path.join(wd, self.id + '_hydrogenated' + '.' + filetype))
 
         if not self.params.has_hydrogens:
             logging.info('Wrote hydrogenated structure file. Hydrogenation was by Arpeggio using OpenBabel defaults.')
@@ -205,6 +205,19 @@ class InteractionComplex:
             logging.info('Wrote hydrogenated structure file. Hydrogens were from the input file.')
 
     def run_arpeggio(self, user_selections, interacting_cutoff, vdw_comp, include_sequence_adjacent):
+        """Run the arpergio algorithm on the structure
+
+        Args:
+            user_selections (list of Atoms): atom selection representing
+                ligand or a couple of ligands
+            interacting_cutoff (float): Distance cutoff for grid points
+                to be \'interacting\' with the entity.
+            vdw_comp (float): Compensation factor for VdW radii dependent
+                interaction types.
+            include_sequence_adjacent (bool): Include non-bonding
+                interactions between residues that are next to each
+                other in sequence
+        """
         self._extend_atom_properties()
         self._ob_atom_typing()
 
@@ -248,9 +261,9 @@ class InteractionComplex:
 
         sifts_content = [[utils.make_pymol_string(atom)] + atom.sift for atom in self.selection_plus]
         specific_sifts_content = [[utils.make_pymol_string(atom)]
-                                   + atom.sift_inter_only
-                                   + atom.sift_intra_only
-                                   + atom.sift_water_only
+                                  + atom.sift_inter_only
+                                  + atom.sift_intra_only
+                                  + atom.sift_water_only
                                   for atom in self.selection_plus]
 
         self.__write_atom_sifts(sifts, sifts_content)
@@ -298,6 +311,12 @@ class InteractionComplex:
     # region private methods
 
     def __write_atom_sifts(self, path, content):
+        """Routine to actually do the file writing.
+
+        Args:
+            path (str): File to store the data.
+            content (list of any): Data to be written.
+        """
         with open(path, 'w') as f:
             writer = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             writer.writerow(['atom',
@@ -321,7 +340,7 @@ class InteractionComplex:
             [writer.writerow(i) for i in content]
 
     def __write_contact_file(self, path, contacts):
-        """Write out arperggio contacts
+        """Write out Arperggio contacts
 
         Args:
             path (str): Path where the data will be exported.
@@ -357,6 +376,29 @@ class InteractionComplex:
                 )
 
     def __get_contact_type(self, atom_bgn, atom_end, selection_set):
+        """Based on the origin of the interacting guys inferre, whether
+        or not this interaction is happening inside/outside the selection
+        etc.
+
+        Possible values are:
+            * INTRA_NON_SELECTION
+            * INTRA_SELECTION
+            * INTER
+            * SELECTION_WATER
+            * NON_SELECTION_WATER
+            * WATER_WATER
+
+        Args:
+            atom_bgn (Atom): First atom of the interaction
+            atom_end (Atom): Second atom of the interaction
+            selection_set (list of Atom): User selection
+
+        Raises:
+            ValueError: If contact type could not be assigned.
+
+        Returns:
+            str: Type of the contact for a given atom.
+        """
         contact_type = ''
 
         if atom_bgn not in selection_set and atom_end not in selection_set:
@@ -384,6 +426,17 @@ class InteractionComplex:
         return contact_type
 
     def _calculate_contacts(self, interacting_cutoff, vdw_comp_factor, include_sequence_adjacent):
+        """Calculate the actual molecular contacts and their type.
+
+        Args:
+            interacting_cutoff (float): Distance cutoff for grid points
+                to be \'interacting\' with the entity.
+            vdw_comp (float): Compensation factor for VdW radii dependent
+                interaction types.
+            include_sequence_adjacent (bool): Include non-bonding
+                interactions between residues that are next to each
+                other in sequence
+        """
         for atom_bgn, atom_end in self.ns.search_all(interacting_cutoff):
 
             selection_set = set(self.selection)
@@ -721,7 +774,7 @@ class InteractionComplex:
                 closest_residue.rings.append(ring_id)
 
     def _add_atomic_radii(self):
-        """Add radii
+        """Add atomic radii to the structure atoms.
         """
         # ADD VDW RADII TO ENTITY ATOMS
         # USING OPENBABEL VDW RADII
@@ -739,7 +792,7 @@ class InteractionComplex:
 
     def _add_hydrogens_to_biopython(self):
         """Add hydrogens atom to the biopython structure
-        Note: @Lukas Not sure why it is here.
+        Note: TODO @Lukas Not sure why it is here.
         """
         for atom in ob.OBMolAtomIter(self.ob_mol):
             # IF THE ATOM HAS EXPLICIT HYDROGENS
@@ -1076,7 +1129,7 @@ class InteractionComplex:
                 atom.potential_fsift[9] = 1
 
     def _initialize_residue_sift(self):
-        """Initialize residue sifts
+        """Initialize residue SIFT.
         """
         for residue in self.biopython_str.get_residues():
 
@@ -1107,7 +1160,7 @@ class InteractionComplex:
             residue.amide_amide_inter_integer_sift = [0]
 
     def _handle_hydrogens(self):
-        """Determine atom valences and explicit hydrogen counts
+        """Determine atom valences and explicit hydrogen counts.
         """
         for ob_atom in ob.OBMolAtomIter(self.ob_mol):
             if ob_atom.IsHydrogen():
