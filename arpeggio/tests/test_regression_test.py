@@ -52,7 +52,7 @@ class TestRegression:
         shutil.copyfile(os.path.join(config.structures_path, f'{pdb_id}.pdb'), pdb_file)
         shutil.copyfile(os.path.join(config.structures_path, f'{pdb_id}.cif'), cif_file)
 
-        subprocess.run(['python', '-m', 'arpeggio.core.arpeggio', str(cif_file), '-he', '-s', selection])
+        subprocess.run(['python', 'arpeggio', str(cif_file), '-he', '-s', selection])
         subprocess.run([config.py2, config.arpeggio, str(pdb_file), '-he', '-s', selection])
 
         entries = process_arpeggio_pair(pdb, cif)

@@ -76,9 +76,13 @@ def main():
     """
     parser = create_parser()
     args = parser.parse_args()
+    run_arpeggio(args)
 
-    _setup(args)
+
+def run_arpeggio(args):
+
     logging.info('Program begin.')
+    _setup(args)
 
     i_complex = InteractionComplex(args.filename, args.vdw_comp, args.interacting, args.ph)
     i_complex.structure_checks()
