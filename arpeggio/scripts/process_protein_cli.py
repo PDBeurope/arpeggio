@@ -103,6 +103,8 @@ def main():
     i_complex.write_contacts(selections, args.output)  # _contacts; _bs_contacts
     i_complex.write_atom_sifts(args.output)  # _sift; _specific_sift
     i_complex.write_binding_site_sifts(args.output)  # _siftmatch; _specific_siftmatch
+    i_complex.write_polar_matching(args.output)  # _polarmatch; _specific_polarmatch
+    i_complex.write_residue_sifts(args.output)  # residue_sifts
 
     logging.info('Program End. Maximum memory usage was {}.'.format(max_mem_usage()))
 

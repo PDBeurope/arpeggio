@@ -48,8 +48,11 @@ class InteractionComplex:
         # obabel data
         self.ob_mol = self._read_openbabel(filename)
 
-        self.ob_to_bio = {}
-        self.bio_to_ob = {}
+        self.ob_to_bio = {}  # openbabel to biopython atom mapping
+        self.bio_to_ob = {}  # biopython to openbabel atom mapping
+        self.selection = []  # user atom selection
+        self.selection_plus = []  # extended user atom selection
+        self.selection_plus_residues = []  # residues
         self.ns = None  # neighbourhood search
         self.contacts = []  # arperggio contacts as a list of AtomContacts
 
@@ -306,9 +309,171 @@ class InteractionComplex:
                                   + sift_match_water
                                   + [self._human_sift_match(sift_match_water)])
 
-    # endregion
+    def write_polar_matching(self, wd):
+        """Write out potential polar contacts
 
-    # region private methods
+        Args:
+            wd (str): Working directory
+        """
+        polarmatch = os.path.join(wd, self.id + '_polarmatch.csv')
+        s_polarmatch = os.path.join(wd, self.id + '_specific_polarmatch.csv')
+
+        with open(polarmatch, 'w') as f, open(s_polarmatch, 'w') as pf:
+            writer = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            p_writer = csv.writer(pf, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+            # TODO add header
+            for atom in self.selection_plus:
+                writer.writerow([utils.make_pymol_string(atom)]
+                                + [atom.potential_hbonds,
+                                   atom.potential_polars,
+                                   atom.actual_hbonds,
+                                   atom.actual_polars])
+                p_writer.writerow([utils.make_pymol_string(atom)]
+                                  + [atom.potential_hbonds,
+                                     atom.potential_polars,
+                                     atom.actual_hbonds_inter_only,
+                                     atom.actual_hbonds_intra_only,
+                                     atom.actual_hbonds_water_only,
+                                     atom.actual_polars_inter_only,
+                                     atom.actual_polars_intra_only,
+                                     atom.actual_polars_water_only])
+
+    def write_residue_sifts(self, wd):
+        self._calc_residue_sifts()
+        residue_sifts = os.path.join(wd, self.id + '_residue_sifts.csv')
+        with open(residue_sifts, 'w') as f:
+            writer = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            writer.writerow(config.RESIDUE_SIFT_HEADER)
+
+            for residue in self.selection_plus_residues:
+                output_list = [utils.make_pymol_string(residue), residue.is_polypeptide]
+
+                for sift in (residue.sift, residue.sift_inter_only, residue.sift_intra_only, residue.sift_water_only,
+                             residue.mc_sift, residue.mc_sift_inter_only, residue.mc_sift_intra_only, residue.mc_sift_water_only,
+                             residue.sc_sift, residue.sc_sift_inter_only, residue.sc_sift_intra_only, residue.sc_sift_water_only,
+
+                             residue.integer_sift, residue.integer_sift_inter_only, residue.integer_sift_intra_only, residue.integer_sift_water_only,
+                             residue.mc_integer_sift, residue.mc_integer_sift_inter_only, residue.mc_integer_sift_intra_only, residue.mc_integer_sift_water_only,
+                             residue.sc_integer_sift, residue.sc_integer_sift_inter_only, residue.sc_integer_sift_intra_only, residue.sc_integer_sift_water_only,
+
+                             residue.ring_ring_inter_sift, residue.ring_atom_inter_sift, residue.atom_ring_inter_sift, residue.mc_atom_ring_inter_sift, residue.sc_atom_ring_inter_sift,
+                             residue.ring_ring_inter_integer_sift, residue.ring_atom_inter_integer_sift, residue.atom_ring_inter_integer_sift, residue.mc_atom_ring_inter_integer_sift, residue.sc_atom_ring_inter_integer_sift,
+
+                             residue.amide_ring_inter_sift, residue.ring_amide_inter_sift, residue.amide_amide_inter_sift,
+                             residue.amide_ring_inter_integer_sift, residue.ring_amide_inter_integer_sift, residue.amide_amide_inter_integer_sift
+                             ):
+                    output_list = output_list + sift
+
+                writer.writerow(output_list)
+
+        # endregion
+
+        # region private methods
+    def _calc_residue_sifts(self):
+        """Calculate integer sifts and flatten them to binary SIFTs to
+        provide binary information on the contacts employed per residue.
+        """
+        for residue in self.biopython_str.get_residues():
+
+            # WHOLE RESIDUE SIFTS
+            for atom in residue.child_list:
+
+                if hasattr(atom, 'integer_sift'):
+                    residue.integer_sift = [x + y for x, y in zip(residue.integer_sift, atom.integer_sift)]
+
+                if hasattr(atom, 'integer_sift_inter_only'):
+                    residue.integer_sift_inter_only = [x + y for x, y in zip(residue.integer_sift_inter_only, atom.integer_sift_inter_only)]
+
+                if hasattr(atom, 'integer_sift_intra_only'):
+                    residue.integer_sift_intra_only = [x + y for x, y in zip(residue.integer_sift_intra_only, atom.integer_sift_intra_only)]
+
+                if hasattr(atom, 'integer_sift_water_only'):
+                    residue.integer_sift_water_only = [x + y for x, y in zip(residue.integer_sift_water_only, atom.integer_sift_water_only)]
+
+            # FLATTEN TO BINARY SIFTS
+            residue.sift = [1 if x else 0 for x in residue.integer_sift]
+            residue.sift_inter_only = [1 if x else 0 for x in residue.integer_sift_inter_only]
+            residue.sift_intra_only = [1 if x else 0 for x in residue.integer_sift_intra_only]
+            residue.sift_water_only = [1 if x else 0 for x in residue.integer_sift_water_only]
+
+            # MAINCHAIN/SIDECHAIN SIFTS FOR POLYPEPTIDE RESIDUES
+            residue.mc_integer_sift = [0] * 15
+            residue.sc_integer_sift = [0] * 15
+
+            residue.mc_integer_sift_inter_only = [0] * 15
+            residue.mc_integer_sift_intra_only = [0] * 15
+            residue.mc_integer_sift_water_only = [0] * 15
+
+            residue.sc_integer_sift_inter_only = [0] * 15
+            residue.sc_integer_sift_intra_only = [0] * 15
+            residue.sc_integer_sift_water_only = [0] * 15
+
+            residue.mc_sift = [0] * 15
+            residue.mc_sift_inter_only = [0] * 15
+            residue.mc_sift_intra_only = [0] * 15
+            residue.mc_sift_water_only = [0] * 15
+
+            residue.sc_sift = [0] * 15
+            residue.sc_sift_inter_only = [0] * 15
+            residue.sc_sift_intra_only = [0] * 15
+            residue.sc_sift_water_only = [0] * 15
+
+            if residue in self.polypeptide_residues:
+
+                for atom in residue.child_list:
+
+                    if atom.name in config.MAINCHAIN_ATOMS:
+
+                        if hasattr(atom, 'integer_sift'):
+                            residue.mc_integer_sift = [x + y for x, y in zip(residue.mc_integer_sift, atom.integer_sift)]
+
+                        if hasattr(atom, 'integer_sift_inter_only'):
+                            residue.mc_integer_sift_inter_only = [x + y for x, y in zip(residue.mc_integer_sift_inter_only, atom.integer_sift_inter_only)]
+
+                        if hasattr(atom, 'integer_sift_intra_only'):
+                            residue.mc_integer_sift_intra_only = [x + y for x, y in zip(residue.mc_integer_sift_intra_only, atom.integer_sift_intra_only)]
+
+                        if hasattr(atom, 'integer_sift_water_only'):
+                            residue.mc_integer_sift_water_only = [x + y for x, y in zip(residue.mc_integer_sift_water_only, atom.integer_sift_water_only)]
+
+                    else:
+
+                        if hasattr(atom, 'integer_sift'):
+                            residue.sc_integer_sift = [x + y for x, y in zip(residue.sc_integer_sift, atom.integer_sift)]
+
+                        if hasattr(atom, 'integer_sift_inter_only'):
+                            residue.sc_integer_sift_inter_only = [x + y for x, y in zip(residue.sc_integer_sift_inter_only, atom.integer_sift_inter_only)]
+
+                        if hasattr(atom, 'integer_sift_intra_only'):
+                            residue.sc_integer_sift_intra_only = [x + y for x, y in zip(residue.sc_integer_sift_intra_only, atom.integer_sift_intra_only)]
+
+                        if hasattr(atom, 'integer_sift_water_only'):
+                            residue.sc_integer_sift_water_only = [x + y for x, y in zip(residue.sc_integer_sift_water_only, atom.integer_sift_water_only)]
+
+                # FLATTEN TO BINARY SIFTS
+                residue.mc_sift = [1 if x else 0 for x in residue.mc_integer_sift]
+                residue.mc_sift_inter_only = [1 if x else 0 for x in residue.mc_integer_sift_inter_only]
+                residue.mc_sift_intra_only = [1 if x else 0 for x in residue.mc_integer_sift_intra_only]
+                residue.mc_sift_water_only = [1 if x else 0 for x in residue.mc_integer_sift_water_only]
+
+                residue.sc_sift = [1 if x else 0 for x in residue.sc_integer_sift]
+                residue.sc_sift_inter_only = [1 if x else 0 for x in residue.sc_integer_sift_inter_only]
+                residue.sc_sift_intra_only = [1 if x else 0 for x in residue.sc_integer_sift_intra_only]
+                residue.sc_sift_water_only = [1 if x else 0 for x in residue.sc_integer_sift_water_only]
+
+            # FLATTEN RING RELATED SIFTS
+            residue.ring_ring_inter_sift = [1 if x else 0 for x in residue.ring_ring_inter_integer_sift]
+
+            residue.ring_atom_inter_sift = [1 if x else 0 for x in residue.ring_atom_inter_integer_sift]
+            residue.atom_ring_inter_sift = [1 if x else 0 for x in residue.atom_ring_inter_integer_sift]
+            residue.mc_atom_ring_inter_sift = [1 if x else 0 for x in residue.mc_atom_ring_inter_integer_sift]
+            residue.sc_atom_ring_inter_sift = [1 if x else 0 for x in residue.sc_atom_ring_inter_integer_sift]
+
+            # FLATTEN AMIDE RELATED SIFTS
+            residue.amide_ring_inter_sift = [1 if x else 0 for x in residue.amide_ring_inter_integer_sift]
+            residue.ring_amide_inter_sift = [1 if x else 0 for x in residue.ring_amide_inter_integer_sift]
+            residue.amide_amide_inter_sift = [1 if x else 0 for x in residue.amide_amide_inter_integer_sift]
 
     def __write_atom_sifts(self, path, content):
         """Routine to actually do the file writing.
@@ -731,6 +896,7 @@ class InteractionComplex:
 
         self.selection = selection
         self.selection_plus = selection_plus
+        self.selection_plus_residues = selection_plus_residues
 
     def _assign_aromatic_rings_to_residues(self):
         # NEIGHBORSEARCH
@@ -938,7 +1104,7 @@ class InteractionComplex:
             pass
 
         # POLYPEPTIDE RESIDUES
-        polypeptide_residues = set([])
+        self.polypeptide_residues = set([])
 
         for pp in polypeptides:
 
@@ -947,7 +1113,7 @@ class InteractionComplex:
             for residue in pp:
 
                 # FLAG AS POLYPEPTIDE
-                polypeptide_residues.add(residue)
+                self.polypeptide_residues.add(residue)
                 residue.is_polypeptide = True
 
                 # FLAG IF CHAIN BREAK OR TERMINAL
