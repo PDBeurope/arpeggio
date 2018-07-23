@@ -1469,7 +1469,7 @@ class InteractionComplex:
 
         s = (PDBParser().get_structure('structure', path)
              if extension == 'pdb'
-             else protein_reader.read_protein_from_file(path))
+             else protein_reader.read_mmcif_to_biopython(path))
 
         logging.info('Loaded PDB structure (BioPython)')
 
@@ -1485,15 +1485,18 @@ class InteractionComplex:
             openbabel.Structure: Parsed openbabel protein structure
         """
         filetype = self._setup_filetype(path)
+        if filetype == 'pdb':
+            ob_conv = ob.OBConversion()
+            ob_conv.SetInFormat(filetype)
+            mol = ob.OBMol()
+            ob_conv.ReadFile(mol, path)
 
-        ob_conv = ob.OBConversion()
-        ob_conv.SetInFormat(filetype)
-        mol = ob.OBMol()
-        ob_conv.ReadFile(mol, path)
+            logging.info('Loaded PDB structure (OpenBabel)')
 
-        logging.info('Loaded PDB structure (OpenBabel)')
-
-        return mol
+            return mol
+        else:
+            logging.info('Loaded MMCIF structure (OpenBabel)')
+            mol = protein_reader.read_mmcif_to_openbabel(path)
 
     def _setup_filetype(self, filepath):
         """Sets up argument type to be consumedd by openbabel

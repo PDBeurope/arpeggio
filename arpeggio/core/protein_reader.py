@@ -1,16 +1,172 @@
 import os
+
 import numpy
-
-from mmCif.mmcifIO import MMCIF2Dict
 from Bio.PDB.StructureBuilder import StructureBuilder
+from mmCif.mmcifIO import MMCIF2Dict
+from openbabel import OBBitVec, OBElementTable, OBMol, OBResidueData
 
 """
-mmCIF reading module.
+mmCIF reading module to crate internal representation of proteins in
+biopython and openbabel.
 """
 
+# region common
 
-def read_protein_from_file(path):
-    """Read in mmcif protein structure.
+
+def _get_res_id(atom_sites, i):
+    return int(atom_sites['pdbe_label_seq_id'][i]
+               if 'pdbe_label_seq_id' in atom_sites
+               else atom_sites['auth_seq_id'][i])
+
+
+def _get_ins_code(atom_sites, i):
+    return ' ' if atom_sites['pdbx_PDB_ins_code'][i] == '?' else atom_sites['pdbx_PDB_ins_code'][i]
+
+
+def _format_formal_charge(charge):
+    return 0 if charge in ('?', '.') else int(charge)
+
+
+def _trim_models(atom_site):
+    """Trim all the other models but the first one from the mmcif structure
+    They are not used in the calculation and causes problems in Openbabel.
+
+    Args:
+        atom_site (dict): Parsed _atom_site category
+
+    Returns:
+        dict: first model from the _atom_site
+    """
+    output = {}
+    length = sum(x == '1' for x in atom_site['pdbx_PDB_model_num'])
+
+    for k, v in atom_site.items():
+        output[k] = v[:length]
+
+    return output
+# endregion common
+
+
+# region openbabel
+def read_mmcif_to_openbabel(path):
+    """Read in mmcif structure to to the openbabel.
+
+    Args:
+        path (str): path to the mmcif file.
+
+    Raises:
+        IOError: In case file does not exist
+
+    Returns:
+        openbabel.OBMol: openbabel structure
+    """
+    if not os.path.isfile(path):
+        raise IOError('File {} not found'.format(path))
+
+    parsed = MMCIF2Dict().parse(path)
+    perceived_atom_site = list(parsed.values())[0]['_atom_site']
+    _atom_site = _trim_models(perceived_atom_site)
+    mol = _parse_atom_site_openbabel(_atom_site)
+
+    return mol
+
+
+def _parse_atom_site_openbabel(atom_sites):
+    """Parse _atom_site record to OBMolecule
+
+    Args:
+        atom_sites (dict of str): Parsed mmcif structure of the input file.
+
+    Returns:
+        [OBMol]: openbabel representation of the protein structure.
+    """
+    table = OBElementTable()
+    res_id = None
+    chain_id = None
+    chain_num = 0
+    res = None
+
+    mol = OBMol()
+    mol.SetChainsPerceived()
+    mol.BeginModify()
+
+    for i in range(len(atom_sites['id'])):
+        current_res_id = _get_res_id(atom_sites, i)
+        current_chain_id = atom_sites['label_asym_id'][i]
+        ins_code = _get_ins_code(atom_sites, i)
+
+        if chain_id != current_chain_id:
+            chain_num += 1
+            chain_id = current_chain_id
+
+        if current_res_id != res_id or current_chain_id != chain_id:
+            res_id = current_res_id
+
+            res = mol.NewResidue()
+            res.SetChainNum(chain_num)
+            res.SetNum(str(res_id))
+            res.SetName(atom_sites['label_comp_id'][i])
+            res.SetInsertionCode(ins_code)
+
+        atom = _init_openbabel_atom(table, mol, res, atom_sites, i)
+
+    resdat = OBResidueData()
+    resdat.AssignBonds(mol, OBBitVec())
+    mol.ConnectTheDots()
+    mol.PerceiveBondOrders()
+    mol.EndModify()
+
+    return mol
+
+
+def _init_openbabel_atom(table, mol, res, atom_sites, i):
+    """Initialize openbabel atom
+
+    Args:
+        table (OBElementTable): Element table to translate element type
+            to element numbers.
+        mol (OBMol): Molecule the atom will be added to.
+        res (OBResidue): Residue the atom will be added to.
+        atom_sites (dict of str): Parsed mmcif structure of the input file.
+        i (int): Pointer to the atom under question.
+
+    Returns:
+        [OBAtom]: openbabel Atom representation.
+    """
+    atom = mol.NewAtom(int(atom_sites['id'][i]))
+
+    atom.SetVector(
+        float(atom_sites['Cartn_x'][i]),
+        float(atom_sites['Cartn_y'][i]),
+        float(atom_sites['Cartn_z'][i])
+    )
+    atomic_num = table.GetAtomicNum(atom_sites['type_symbol'][i])
+    atom.SetAtomicNum(atomic_num)
+    atom.SetFormalCharge(_format_formal_charge(atom_sites['pdbx_formal_charge'][i]))
+
+    res.AddAtom(atom)
+    res.SetHetAtom(atom, atom_sites['group_PDB'][i] == 'HETATM')
+    res.SetAtomID(atom, atom_sites['label_atom_id'][i])
+
+    #_set_ob_occupancy(float(atom_sites['occupancy'][i]), atom)
+    return atom
+
+
+# def _set_ob_occupancy(occupancy, atom):
+#     occupancy = OBPairData()
+#     occupancy.SetAttribute('_atom_site_occupancy')
+#     occupancy.SetValue(occupancy)
+#     occupancy.SetOrigin('mmcif')
+#     atom.SetData(occupancy)
+
+# endregion
+
+
+# region Biopython
+
+
+def read_mmcif_to_biopython(path):
+    """Read in mmcif protein structure and report its Biopython structure
 
     Args:
         path (str): Path to the mmcif file.
@@ -32,8 +188,9 @@ def read_protein_from_file(path):
     structure_builder.init_structure(structure_id)
 
     try:
-        _atom_site = list(parsed.values())[0]['_atom_site']
-        _parse_atom_site(_atom_site, structure_builder)
+        perceived_atom_site = list(parsed.values())[0]['_atom_site']
+        _atom_site = _trim_models(perceived_atom_site)
+        _parse_atom_site_biopython(_atom_site, structure_builder)
     except KeyError:
         raise ValueError('The cif file does not contain _atom_site record')
 
@@ -59,7 +216,7 @@ def _get_hetero_flag(field, resn):
         return ' '
 
 
-def _init_atom(builder, atom_sites, i):
+def _init_biopython_atom(builder, atom_sites, i):
     """Initializes a single atom in the PDB structure
 
     Args:
@@ -83,7 +240,7 @@ def _init_atom(builder, atom_sites, i):
                       atom_sites['type_symbol'][i])
 
 
-def _parse_atom_site(atom_sites, builder):
+def _parse_atom_site_biopython(atom_sites, builder):
     """Parse mmcif atom site list to the BioPython atoms reprensentation.
 
     Args:
@@ -97,11 +254,9 @@ def _parse_atom_site(atom_sites, builder):
     last_res_chain_id = None
 
     for i in range(len(atom_sites['id'])):
-        res_id = int(atom_sites['pdbe_label_seq_id'][i]
-                     if 'pdbe_label_seq_id' in atom_sites
-                     else atom_sites['auth_seq_id'][i])
+        res_id = _get_res_id(atom_sites, i)
         hetero_flag = _get_hetero_flag(atom_sites['group_PDB'][i], atom_sites['label_comp_id'][i])
-        ins_code = ' ' if atom_sites['pdbx_PDB_ins_code'][i] == '?' else atom_sites['pdbx_PDB_ins_code'][i]
+        ins_code = _get_ins_code(atom_sites, i)
 
         if current_model != atom_sites['pdbx_PDB_model_num'][i]:  # init model
             current_model = atom_sites['pdbx_PDB_model_num'][i]
@@ -122,4 +277,5 @@ def _parse_atom_site(atom_sites, builder):
                                  res_id,
                                  ins_code)
 
-        _init_atom(builder, atom_sites, i)
+        _init_biopython_atom(builder, atom_sites, i)
+# endregion

@@ -57,15 +57,16 @@ def _setup(args):
     Args:
         args (ArgumentParser): parsed arguments from the command line
     """
-    try:
-        import resource
-    except ImportError:
-        logging.info('Resource module not available, resource usage info won\'t be logged.')
-
     logging_level = logging.WARNING if args.mute else logging.DEBUG
     logging.basicConfig(level=logging_level,
                         format='%(levelname)s//%(asctime)s.%(msecs).03d//%(message)s',
                         datefmt='%H:%M:%S')
+
+    logging.info('Program begin.')
+    try:
+        import resource
+    except ImportError:
+        logging.info('Resource module not available, resource usage info won\'t be logged.')
 
     args.output = os.getcwd() if args.output is None else args.output
     os.makedirs(args.output, exist_ok=True)
@@ -81,7 +82,6 @@ def main():
 
 def run_arpeggio(args):
 
-    logging.info('Program begin.')
     _setup(args)
 
     i_complex = InteractionComplex(args.filename, args.vdw_comp, args.interacting, args.ph)
