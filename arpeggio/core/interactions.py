@@ -1498,6 +1498,8 @@ class InteractionComplex:
             logging.info('Loaded MMCIF structure (OpenBabel)')
             mol = protein_reader.read_mmcif_to_openbabel(path)
 
+            return mol
+
     def _setup_filetype(self, filepath):
         """Sets up argument type to be consumedd by openbabel
 
