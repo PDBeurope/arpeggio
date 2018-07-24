@@ -146,7 +146,7 @@ def _init_openbabel_atom(table, mol, res, atom_sites, i):
 
     res.AddAtom(atom)
     res.SetHetAtom(atom, atom_sites['group_PDB'][i] == 'HETATM')
-    res.SetAtomID(atom, atom_sites['label_atom_id'][i])
+    res.SetSerialNum(atom, int(atom_sites['label_atom_id'][i]))
 
     #_set_ob_occupancy(float(atom_sites['occupancy'][i]), atom)
     return atom
