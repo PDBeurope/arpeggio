@@ -1482,7 +1482,7 @@ class InteractionComplex:
             path (str): Path to the structure
 
         Returns:
-            openbabel.Structure: Parsed openbabel protein structure
+            openbabel.OBMol: Parsed openbabel protein structure
         """
         filetype = self._setup_filetype(path)
         if filetype == 'pdb':
@@ -1621,9 +1621,18 @@ class InteractionComplex:
             return rad * 180 / np.pi
 
     def _is_hbond(self, donor, acceptor, vdw_comp_factor):
-        '''
-        Feed me BioPython atoms.
-        '''
+        """Determines if atoms share Hbond.
+
+        Args:
+            donor (OBAtom): First atom
+            acceptor (OBAtom): Second atom
+            vdw_comp_factor (float): Compensation factor for VdW radii
+                dependent interaction types.
+
+        Returns:
+            int: 1/0 binary information whether or not the atoms share
+                Hbond.
+        """
 
         for hydrogen_coord in donor.h_coords:
 
@@ -1638,15 +1647,17 @@ class InteractionComplex:
         return 0
 
     def _is_weak_hbond(self, donor, acceptor, vdw_comp_factor):
-        """Feed me BioPython atoms.
+        """Determines if atoms share a weak Hbond.
 
         Args:
-            donor ([type]): [description]
-            acceptor ([type]): [description]
-            vdw_comp_factor ([type]): [description]
+            donor (OBAtom): First atom
+            acceptor (OBAtom): Second atom
+            vdw_comp_factor (float): Compensation factor for VdW radii
+                dependent interaction types.
 
         Returns:
-            [type]: [description]
+            int: 1/0 binary information whether or not the atoms share
+                weak Hbond.
         """
 
         for hydrogen_coord in donor.h_coords:
@@ -1662,16 +1673,17 @@ class InteractionComplex:
         return 0
 
     def _is_halogen_weak_hbond(self, donor, halogen, ob_mol, vdw_comp_factor):
-        """Feed me BioPython atoms and the OpenBabel molecule.
+        """Determines if atoms share a weak halogen bond.
 
         Args:
-            donor ([type]): [description]
-            halogen ([type]): [description]
-            ob_mol ([type]): [description]
-            vdw_comp_factor ([type]): [description]
+            donor (OBAtom): Donor atom
+            halogen (OBAtom): Halogen atom
+            ob_mol (OBMol): [description]
+            vdw_comp_factor (float): [description]
 
         Returns:
-            [type]: [description]
+            int: 1/0 binary information whether or not the atoms share
+                weak weak Hbond.
         """
 
         # `nbr` WILL BE A BIOPYTHON ATOM
@@ -1691,9 +1703,17 @@ class InteractionComplex:
         return 0
 
     def _is_xbond(self, donor, acceptor, ob_mol):
-        '''
-        Feed me BioPython atoms and the OpenBabel molecule.
-        '''
+        """Determines if atoms share a weak halogen bond.
+
+        Args:
+            donor (OBAtom): Donor atom
+            acceptor (OBAtom): Halogen atom
+            ob_mol (OBMol): [description]            
+
+        Returns:
+            int: 1/0 binary information whether or not the atoms share
+                xbond.
+        """
 
         # `nbr` WILL BE A BIOPYTHON ATOM
         # ... HOPEFULLY
@@ -1721,7 +1741,13 @@ class InteractionComplex:
             atom.sift_water_only = [x or y for x, y in zip(atom.sift_water_only, addition)]
 
     def _update_atom_fsift(self, atom, addition, contact_type='INTER'):
-        '''
+        """[summary]
+
+        Args:
+            atom ([type]): [description]
+            addition ([type]): [description]
+            contact_type (str, optional): Defaults to 'INTER'. [description]
+        """'''
         '''
 
         atom.actual_fsift = [x or y for x, y in zip(atom.actual_fsift, addition)]
@@ -1736,7 +1762,13 @@ class InteractionComplex:
             atom.actual_fsift_water_only = [x or y for x, y in zip(atom.actual_fsift_water_only, addition)]
 
     def _update_atom_integer_sift(self, atom, addition, contact_type='INTER'):
-        '''
+        """[summary]
+
+        Args:
+            atom ([type]): [description]
+            addition ([type]): [description]
+            contact_type (str, optional): Defaults to 'INTER'. [description]
+        """'''
         '''
 
         atom.integer_sift = [x + y for x, y in zip(atom.sift, addition)]
@@ -1751,7 +1783,18 @@ class InteractionComplex:
             atom.integer_sift_water_only = [x + y for x, y in zip(atom.sift_water_only, addition)]
 
     def _sift_xnor(self, sift1, sift2):
-        '''
+        """[summary]
+
+        Args:
+            sift1 ([type]): [description]
+            sift2 ([type]): [description]
+
+        Raises:
+            ValueError: [description]
+
+        Returns:
+            [type]: [description]
+        """'''
         '''
 
         out = []
@@ -1776,13 +1819,23 @@ class InteractionComplex:
         return out
 
     def _sift_match_base3(self, sift1, sift2):
-        '''
+        """[summary]
         0 = UNMATCHED
         1 = MATCHED
         2 = MATCH NOT POSSIBLE
 
         Assuming that sift1 is the potential SIFt, and sift2 is the actual SIFt.
-        '''
+        Args:
+            sift1 ([type]): [description]
+            sift2 ([type]): [description]
+
+        Raises:
+            SiftMatchError: [description]
+            ValueError: [description]
+
+        Returns:
+            [type]: [description]
+        """
 
         out = []
 
