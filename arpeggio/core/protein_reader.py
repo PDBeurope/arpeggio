@@ -146,18 +146,18 @@ def _init_openbabel_atom(table, mol, res, atom_sites, i):
 
     res.AddAtom(atom)
     res.SetHetAtom(atom, atom_sites['group_PDB'][i] == 'HETATM')
-    res.SetSerialNum(atom, int(atom_sites['label_atom_id'][i]))
+    res.SetSerialNum(atom, int(atom_sites['id'][i]))
 
     #_set_ob_occupancy(float(atom_sites['occupancy'][i]), atom)
     return atom
 
 
 # def _set_ob_occupancy(occupancy, atom):
-#     occupancy = OBPairData()
-#     occupancy.SetAttribute('_atom_site_occupancy')
-#     occupancy.SetValue(occupancy)
-#     occupancy.SetOrigin('mmcif')
-#     atom.SetData(occupancy)
+#     fp = OBPairFloatingPoint()
+#     fp.SetAttribute('_atom_site_occupancy')
+#     fp.SetValue(occupancy)
+#     fp.SetOrigin('mmcif')
+#     atom.SetData(fp)
 
 # endregion
 
