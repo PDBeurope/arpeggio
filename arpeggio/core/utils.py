@@ -184,6 +184,33 @@ def selection_parser(selection_list, atom_list):
     return list(final_atom_list)
 
 
+def make_pymol_json(entity):
+    '''
+    Feed me a BioPython atom or BioPython residue.
+
+    See `http://pymol.sourceforge.net/newman/user/S0220commands.html`.
+
+    chain-identifier/resi-identifier/name-identifier
+    chain-identifier/resi-identifier/
+    '''
+
+    if isinstance(entity, Atom):
+        chain = entity.get_parent().get_parent()
+        residue = entity.get_parent()
+        atom_name = entity.name
+
+    else:
+        raise TypeError('Cannot make a json object from non-Atom object.')
+
+    return {
+        'res_name': residue.resname,
+        'auth_seq_id': residue.id[1],
+        'auth_asym_id': chain.id,
+        'auth_atom_id': atom_name,
+        'pdbx_PDB_ins_code': residue.id[2]
+    }
+
+
 def make_pymol_string(entity):
     '''
     Feed me a BioPython atom or BioPython residue.
