@@ -33,5 +33,5 @@ setup(
     ],
     zip_safe=False,
     include_package_data=True,
-    install_requires=['pdbecif', 'numpy', 'biopython', 'openbabel'],
+    install_requires=['pdbecif', 'numpy', 'biopython'],
     tests_require=['pytest'])

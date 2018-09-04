@@ -23,7 +23,11 @@ def _get_ins_code(atom_sites, i):
     return ' ' if atom_sites['pdbx_PDB_ins_code'][i] == '?' else atom_sites['pdbx_PDB_ins_code'][i]
 
 
-def _format_formal_charge(charge):
+def _format_formal_charge(atom_sites, i):
+    if 'pdbx_formal_charge' not in atom_sites:
+        return 0
+
+    charge = atom_sites['pdbx_formal_charge'][i]
     return 0 if charge in ('?', '.') else int(charge)
 
 
@@ -92,7 +96,7 @@ def _parse_atom_site_openbabel(atom_sites):
 
     for i in range(len(atom_sites['id'])):
         current_res_id = _get_res_id(atom_sites, i)
-        current_chain_id = atom_sites['label_asym_id'][i]
+        current_chain_id = atom_sites['auth_asym_id'][i]
         ins_code = _get_ins_code(atom_sites, i)
 
         if chain_id != current_chain_id:
@@ -142,7 +146,7 @@ def _init_openbabel_atom(table, mol, res, atom_sites, i):
     )
     atomic_num = table.GetAtomicNum(atom_sites['type_symbol'][i])
     atom.SetAtomicNum(atomic_num)
-    atom.SetFormalCharge(_format_formal_charge(atom_sites['pdbx_formal_charge'][i]))
+    atom.SetFormalCharge(_format_formal_charge(atom_sites, i))
 
     res.AddAtom(atom)
     res.SetHetAtom(atom, atom_sites['group_PDB'][i] == 'HETATM')
@@ -237,7 +241,7 @@ def _init_biopython_atom(builder, atom_sites, i):
                       ' ' if atom_sites['label_alt_id'][i] == '.' else atom_sites['label_alt_id'][i],
                       atom_sites['label_atom_id'][i],
                       int(atom_sites['id'][i]),
-                      atom_sites['type_symbol'][i])
+                      atom_sites['type_symbol'][i].upper())
 
 
 def _parse_atom_site_biopython(atom_sites, builder):
@@ -265,8 +269,8 @@ def _parse_atom_site_biopython(atom_sites, builder):
         if i == 0:
             builder.init_seg('    ')
 
-        if current_chain_id != atom_sites['label_asym_id'][i]:  # init chain
-            current_chain_id = atom_sites['label_asym_id'][i]
+        if current_chain_id != atom_sites['auth_asym_id'][i]:  # init chain
+            current_chain_id = atom_sites['auth_asym_id'][i]
             builder.init_chain(current_chain_id)
 
         if current_res_id != res_id or current_chain_id != last_res_chain_id:

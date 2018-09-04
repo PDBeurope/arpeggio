@@ -65,10 +65,12 @@ class InteractionComplex:
         self._establish_structure_mappping()
 
         if self.params.has_hydrogens:
+            self.input_has_hydrogens = True
             logging.info(("Detected that the input structure contains hydrogens. "
                           "Hydrogen addition will be skipped."))
         else:
             self.ob_mol.AddHydrogens(False, True, ph)
+            self.input_has_hydrogens = False
             logging.info('Added hydrogens.')
 
     # region public methods
@@ -127,12 +129,34 @@ class InteractionComplex:
             contacts = os.path.join(wd, self.id + '_contacts.csv')
             self.__write_contact_file(contacts, self.contacts)
         else:
-            contacts = os.path.join(wd, self.id + '_contacts.csv')
+            contacts = os.path.join(wd, self.id + '_bs_contacts.csv')
             temp_contacts = filter(lambda l: l.contact_type in ('INTER', 'SELECTION_WATER', 'WATER_WATER'), self.contacts)
             self.__write_contact_file(contacts, temp_contacts)
 
-            contacts = os.path.join(wd, self.id + '_bs_contacts.csv')
+            contacts = os.path.join(wd, self.id + '_contacts.csv')
             self.__write_contact_file(contacts, self.contacts)
+
+    def get_contacts(self):
+        """Get json information for contacts.  
+        
+        Returns:
+            [list of dict]: Json-like structure of contacts data.
+        """
+        temp_contacts = filter(lambda l: l.contact_type in ('INTER', 'SELECTION_WATER', 'WATER_WATER'), self.contacts)
+        contacts = ['clash', 'covalent', 'vdw_clash', 'vdw', 'proximal', 'hbond', 'weak_hbond',
+                    'xbond', 'ionic', 'metal_complex', 'aromatic', 'hydrophobic', 'carbonyl',
+                    'polar', 'weak_polar']
+        result_bag = []
+        for contact in temp_contacts:
+            result_entry = {}
+            result_entry['atom_bgn'] = utils.make_pymol_json(contact.start_atom)
+            result_entry['atom_end'] = utils.make_pymol_json(contact.end_atom)
+            result_entry['contact'] = [k for k, v in zip(contacts, contact.sifts) if v == 1]
+            result_entry['interacting_entities'] = contact.contact_type
+            
+            result_bag.append(result_entry)
+
+        return result_bag
 
     def minimize_hydrogens(self, minimisation_forcefield, minimisation_method, minimisation_steps):
         """Minimize structures hydrogen.
@@ -1246,7 +1270,10 @@ class InteractionComplex:
                 if 'hbond acceptor' in atom.atom_types:
 
                     # NUMBER OF LONE PAIRS
-                    lone_pairs = config.VALENCE[atom.atomic_number] - atom.bond_order - atom.formal_charge
+                    try:
+                        lone_pairs = config.VALENCE[atom.atomic_number] - atom.bond_order - atom.formal_charge
+                    except AttributeError:
+                        print(atom)
 
                     if lone_pairs != 0:
                         lone_pairs = lone_pairs / 2
@@ -1329,8 +1356,9 @@ class InteractionComplex:
         """Determine atom valences and explicit hydrogen counts.
         """
         for ob_atom in ob.OBMolAtomIter(self.ob_mol):
-            if ob_atom.IsHydrogen():
-                continue
+            if not self.input_has_hydrogens:
+                if ob_atom.IsHydrogen():
+                    continue
 
             # `http://openbabel.org/api/2.3/classOpenBabel_1_1OBAtom.shtml`
             # CURRENT NUMBER OF EXPLICIT CONNECTIONS
