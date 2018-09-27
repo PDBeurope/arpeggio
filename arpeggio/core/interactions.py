@@ -66,12 +66,12 @@ class InteractionComplex:
 
         if self.params.has_hydrogens:
             self.input_has_hydrogens = True
-            logging.info(("Detected that the input structure contains hydrogens. "
+            logging.debug(("Detected that the input structure contains hydrogens. "
                           "Hydrogen addition will be skipped."))
         else:
             self.ob_mol.AddHydrogens(False, True, ph)
             self.input_has_hydrogens = False
-            logging.info('Added hydrogens.')
+            logging.debug('Added hydrogens.')
 
     # region public methods
 
@@ -115,7 +115,7 @@ class InteractionComplex:
             for atom in self.s_atoms:
                 writer.writerow([utils.make_pymol_string(atom), sorted(tuple(atom.atom_types))])
 
-        logging.info('Typed atoms.')
+        logging.debug('Typed atoms.')
 
     def write_contacts(self, selection, wd):
         """Write out contacts detected by arpergio for the structure
@@ -173,7 +173,7 @@ class InteractionComplex:
         # `https://github.com/dlonie/OpenBabel-BFGS/blob/master/scripts/python/examples/minSimple.py`
 
         # CONSTRAIN NON-HYDROGEN ATOMS IN THE MINIMISATION
-        logging.info('Beginning hydrogen minimisation.')
+        logging.debug('Beginning hydrogen minimisation.')
 
         constraints = ob.OBFFConstraints()
 
@@ -182,12 +182,12 @@ class InteractionComplex:
             if not ob_atom.IsHydrogen():
                 constraints.AddAtomConstraint(ob_atom.GetIdx())
 
-        logging.info('Constrained non-hydrogen atoms.')
+        logging.debug('Constrained non-hydrogen atoms.')
 
         # INITIALISE THE FORCEFIELD
         ff = ob.OBForceField.FindForceField(minimisation_forcefield)  # MMFF94, UFF, Ghemical
 
-        logging.info('Initialised forcefield.')
+        logging.debug('Initialised forcefield.')
 
         # TODO: MAKE LOGGING A COMMAND LINE FLAG
         ff.SetLogLevel(ob.OBFF_LOGLVL_NONE)  # OBFF_LOGLVL_LOW
@@ -212,7 +212,7 @@ class InteractionComplex:
 
             ff.GetCoordinates(self.ob_mol)
 
-            logging.info('Minimised hydrogens.')
+            logging.debug('Minimised hydrogens.')
 
     def write_hydrogenated(self, wd, input_structure):
         """Writes out structure with added H atoms.
@@ -226,10 +226,10 @@ class InteractionComplex:
         conv.WriteFile(self.ob_mol, os.path.join(wd, self.id + '_hydrogenated' + '.' + filetype))
 
         if not self.params.has_hydrogens:
-            logging.info('Wrote hydrogenated structure file. Hydrogenation was by Arpeggio using OpenBabel defaults.')
+            logging.debug('Wrote hydrogenated structure file. Hydrogenation was by Arpeggio using OpenBabel defaults.')
 
         else:
-            logging.info('Wrote hydrogenated structure file. Hydrogens were from the input file.')
+            logging.debug('Wrote hydrogenated structure file. Hydrogens were from the input file.')
 
     def run_arpeggio(self, user_selections, interacting_cutoff, vdw_comp, include_sequence_adjacent):
         """Run the arpergio algorithm on the structure
@@ -249,31 +249,31 @@ class InteractionComplex:
         self._ob_atom_typing()
 
         self._handle_hydrogens()
-        logging.info(("Determined atom explicit and implicit valences, bond orders, "
+        logging.debug(("Determined atom explicit and implicit valences, bond orders, "
                       "atomic numbers, formal charge and number of bound hydrogens."))
 
         self._initialize_atom_sift()
         self._initialize_residue_sift()
-        logging.info('Initialised SIFts.')
+        logging.debug('Initialised SIFts.')
 
         self._handle_chains_residues_and_breaks()
-        logging.info('Determined polypeptide residues, chain breaks, termini')  # and amide bonds.')
+        logging.debug('Determined polypeptide residues, chain breaks, termini')  # and amide bonds.')
 
         self._perceive_rings()
-        logging.info('Percieved and stored rings.')
+        logging.debug('Percieved and stored rings.')
 
         self._perceive_amide_groups()
-        logging.info('Perceived and stored amide groups.')
+        logging.debug('Perceived and stored amide groups.')
 
         self._add_hydrogens_to_biopython()
-        logging.info('Added hydrogens to BioPython atoms.')
+        logging.debug('Added hydrogens to BioPython atoms.')
 
         self._add_atomic_radii()
         self._assign_aromatic_rings_to_residues()
-        logging.info('Assigned rings to residues.')
+        logging.debug('Assigned rings to residues.')
 
         self._make_selection(user_selections)
-        logging.info('Completed new NeighbourSearch.')
+        logging.debug('Completed new NeighbourSearch.')
 
         self._calculate_contacts(interacting_cutoff, vdw_comp, include_sequence_adjacent)
 
@@ -875,7 +875,7 @@ class InteractionComplex:
             logging.error('Selection was empty.')
             sys.exit(1)
 
-        logging.info('Made selection.')
+        logging.debug('Made selection.')
         selection_set = set(selection)
 
         # EXPAND THE SELECTION TO INCLUDE THE BINDING SITE
@@ -902,7 +902,7 @@ class InteractionComplex:
 
         selection_plus = list(selection_plus)
 
-        logging.info('Expanded to binding site.')
+        logging.debug('Expanded to binding site.')
 
         # GET LIST OF RESIDUES IN THE SELECTION PLUS BINDING SITE
         selection_plus_residues = set([x.get_parent() for x in selection_plus])
@@ -913,7 +913,7 @@ class InteractionComplex:
         # MAKE A SET OF ALL AMIDE IDS ASSOCIATED WITH THE SELECTION AND BINDING SITE
         selection_plus_amide_ids = set([x for x in self.biopython_str.amides if self.biopython_str.amides[x]['residue'] in selection_plus_residues])
 
-        logging.info('Flagged selection rings.')
+        logging.debug('Flagged selection rings.')
 
         # NEW NEIGHBOURSEARCH
         self.ns = NeighborSearch(selection_plus)
@@ -926,7 +926,7 @@ class InteractionComplex:
         # NEIGHBORSEARCH
         self.ns = NeighborSearch(self.s_atoms)
 
-        logging.info('Completed NeighborSearch.')
+        logging.debug('Completed NeighborSearch.')
 
         # ASSIGN AROMATIC RINGS TO RESIDUES
         for ring_id in self.biopython_str.rings:
@@ -971,14 +971,14 @@ class InteractionComplex:
         for atom in self.s_atoms:
             atom.vdw_radius = ob.etab.GetVdwRad(self.ob_mol.GetAtomById(self.bio_to_ob[atom]).GetAtomicNum())
 
-        logging.info('Added VdW radii.')
+        logging.debug('Added VdW radii.')
 
         # ADD COVALENT RADII TO ENTITY ATOMS
         # USING OPENBABEL VDW RADII
         for atom in self.s_atoms:
             atom.cov_radius = ob.etab.GetCovalentRad(self.ob_mol.GetAtomById(self.bio_to_ob[atom]).GetAtomicNum())
 
-        logging.info('Added covalent radii.')
+        logging.debug('Added covalent radii.')
 
     def _add_hydrogens_to_biopython(self):
         """Add hydrogens atom to the biopython structure
@@ -1393,33 +1393,33 @@ class InteractionComplex:
         """
         for atom_type, smartsdict in list(config.ATOM_TYPES.items()):
 
-            # logging.info('Typing: {}'.format(atom_type))
+            # logging.debug('Typing: {}'.format(atom_type))
 
             # FOR EACH ATOM TYPE SMARTS STRING
             for smarts in list(smartsdict.values()):
 
-                # logging.info('Smarts: {}'.format(smarts))
+                # logging.debug('Smarts: {}'.format(smarts))
 
                 # GET OPENBABEL ATOM MATCHES TO THE SMARTS PATTERN
                 ob_smart = ob.OBSmartsPattern()
                 ob_smart.Init(str(smarts))
 
-                # logging.info('Initialised for: {}'.format(smarts))
+                # logging.debug('Initialised for: {}'.format(smarts))
 
                 ob_smart.Match(self.ob_mol)
 
-                # logging.info('Matched for: {}'.format(smarts))
+                # logging.debug('Matched for: {}'.format(smarts))
 
                 matches = [x for x in ob_smart.GetMapList()]
 
-                # logging.info('List comp matches: {}'.format(smarts))
+                # logging.debug('List comp matches: {}'.format(smarts))
 
                 if matches:
 
                     # REDUCE TO A SINGLE LIST
                     matches = set(reduce(operator.add, matches))
 
-                    # logging.info('Set reduce matches: {}'.format(smarts))
+                    # logging.debug('Set reduce matches: {}'.format(smarts))
 
                     for match in matches:
 
@@ -1482,7 +1482,7 @@ class InteractionComplex:
             self.ob_to_bio[ob_atom.GetId()] = biopython_atom
             self.bio_to_ob[biopython_atom] = ob_atom.GetId()
 
-        logging.info('Mapped OB to BioPython atoms and vice-versa.')
+        logging.debug('Mapped OB to BioPython atoms and vice-versa.')
 
     def _read_in_biopython(self, path):
         """Reads in molecule using Biopython
@@ -1499,7 +1499,7 @@ class InteractionComplex:
              if extension == 'pdb'
              else protein_reader.read_mmcif_to_biopython(path))
 
-        logging.info('Loaded PDB structure (BioPython)')
+        logging.debug('Loaded PDB structure (BioPython)')
 
         return s
 
@@ -1519,11 +1519,11 @@ class InteractionComplex:
             mol = ob.OBMol()
             ob_conv.ReadFile(mol, path)
 
-            logging.info('Loaded PDB structure (OpenBabel)')
+            logging.debug('Loaded PDB structure (OpenBabel)')
 
             return mol
         else:
-            logging.info('Loaded MMCIF structure (OpenBabel)')
+            logging.debug('Loaded MMCIF structure (OpenBabel)')
             mol = protein_reader.read_mmcif_to_openbabel(path)
 
             return mol
