@@ -5,14 +5,7 @@
 ###########
 
 import argparse
-import collections
-import logging
-import operator
 import os
-import sys
-
-from collections import OrderedDict
-
 import igraph
 
 #############

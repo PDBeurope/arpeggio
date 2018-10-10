@@ -3,19 +3,16 @@ import csv
 import logging
 import operator
 import os
-import platform
 import sys
 from functools import reduce
 
 import numpy as np
 import openbabel as ob
 from Bio.PDB import NeighborSearch
-from Bio.PDB.Atom import Atom
 from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB.Polypeptide import PPBuilder
-from Bio.PDB.Residue import Residue
 
-from arpeggio.core import (AtomSerialError, OBBioMatchError, SelectionError,
+from arpeggio.core import (AtomSerialError, OBBioMatchError,
                            SiftMatchError, config, protein_reader, utils)
 
 AtomContacts = collections.namedtuple('AtomContacts',
@@ -137,8 +134,8 @@ class InteractionComplex:
             self.__write_contact_file(contacts, self.contacts)
 
     def get_contacts(self):
-        """Get json information for contacts.  
-        
+        """Get json information for contacts.
+
         Returns:
             [list of dict]: Json-like structure of contacts data.
         """
@@ -153,7 +150,7 @@ class InteractionComplex:
             result_entry['atom_end'] = utils.make_pymol_json(contact.end_atom)
             result_entry['contact'] = [k for k, v in zip(contacts, contact.sifts) if v == 1]
             result_entry['interacting_entities'] = contact.contact_type
-            
+
             result_bag.append(result_entry)
 
         return result_bag
@@ -1042,7 +1039,7 @@ class InteractionComplex:
             u, s_, vh = np.linalg.svd(cog)
             v = vh.conj().transpose()
             a, b, c = v[:, -1]
-            d = 0  # :S
+            #d = 0  # :S
 
             normal = np.array([a, b, c])
             normal_opp = -normal
@@ -1736,7 +1733,7 @@ class InteractionComplex:
         Args:
             donor (OBAtom): Donor atom
             acceptor (OBAtom): Halogen atom
-            ob_mol (OBMol): [description]            
+            ob_mol (OBMol): [description]
 
         Returns:
             int: 1/0 binary information whether or not the atoms share

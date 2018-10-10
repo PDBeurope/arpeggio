@@ -3,7 +3,7 @@ import pytest
 import shutil
 import subprocess
 import json
-
+from collections import namedtuple
 import arpeggio
 
 from arpeggio.tests.helpers.utils import process_arpeggio_pair
@@ -12,6 +12,8 @@ from arpeggio.tests.helpers.utils import process_arpeggio_pair
 of Arpeggio are exactly the same as with refactored version with the use
 of mmcif files.
 """
+
+AtomTypes = namedtuple('AtomTypes', ['name', 'types'])
 
 
 class Config:
@@ -42,7 +44,8 @@ class TestRegression:
 
     @staticmethod
     @pytest.mark.parametrize("pdb_id,selection", c.params)
-    def test_compare_outputs(tmpdir, config, pdb_id, selection):
+    @pytest.fixture(scope='module')
+    def run_arpeggio(tmpdir, config, pdb_id, selection):
         pdb = tmpdir.mkdir('py2')
         cif = tmpdir.mkdir('py3')
 
@@ -52,9 +55,14 @@ class TestRegression:
         shutil.copyfile(os.path.join(config.structures_path, f'{pdb_id}.pdb'), pdb_file)
         shutil.copyfile(os.path.join(config.structures_path, f'{pdb_id}.cif'), cif_file)
 
-        subprocess.run(['python', 'arpeggio', str(cif_file), '-he', '-s', selection])
-        subprocess.run([config.py2, config.arpeggio, str(pdb_file), '-he', '-s', selection])
+        subprocess.run(['python', 'arpeggio',
+                        str(cif_file), '-s', selection, '-o', os.path.dirname(str(cif_file))])
+        subprocess.run([config.py2, config.arpeggio, str(pdb_file), '-s', selection])
 
         entries = process_arpeggio_pair(pdb, cif)
 
-        assert len(entries) == 0
+        return (str(pdb), str(cif))
+
+    def compare_atom_types(run_arpeggio):
+        pdb = run_arpeggio[0]
+        cif = run_arpeggio[1]

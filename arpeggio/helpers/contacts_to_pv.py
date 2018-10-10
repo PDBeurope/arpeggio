@@ -1,7 +1,6 @@
 import argparse
 import os
 import re
-import sys
 
 from show_contacts import pymol_config
 

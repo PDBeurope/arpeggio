@@ -112,7 +112,7 @@ def _parse_atom_site_openbabel(atom_sites):
             res.SetName(atom_sites['label_comp_id'][i])
             res.SetInsertionCode(ins_code)
 
-        atom = _init_openbabel_atom(table, mol, res, atom_sites, i)
+        _init_openbabel_atom(table, mol, res, atom_sites, i)
 
     resdat = OBResidueData()
     resdat.AssignBonds(mol, OBBitVec())

@@ -2,8 +2,12 @@ import argparse
 import logging
 import os
 
-from arpeggio.core import InteractionComplex, config
+from arpeggio.core import InteractionComplex
 from arpeggio.core.utils import max_mem_usage
+
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 
 def create_parser():
@@ -51,25 +55,19 @@ def create_parser():
     return parser
 
 
-def _setup(args):
+def _setup_logging(args):
     """Set up logging and working directory
 
     Args:
         args (ArgumentParser): parsed arguments from the command line
     """
+
     logging_level = logging.WARNING if args.mute else logging.DEBUG
     logging.basicConfig(level=logging_level,
                         format='%(levelname)s//%(asctime)s.%(msecs).03d//%(message)s',
                         datefmt='%H:%M:%S')
 
-    logging.info('Program begin.')
-    try:
-        import resource
-    except ImportError:
-        logging.info('Resource module not available, resource usage info won\'t be logged.')
-
-    args.output = os.getcwd() if args.output is None else args.output
-    os.makedirs(args.output, exist_ok=True)
+    logger.info('Program begin.')
 
 
 def main():
@@ -77,12 +75,14 @@ def main():
     """
     parser = create_parser()
     args = parser.parse_args()
+    _setup_logging(args)
     run_arpeggio(args)
 
 
 def run_arpeggio(args):
 
-    _setup(args)
+    args.output = os.getcwd() if args.output is None else args.output
+    os.makedirs(args.output, exist_ok=True)
 
     i_complex = InteractionComplex(args.filename, args.vdw_comp, args.interacting, args.ph)
     i_complex.structure_checks()
@@ -110,7 +110,7 @@ def run_arpeggio(args):
     i_complex.write_polar_matching(args.output)  # _polarmatch; _specific_polarmatch
     i_complex.write_residue_sifts(args.output)  # residue_sifts
 
-    logging.info('Program End. Maximum memory usage was {}.'.format(max_mem_usage()))
+    logger.info('Program End. Maximum memory usage was {}.'.format(max_mem_usage()))
 
 
 def _parse_selection(args):
@@ -130,5 +130,5 @@ def _parse_selection(args):
         with open(args.selection_file, 'r') as f:
             selection = [line for line in f]
 
-    logging.info('Selection perceived: {}'.format(selection))
+    logger.info('Selection perceived: {}'.format(selection))
     return selection
