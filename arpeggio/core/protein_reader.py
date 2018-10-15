@@ -1,6 +1,7 @@
 import os
 
 import numpy
+from Bio import PDB
 from Bio.PDB.StructureBuilder import StructureBuilder
 from mmCif.mmcifIO import MMCIF2Dict
 from openbabel import OBBitVec, OBElementTable, OBMol, OBResidueData
@@ -234,14 +235,28 @@ def _init_biopython_atom(builder, atom_sites, i):
     z = float(atom_sites['Cartn_z'][i])
     coord = numpy.array((x, y, z), "f")
 
-    builder.init_atom(atom_sites['label_atom_id'][i],
-                      coord,
-                      float(atom_sites['B_iso_or_equiv'][i]),
-                      float(atom_sites['occupancy'][i]),
-                      ' ' if atom_sites['label_alt_id'][i] == '.' else atom_sites['label_alt_id'][i],
-                      atom_sites['label_atom_id'][i],
-                      int(atom_sites['id'][i]),
-                      atom_sites['type_symbol'][i].upper())
+    try:
+        builder.init_atom(atom_sites['label_atom_id'][i],
+                          coord,
+                          float(atom_sites['B_iso_or_equiv'][i]),
+                          float(atom_sites['occupancy'][i]),
+                          ' ' if atom_sites['label_alt_id'][i] == '.' else atom_sites['label_alt_id'][i],
+                          atom_sites['label_atom_id'][i],
+                          int(atom_sites['id'][i]),
+                          atom_sites['type_symbol'][i].upper())
+    except PDB.PDBExceptions.PDBConstructionException as e:
+        builder.init_residue(atom_sites['label_comp_id'][i],
+                             _get_hetero_flag(atom_sites, i),
+                             _get_res_id(atom_sites, i),
+                             _get_ins_code(atom_sites, i))
+        builder.init_atom(atom_sites['label_atom_id'][i],
+                          coord,
+                          float(atom_sites['B_iso_or_equiv'][i]),
+                          float(atom_sites['occupancy'][i]),
+                          ' ' if atom_sites['label_alt_id'][i] == '.' else atom_sites['label_alt_id'][i],
+                          atom_sites['label_atom_id'][i],
+                          int(atom_sites['id'][i]),
+                          atom_sites['type_symbol'][i].upper())
 
 
 def _parse_atom_site_biopython(atom_sites, builder):
@@ -280,6 +295,7 @@ def _parse_atom_site_biopython(atom_sites, builder):
                                  hetero_flag,
                                  res_id,
                                  ins_code)
-
+        if i == 661:
+            print('boing')
         _init_biopython_atom(builder, atom_sites, i)
 # endregion
