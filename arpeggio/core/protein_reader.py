@@ -295,7 +295,5 @@ def _parse_atom_site_biopython(atom_sites, builder):
                                  hetero_flag,
                                  res_id,
                                  ins_code)
-        if i == 661:
-            print('boing')
         _init_biopython_atom(builder, atom_sites, i)
 # endregion

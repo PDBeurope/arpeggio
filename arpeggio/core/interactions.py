@@ -11,6 +11,7 @@ import openbabel as ob
 from Bio.PDB import NeighborSearch
 from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB.Polypeptide import PPBuilder
+from Bio.PDB.Atom import DisorderedAtom
 
 from arpeggio.core import (AtomSerialError, OBBioMatchError,
                            SiftMatchError, config, protein_reader, utils)
@@ -41,7 +42,14 @@ class InteractionComplex:
         self.id = os.path.basename(filename).split('.')[0]
         # Biopython part
         self.biopython_str = self._read_in_biopython(filename)
-        self.s_atoms = list(self.biopython_str.get_atoms())
+        self.s_atoms = list()
+        for atom in list(self.biopython_str.get_atoms()):
+            if type(atom) == DisorderedAtom:
+                for altloc, alt_atom in atom.child_dict.items():
+                    self.s_atoms.append(alt_atom)
+            else:
+                self.s_atoms.append(atom)
+
         # obabel data
         self.ob_mol = self._read_openbabel(filename)
 
