@@ -3,7 +3,6 @@ import csv
 import logging
 import operator
 import os
-import sys
 from functools import reduce
 
 import numpy as np
@@ -878,7 +877,7 @@ class InteractionComplex:
 
         if len(selection) == 0:
             logging.error('Selection was empty.')
-            sys.exit(1)
+            raise AttributeError('Selection must not be empty.')
 
         logging.debug('Made selection.')
         selection_set = set(selection)
