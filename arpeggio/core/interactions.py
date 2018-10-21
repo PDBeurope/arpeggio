@@ -16,7 +16,7 @@ from arpeggio.core import (AtomSerialError, OBBioMatchError,
                            SiftMatchError, config, protein_reader, utils)
 
 AtomContacts = collections.namedtuple('AtomContacts',
-                                      ['start_atom', 'end_atom', 'sifts', 'contact_type'])
+                                      ['start_atom', 'end_atom', 'sifts', 'contact_type', 'distance'])
 
 Parameters = collections.namedtuple('Parameters',
                                     ['vdw_comp_factor', 'interacting_threshold', 'has_hydrogens',
@@ -155,6 +155,7 @@ class InteractionComplex:
             result_entry = {}
             result_entry['atom_bgn'] = utils.make_pymol_json(contact.start_atom)
             result_entry['atom_end'] = utils.make_pymol_json(contact.end_atom)
+            result_entry['distance'] = round(np.float64(contact.distance), 2)
             result_entry['contact'] = [k for k, v in zip(contacts, contact.sifts) if v == 1]
             result_entry['interacting_entities'] = contact.contact_type
 
@@ -543,6 +544,7 @@ class InteractionComplex:
             writer = csv.writer(fo, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             writer.writerow(['atom_bgn',
                              'atom_end',
+                             'distance',
                              'clash',
                              'covalent',
                              'vdw_clash',
@@ -563,7 +565,8 @@ class InteractionComplex:
             for contact in contacts:
                 writer.writerow([
                     utils.make_pymol_string(contact.start_atom),
-                    utils.make_pymol_string(contact.end_atom)]
+                    utils.make_pymol_string(contact.end_atom),
+                    contact.distance]
                     + contact.sifts
                     + [contact.contact_type]
                 )
@@ -859,7 +862,7 @@ class InteractionComplex:
             self._update_atom_fsift(atom_bgn, fsift, contact_type)
             self._update_atom_fsift(atom_end, fsift, contact_type)
 
-            self.contacts.append(AtomContacts(start_atom=atom_bgn, end_atom=atom_end, sifts=SIFt, contact_type=contact_type))
+            self.contacts.append(AtomContacts(start_atom=atom_bgn, end_atom=atom_end, sifts=SIFt, contact_type=contact_type, distance=distance))
 
     def _make_selection(self, selections):
         """Select residues to calculate interactions
