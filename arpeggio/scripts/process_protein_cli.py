@@ -5,7 +5,6 @@ import os
 from arpeggio.core import InteractionComplex
 from arpeggio.core.utils import max_mem_usage
 
-
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
@@ -26,7 +25,7 @@ def create_parser():
         using only Open Source dependencies.
 
         Dependencies:
-        - Python (v3.0)
+        - Python (v3.6)
         - Numpy
         - BioPython (>= v1.60)
         - OpenBabel (with Python bindings)

@@ -205,7 +205,7 @@ def make_pymol_json(entity):
 
     return {
         'id': f'a{serial_number}',
-        'res_name': residue.resname,
+        'label_comp_id': residue.resname,
         'auth_seq_id': residue.id[1],
         'auth_asym_id': chain.id,
         'auth_atom_id': atom_name,

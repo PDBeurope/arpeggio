@@ -236,7 +236,7 @@ class InteractionComplex:
         else:
             logging.debug('Wrote hydrogenated structure file. Hydrogens were from the input file.')
 
-    def run_arpeggio(self, user_selections, interacting_cutoff, vdw_comp, include_sequence_adjacent):
+    def initialize(self):
         """Run the arpergio algorithm on the structure
 
         Args:
@@ -277,6 +277,7 @@ class InteractionComplex:
         self._assign_aromatic_rings_to_residues()
         logging.debug('Assigned rings to residues.')
 
+    def run_arpeggio(self, user_selections, interacting_cutoff, vdw_comp, include_sequence_adjacent):
         self._make_selection(user_selections)
         logging.debug('Completed new NeighbourSearch.')
 
@@ -633,6 +634,8 @@ class InteractionComplex:
                 interactions between residues that are next to each
                 other in sequence
         """
+        self.contacts = []
+
         for atom_bgn, atom_end in self.ns.search_all(interacting_cutoff):
 
             selection_set = set(self.selection)
@@ -872,8 +875,9 @@ class InteractionComplex:
                 following formars:
                 /<chain_id>/<res_num>[<ins_code>]/<atom_name>
                 or RESNAME:<het_id>
-        """
+        """        
         entity = list(self.s_atoms)[:]
+        self.ns = NeighborSearch(entity)
         selection = entity if len(selections) == 0 else utils.selection_parser(selections, entity)
         selection_ring_ids = list(self.biopython_str.rings)
         selection_amide_ids = list(self.biopython_str .amides)
