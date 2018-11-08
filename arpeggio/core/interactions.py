@@ -134,7 +134,7 @@ class InteractionComplex:
             self.__write_contact_file(contacts, self.contacts)
         else:
             contacts = os.path.join(wd, self.id + '_bs_contacts.csv')
-            temp_contacts = filter(lambda l: l.contact_type in ('INTER', 'SELECTION_WATER', 'WATER_WATER'), self.contacts)
+            temp_contacts = filter(lambda l: l.contact_type in ('INTER', 'INTRA_SELECTION', 'SELECTION_WATER', 'WATER_WATER'), self.contacts)
             self.__write_contact_file(contacts, temp_contacts)
 
             contacts = os.path.join(wd, self.id + '_contacts.csv')
@@ -146,12 +146,11 @@ class InteractionComplex:
         Returns:
             [list of dict]: Json-like structure of contacts data.
         """
-        temp_contacts = filter(lambda l: l.contact_type in ('INTER', 'SELECTION_WATER', 'WATER_WATER'), self.contacts)
         contacts = ['clash', 'covalent', 'vdw_clash', 'vdw', 'proximal', 'hbond', 'weak_hbond',
                     'xbond', 'ionic', 'metal_complex', 'aromatic', 'hydrophobic', 'carbonyl',
                     'polar', 'weak_polar']
         result_bag = []
-        for contact in temp_contacts:
+        for contact in self.contacts:
             result_entry = {}
             result_entry['atom_bgn'] = utils.make_pymol_json(contact.start_atom)
             result_entry['atom_end'] = utils.make_pymol_json(contact.end_atom)
