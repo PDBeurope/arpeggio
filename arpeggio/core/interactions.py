@@ -1713,6 +1713,7 @@ class InteractionComplex:
     def _is_halogen_weak_hbond(self, donor, halogen, ob_mol, vdw_comp_factor):
         """Determines if atoms share a weak halogen bond.
 
+        org. desc: `nbr` WILL BE A BIOPYTHON ATOM ... HOPEFULLY
         Args:
             donor (OBAtom): Donor atom
             halogen (OBAtom): Halogen atom
@@ -1723,10 +1724,15 @@ class InteractionComplex:
             int: 1/0 binary information whether or not the atoms share
                 weak weak Hbond.
         """
+        
+        # entry 5t45 obabel does not identify bond between 
+        # SER 246 A (OG) and BEF 903 A (F1) which makes neighbour to be
+        # None and then it crashes                
+        neighbour = utils.get_single_bond_neighbour(ob_mol.GetAtomById(self.bio_to_ob[halogen]))
+        if neighbour is None:
+            return 0
 
-        # `nbr` WILL BE A BIOPYTHON ATOM
-        # ... HOPEFULLY
-        nbr = self.ob_to_bio[utils.get_single_bond_neighbour(ob_mol.GetAtomById(self.bio_to_ob[halogen])).GetId()]
+        nbr = self.ob_to_bio[neighbour.GetId()]        
 
         for hydrogen_coord in donor.h_coords:
 
