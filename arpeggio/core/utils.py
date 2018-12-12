@@ -1,5 +1,4 @@
 import os
-import sys
 import collections
 import logging
 import platform
@@ -179,7 +178,7 @@ def selection_parser(selection_list, atom_list):
 
     if len(final_atom_list) == 0:
         logging.error('Selection was empty.')
-        sys.exit(1)
+        raise SelectionError('entity not found')
 
     return list(final_atom_list)
 
