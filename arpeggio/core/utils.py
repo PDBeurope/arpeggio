@@ -35,6 +35,14 @@ def int2(x):
     return int(x, 2)
 
 
+def is_digit(x):
+    try:
+        int(x)
+        return True
+    except ValueError:
+        return False
+
+
 def int3(x):
     '''
     Return integer from base 3 number.
@@ -131,7 +139,7 @@ def selection_parser(selection_list, atom_list):
             # RESIDUE AND INS CODE
             if selection[1]:
 
-                if selection[1].isdigit():
+                if is_digit(selection[1]):
 
                     # JUST THE RESNUM
                     residue_number = int(selection[1])
@@ -139,7 +147,7 @@ def selection_parser(selection_list, atom_list):
                 elif selection[1].isalnum():
 
                     # CHECK FOR VALID RESNUM+INSCODE
-                    if selection[1][-1].isalpha() and selection[1][:-1].isdigit():
+                    if selection[1][-1].isalpha() and is_digit(selection[1][:-1]):
 
                         residue_number = int(selection[1][:-1])
                         insertion_code = selection[1][-1]
