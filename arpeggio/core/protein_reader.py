@@ -86,8 +86,9 @@ def _parse_atom_site_openbabel(atom_sites):
         [OBMol]: openbabel representation of the protein structure.
     """
     table = OBElementTable()
-    res_id = None
-    chain_id = None
+    last_res_id = None
+    last_res_name = None
+    last_chain_id = None
     chain_num = 0
     res = None
 
@@ -97,19 +98,19 @@ def _parse_atom_site_openbabel(atom_sites):
 
     for i in range(len(atom_sites['id'])):
         current_res_id = _get_res_id(atom_sites, i)
-        current_chain_id = atom_sites['auth_asym_id'][i]
         ins_code = _get_ins_code(atom_sites, i)
 
-        if chain_id != current_chain_id:
+        if last_chain_id != atom_sites['auth_asym_id'][i]:
             chain_num += 1
-            chain_id = current_chain_id
+            last_chain_id = atom_sites['auth_asym_id'][i]
 
-        if current_res_id != res_id or current_chain_id != chain_id:
-            res_id = current_res_id
+        if current_res_id != last_res_id or atom_sites['auth_asym_id'][i] != last_chain_id or atom_sites['label_comp_id'][i] != last_res_name:
+            last_res_id = current_res_id
+            last_res_name = atom_sites['label_comp_id'][i]
 
             res = mol.NewResidue()
             res.SetChainNum(chain_num)
-            res.SetNum(str(res_id))
+            res.SetNum(str(last_res_id))
             res.SetName(atom_sites['label_comp_id'][i])
             res.SetInsertionCode(ins_code)
 
@@ -244,7 +245,7 @@ def _init_biopython_atom(builder, atom_sites, i):
                           atom_sites['label_atom_id'][i],
                           int(atom_sites['id'][i]),
                           atom_sites['type_symbol'][i].upper())
-    except PDB.PDBExceptions.PDBConstructionException as e:
+    except PDB.PDBExceptions.PDBConstructionException:
         builder.init_residue(atom_sites['label_comp_id'][i],
                              _get_hetero_flag(atom_sites, i),
                              _get_res_id(atom_sites, i),
@@ -267,33 +268,35 @@ def _parse_atom_site_biopython(atom_sites, builder):
         builder (Bio.PDB.StructureBuilder.StructureBuilder): Bipython
             structure building object.
     """
-    current_model = None
-    current_chain_id = None
-    current_res_id = None
-    last_res_chain_id = None
+    last_model = None
+    last_chain_id = None
+    last_res_name = None
+    last_res_id = None
 
     for i in range(len(atom_sites['id'])):
         res_id = _get_res_id(atom_sites, i)
         hetero_flag = _get_hetero_flag(atom_sites['group_PDB'][i], atom_sites['label_comp_id'][i])
         ins_code = _get_ins_code(atom_sites, i)
 
-        if current_model != atom_sites['pdbx_PDB_model_num'][i]:  # init model
-            current_model = atom_sites['pdbx_PDB_model_num'][i]
-            builder.init_model(int(current_model) - 1)
+        if last_model != atom_sites['pdbx_PDB_model_num'][i]:  # init model
+            last_model = atom_sites['pdbx_PDB_model_num'][i]
+            builder.init_model(int(last_model) - 1)
 
         if i == 0:
-            builder.init_seg('    ')
+            builder.init_seg('    ')  # some biopython magic. https://github.com/biopython/biopython/blob/master/Bio/PDB/PDBParser.py#L211
 
-        if current_chain_id != atom_sites['auth_asym_id'][i]:  # init chain
-            current_chain_id = atom_sites['auth_asym_id'][i]
-            builder.init_chain(current_chain_id)
+        if last_chain_id != atom_sites['auth_asym_id'][i]:  # init chain
+            last_chain_id = atom_sites['auth_asym_id'][i]
+            builder.init_chain(last_chain_id)
 
-        if current_res_id != res_id or current_chain_id != last_res_chain_id:
-            last_res_chain_id = current_chain_id
-            current_res_id = res_id
+        if last_res_id != res_id or last_chain_id != atom_sites['auth_asym_id'][i] or last_res_name != atom_sites['label_comp_id'][i]:
+            last_res_id = res_id
+            last_res_name = atom_sites['label_comp_id'][i]
+
             builder.init_residue(atom_sites['label_comp_id'][i],
                                  hetero_flag,
                                  res_id,
                                  ins_code)
+
         _init_biopython_atom(builder, atom_sites, i)
 # endregion
