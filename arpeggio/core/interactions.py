@@ -71,7 +71,7 @@ class InteractionComplex:
         if self.params.has_hydrogens:
             self.input_has_hydrogens = True
             logging.debug(("Detected that the input structure contains hydrogens. "
-                          "Hydrogen addition will be skipped."))
+                           "Hydrogen addition will be skipped."))
         else:
             self.ob_mol.AddHydrogens(False, True, ph)
             self.input_has_hydrogens = False
@@ -254,7 +254,7 @@ class InteractionComplex:
 
         self._handle_hydrogens()
         logging.debug(("Determined atom explicit and implicit valences, bond orders, "
-                      "atomic numbers, formal charge and number of bound hydrogens."))
+                       "atomic numbers, formal charge and number of bound hydrogens."))
 
         self._initialize_atom_sift()
         self._initialize_residue_sift()
@@ -330,8 +330,8 @@ class InteractionComplex:
                 human_readable = self._human_sift_match(sift_match)
 
                 writer.writerow([utils.make_pymol_string(atom)] + sift_match + [utils.int3(sift_match)] + [human_readable])
-                s_writer.writerow([utils.make_pymol_string(atom)]
-                                  + sift_match_inter
+                s_writer.writerow([utils.make_pymol_string(atom)] +
+                                  sift_match_inter
                                   + [self._human_sift_match(sift_match_inter)]
                                   + sift_match_intra
                                   + [self._human_sift_match(sift_match_intra)]
@@ -355,18 +355,18 @@ class InteractionComplex:
             for atom in self.selection_plus:
                 writer.writerow([utils.make_pymol_string(atom)]
                                 + [atom.potential_hbonds,
+                                 atom.potential_polars,
+                                 atom.actual_hbonds,
+                                 atom.actual_polars])
+                p_writer.writerow([utils.make_pymol_string(atom)] +
+                                  [atom.potential_hbonds,
                                    atom.potential_polars,
-                                   atom.actual_hbonds,
-                                   atom.actual_polars])
-                p_writer.writerow([utils.make_pymol_string(atom)]
-                                  + [atom.potential_hbonds,
-                                     atom.potential_polars,
-                                     atom.actual_hbonds_inter_only,
-                                     atom.actual_hbonds_intra_only,
-                                     atom.actual_hbonds_water_only,
-                                     atom.actual_polars_inter_only,
-                                     atom.actual_polars_intra_only,
-                                     atom.actual_polars_water_only])
+                                   atom.actual_hbonds_inter_only,
+                                   atom.actual_hbonds_intra_only,
+                                   atom.actual_hbonds_water_only,
+                                   atom.actual_polars_inter_only,
+                                   atom.actual_polars_intra_only,
+                                   atom.actual_polars_water_only])
 
     def write_residue_sifts(self, wd):
         self._calc_residue_sifts()
@@ -566,8 +566,8 @@ class InteractionComplex:
                 writer.writerow([
                     utils.make_pymol_string(contact.start_atom),
                     utils.make_pymol_string(contact.end_atom),
-                    contact.distance]
-                    + contact.sifts
+                    contact.distance] +
+                    contact.sifts
                     + [contact.contact_type]
                 )
 
@@ -874,7 +874,7 @@ class InteractionComplex:
                 following formars:
                 /<chain_id>/<res_num>[<ins_code>]/<atom_name>
                 or RESNAME:<het_id>
-        """        
+        """
         entity = list(self.s_atoms)[:]
         self.ns = NeighborSearch(entity)
         selection = entity if len(selections) == 0 else utils.selection_parser(selections, entity)
@@ -1052,7 +1052,7 @@ class InteractionComplex:
             u, s_, vh = np.linalg.svd(cog)
             v = vh.conj().transpose()
             a, b, c = v[:, -1]
-            #d = 0  # :S
+            # d = 0  # :S
 
             normal = np.array([a, b, c])
             normal_opp = -normal
@@ -1724,15 +1724,15 @@ class InteractionComplex:
             int: 1/0 binary information whether or not the atoms share
                 weak weak Hbond.
         """
-        
-        # entry 5t45 obabel does not identify bond between 
+
+        # entry 5t45 obabel does not identify bond between
         # SER 246 A (OG) and BEF 903 A (F1) which makes neighbour to be
-        # None and then it crashes                
+        # None and then it crashes
         neighbour = utils.get_single_bond_neighbour(ob_mol.GetAtomById(self.bio_to_ob[halogen]))
         if neighbour is None:
             return 0
 
-        nbr = self.ob_to_bio[neighbour.GetId()]        
+        nbr = self.ob_to_bio[neighbour.GetId()]
 
         for hydrogen_coord in donor.h_coords:
 
