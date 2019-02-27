@@ -881,7 +881,7 @@ class InteractionComplex:
         selection_ring_ids = list(self.biopython_str.rings)
         selection_amide_ids = list(self.biopython_str .amides)
 
-        if len(selection) == 0:
+        if not selection:
             logging.error('Selection was empty.')
             raise AttributeError('Selection must not be empty.')
 
@@ -1532,11 +1532,11 @@ class InteractionComplex:
             logging.debug('Loaded PDB structure (OpenBabel)')
 
             return mol
-        else:
-            logging.debug('Loaded MMCIF structure (OpenBabel)')
-            mol = protein_reader.read_mmcif_to_openbabel(path)
 
-            return mol
+        mol = protein_reader.read_mmcif_to_openbabel(path)
+        logging.debug('Loaded MMCIF structure (OpenBabel)')
+
+        return mol
 
     def _setup_filetype(self, filepath):
         """Sets up argument type to be consumedd by openbabel

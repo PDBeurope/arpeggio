@@ -184,7 +184,7 @@ def selection_parser(selection_list, atom_list):
 
     final_atom_list = list(final_atom_list)
 
-    if len(final_atom_list) == 0:
+    if not final_atom_list:
         logging.error('Selection was empty.')
         raise SelectionError('entity not found')
 
@@ -211,7 +211,6 @@ def make_pymol_json(entity):
         raise TypeError('Cannot make a json object from non-Atom object.')
 
     return {
-        'id': f'a{serial_number}',
         'label_comp_id': residue.resname,
         'auth_seq_id': residue.id[1],
         'auth_asym_id': chain.id,
