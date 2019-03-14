@@ -1,15 +1,16 @@
+"""
+mmCIF reading module to crate internal representation of proteins in
+biopython and openbabel.
+"""
+
 import os
 
 import numpy
 from Bio import PDB
 from Bio.PDB.StructureBuilder import StructureBuilder
 from mmCif.mmcifIO import MMCIF2Dict
-from openbabel import OBBitVec, OBElementTable, OBMol, OBResidueData
+import openbabel as ob
 
-"""
-mmCIF reading module to crate internal representation of proteins in
-biopython and openbabel.
-"""
 
 # region common
 
@@ -69,60 +70,145 @@ def read_mmcif_to_openbabel(path):
         raise IOError('File {} not found'.format(path))
 
     parsed = MMCIF2Dict().parse(path)
-    perceived_atom_site = list(parsed.values())[0]['_atom_site']
-    _atom_site = _trim_models(perceived_atom_site)
-    mol = _parse_atom_site_openbabel(_atom_site)
+    mol = _parse_atom_site_openbabel(list(parsed.values())[0])
 
     return mol
 
 
-def _parse_atom_site_openbabel(atom_sites):
+def _parse_atom_site_openbabel(parsed):
     """Parse _atom_site record to OBMolecule
 
     Args:
-        atom_sites (dict of str): Parsed mmcif structure of the input file.
+        parsed (dict of str): Parsed mmcif file.
 
     Returns:
         [OBMol]: openbabel representation of the protein structure.
     """
-    table = OBElementTable()
+    perceived_atom_site = parsed['_atom_site']
+    atom_site = _trim_models(perceived_atom_site)
+
+    table = ob.OBElementTable()
     last_res_id = None
     last_res_name = None
     last_chain_id = None
     chain_num = 0
     res = None
 
-    mol = OBMol()
+    mol = ob.OBMol()
     mol.SetChainsPerceived()
     mol.BeginModify()
 
-    for i in range(len(atom_sites['id'])):
-        current_res_id = _get_res_id(atom_sites, i)
-        ins_code = _get_ins_code(atom_sites, i)
+    for i in range(len(atom_site['id'])):
+        current_res_id = _get_res_id(atom_site, i)
+        ins_code = _get_ins_code(atom_site, i)
 
-        if last_chain_id != atom_sites['auth_asym_id'][i]:
+        if last_chain_id != atom_site['auth_asym_id'][i]:
             chain_num += 1
-            last_chain_id = atom_sites['auth_asym_id'][i]
+            last_chain_id = atom_site['auth_asym_id'][i]
 
-        if current_res_id != last_res_id or atom_sites['auth_asym_id'][i] != last_chain_id or atom_sites['label_comp_id'][i] != last_res_name:
+        if current_res_id != last_res_id or \
+                atom_site['auth_asym_id'][i] != last_chain_id or \
+                atom_site['label_comp_id'][i] != last_res_name:
+
             last_res_id = current_res_id
-            last_res_name = atom_sites['label_comp_id'][i]
+            last_res_name = atom_site['label_comp_id'][i]
 
             res = mol.NewResidue()
             res.SetChainNum(chain_num)
             res.SetNum(str(last_res_id))
-            res.SetName(atom_sites['label_comp_id'][i])
+            res.SetName(atom_site['label_comp_id'][i])
             res.SetInsertionCode(ins_code)
 
-        _init_openbabel_atom(table, mol, res, atom_sites, i)
+        _init_openbabel_atom(table, mol, res, atom_site, i)
 
-    resdat = OBResidueData()
-    resdat.AssignBonds(mol, OBBitVec())
+    resdat = ob.OBResidueData()
+    resdat.AssignBonds(mol, ob.OBBitVec())
     mol.ConnectTheDots()
     mol.PerceiveBondOrders()
+
+    if '_struct_conn' in parsed:
+        parse_struct_conn_bonds(mol, parsed)
+
     mol.EndModify()
 
     return mol
+
+
+def parse_struct_conn_bonds(mol, mmcif_dict):
+    """Add bonds from _struct_conn to the ob molecule.
+
+    Args:
+        mol (ob.OBMol): OpenBabel molecule object
+        mmcif_dict (dict of str): Parsed mmcif file category.
+    """
+    pivot = list(mmcif_dict['_struct_conn'].keys())[0]
+
+    mmcif_dict['_struct_conn'] = (mmcif_dict['_struct_conn']
+                                  if isinstance(mmcif_dict['_struct_conn'][pivot], list)
+                                  else {k: [v] for k, v in mmcif_dict['_struct_conn'].items()})
+
+    for i in range(len(mmcif_dict['_struct_conn'][pivot])):
+        __process_struct_conn(mol, mmcif_dict, i)
+
+
+def __process_struct_conn(mol, mmcif_dict, index):
+    """Process a single entry in the mmcif_dict
+
+    Args:
+        mol (ob.OBMol): Openbabel molecule object
+        mmcif_dict (dict of str): Parsed mmcif file category.
+        index (int): Position in the struct_conn category
+
+    Returns:
+        int: Id of the atom in the openbabel molecule
+    """
+
+    def find_atom_id(atom_site, residue):
+        for i in range(0, len(atom_site['id'])):
+            if atom_site['auth_seq_id'][i] == residue[1] and \
+                    atom_site['auth_asym_id'][i] == residue[0] and \
+                    atom_site['label_atom_id'][i] == residue[2]:
+
+                return int(atom_site['id'][i])
+
+        return 0
+
+    struct_conn = mmcif_dict['_struct_conn']
+    atom_sites = mmcif_dict['_atom_site']
+
+    res_a = (struct_conn['ptnr1_auth_asym_id'][index],
+             struct_conn['ptnr1_auth_seq_id'][index],
+             struct_conn['ptnr1_label_atom_id'][index])
+
+    res_b = (struct_conn['ptnr2_auth_asym_id'][index],
+             struct_conn['ptnr2_auth_seq_id'][index],
+             struct_conn['ptnr2_label_atom_id'][index])
+
+    atom_id_a = find_atom_id(atom_sites, res_a)
+    atom_id_b = find_atom_id(atom_sites, res_b)
+
+    if atom_id_a != 0 and atom_id_b != 0:
+        __add_bond_to_openbabel(mol, atom_id_a, atom_id_b)
+
+
+def __add_bond_to_openbabel(mol, atom_id_a, atom_id_b):
+    """Create bond in the openbabel molecule if it does not exist.
+
+    Args:
+        mol (OBMol): Openbabel mol representation
+        atom_id_a (int): First atom id.
+        atom_id_b (int): Neighbout atom id.
+    """
+
+    pivot = mol.GetAtomById(atom_id_a)
+    for neighbor in ob.OBAtomAtomIter(pivot):
+        if neighbor.GetId() == atom_id_b:
+            return
+
+    b = mol.NewBond()
+    b.SetBegin(pivot)
+    b.SetEnd(mol.GetAtomById(atom_id_b))
+    b.SetBondOrder(1)
 
 
 def _init_openbabel_atom(table, mol, res, atom_sites, i):
@@ -131,13 +217,13 @@ def _init_openbabel_atom(table, mol, res, atom_sites, i):
     Args:
         table (OBElementTable): Element table to translate element type
             to element numbers.
-        mol (OBMol): Molecule the atom will be added to.
+        mol (ob.OBMol): Molecule the atom will be added to.
         res (OBResidue): Residue the atom will be added to.
         atom_sites (dict of str): Parsed mmcif structure of the input file.
         i (int): Pointer to the atom under question.
 
     Returns:
-        [OBAtom]: openbabel Atom representation.
+        OBAtom: openbabel Atom representation.
     """
     atom = mol.NewAtom(int(atom_sites['id'][i]))
 
@@ -214,12 +300,10 @@ def _get_hetero_flag(field, resn):
         str: PDB heteroatom flag as defined by BioPython
     """
     if field == 'HETATM':
-        if resn == 'HOH' or resn == 'WAT':
+        if resn in ('HOH', 'WAT'):
             return 'W'
-        else:
-            return 'H'
-    else:
-        return ' '
+        return 'H'
+    return ' '
 
 
 def _init_biopython_atom(builder, atom_sites, i):
