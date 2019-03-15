@@ -43,7 +43,7 @@ class InteractionComplex:
         self.biopython_str = self._read_in_biopython(filename)
         self.s_atoms = list()
         for atom in list(self.biopython_str.get_atoms()):
-            if type(atom) == DisorderedAtom:
+            if isinstance(atom, DisorderedAtom):
                 for altloc, alt_atom in atom.child_dict.items():
                     self.s_atoms.append(alt_atom)
             else:
@@ -129,7 +129,7 @@ class InteractionComplex:
             selection (list of Atoms): Selection perceived by Arpergio
             wd (str): Working directory
         """
-        if len(selection) == 0:
+        if not selection:
             contacts = os.path.join(wd, self.id + '_contacts.csv')
             self.__write_contact_file(contacts, self.contacts)
         else:
@@ -198,7 +198,7 @@ class InteractionComplex:
         ff.SetLogToStdErr()
 
         if ff.Setup(self.ob_mol, constraints) == 0:  # , constraints)
-            logging.warn('Could not setup the hydrogen minimisation forcefield. Skipping hydrogen minimisation.')
+            logging.info('Could not setup the hydrogen minimisation forcefield. Skipping hydrogen minimisation.')
         else:
 
             # DOESN'T WORK
@@ -355,9 +355,9 @@ class InteractionComplex:
             for atom in self.selection_plus:
                 writer.writerow([utils.make_pymol_string(atom)]
                                 + [atom.potential_hbonds,
-                                 atom.potential_polars,
-                                 atom.actual_hbonds,
-                                 atom.actual_polars])
+                                   atom.potential_polars,
+                                   atom.actual_hbonds,
+                                   atom.actual_polars])
                 p_writer.writerow([utils.make_pymol_string(atom)] +
                                   [atom.potential_hbonds,
                                    atom.potential_polars,
@@ -877,7 +877,7 @@ class InteractionComplex:
         """
         entity = list(self.s_atoms)[:]
         self.ns = NeighborSearch(entity)
-        selection = entity if len(selections) == 0 else utils.selection_parser(selections, entity)
+        selection = entity if not selections else utils.selection_parser(selections, entity)
         selection_ring_ids = list(self.biopython_str.rings)
         selection_amide_ids = list(self.biopython_str .amides)
 
@@ -890,7 +890,7 @@ class InteractionComplex:
 
         # EXPAND THE SELECTION TO INCLUDE THE BINDING SITE
         selection_plus = set(selection)
-        selection_plus_residues = set([x.get_parent() for x in selection_plus])
+        selection_plus_residues = {x.get_parent() for x in selection_plus}
         selection_plus_ring_ids = set(selection_ring_ids)
         selection_plus_amide_ids = set(selection_amide_ids)
 
