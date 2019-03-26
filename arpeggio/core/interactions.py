@@ -15,8 +15,17 @@ from Bio.PDB.Atom import DisorderedAtom
 from arpeggio.core import (AtomSerialError, OBBioMatchError,
                            SiftMatchError, config, protein_reader, utils)
 
-AtomContacts = collections.namedtuple('AtomContacts',
-                                      ['start_atom', 'end_atom', 'sifts', 'contact_type', 'distance'])
+AtomPlaneContact = collections.namedtuple('AtomPlaneContact',
+                                          ['bgn_atom', 'end_res', 'end_res_atoms', 'distance',
+                                           'sifts', 'text'])
+
+PlanePlaneContact = collections.namedtuple('PlanePlaneContact',
+                                           ['bgn_res', 'bgn_res_atoms',
+                                            'end_res', 'end_res_atoms',
+                                            'distance', 'sifts', 'text'])
+
+AtomAtomContact = collections.namedtuple('AtomAtomContact',
+                                         ['bgn_atom', 'end_atom', 'sifts', 'contact_type', 'distance'])
 
 Parameters = collections.namedtuple('Parameters',
                                     ['vdw_comp_factor', 'interacting_threshold', 'has_hydrogens',
@@ -52,13 +61,18 @@ class InteractionComplex:
         # obabel data
         self.ob_mol = self._read_openbabel(filename)
 
+        self.ns = None  # neighbourhood search
         self.ob_to_bio = {}  # openbabel to biopython atom mapping
         self.bio_to_ob = {}  # biopython to openbabel atom mapping
         self.selection = []  # user atom selection
         self.selection_plus = []  # extended user atom selection
-        self.selection_plus_residues = []  # residues
-        self.ns = None  # neighbourhood search
-        self.contacts = []  # arperggio contacts as a list of AtomContacts
+        self.selection_ring_ids = []
+        self.selection_plus_residues = []  # residue
+        self.selection_plus_ring_ids = []
+        self.selection_plus_amide_ids = []        
+        self.atom_contacts = []
+        self.plane_plane_contacts = []
+        self.plane_plane_contacts = []
 
         self.params = Parameters(
             vdw_comp_factor=vdw_comp,
@@ -129,16 +143,18 @@ class InteractionComplex:
             selection (list of Atoms): Selection perceived by Arpergio
             wd (str): Working directory
         """
-        if not selection:
-            contacts = os.path.join(wd, self.id + '_contacts.csv')
-            self.__write_contact_file(contacts, self.contacts)
-        else:
-            contacts = os.path.join(wd, self.id + '_bs_contacts.csv')
-            temp_contacts = filter(lambda l: l.contact_type in ('INTER', 'INTRA_SELECTION', 'SELECTION_WATER', 'WATER_WATER'), self.contacts)
-            self.__write_contact_file(contacts, temp_contacts)
+        contacts = os.path.join(wd, self.id + '_contacts.csv')
+        self.__write_contact_file(contacts, self.atom_contacts)
 
-            contacts = os.path.join(wd, self.id + '_contacts.csv')
-            self.__write_contact_file(contacts, self.contacts)
+        if not selection:
+            return
+
+        contacts = os.path.join(wd, self.id + '_bs_contacts.csv')
+        temp_contacts = filter(lambda l: l.contact_type in ('INTER', 'INTRA_SELECTION', 'SELECTION_WATER', 'WATER_WATER'), self.atom_contacts)
+        self.__write_contact_file(contacts, temp_contacts)
+
+        contacts = os.path.join(wd, self.id + '_contacts.csv')
+        self.__write_contact_file(contacts, self.atom_contacts)
 
     def get_contacts(self):
         """Get json information for contacts.
@@ -150,16 +166,39 @@ class InteractionComplex:
                     'xbond', 'ionic', 'metal_complex', 'aromatic', 'hydrophobic', 'carbonyl',
                     'polar', 'weak_polar']
         result_bag = []
-        for contact in self.contacts:
+        for contact in self.atom_contacts:
             result_entry = {}
-            result_entry['atom_bgn'] = utils.make_pymol_json(contact.start_atom)
-            result_entry['atom_end'] = utils.make_pymol_json(contact.end_atom)
+            result_entry['bgn'] = utils.make_pymol_json(contact.bgn_atom)
+            result_entry['end'] = utils.make_pymol_json(contact.end_atom)
+            result_bag['type'] = 'atom-atom'
             result_entry['distance'] = round(np.float64(contact.distance), 2)
             result_entry['contact'] = [k for k, v in zip(contacts, contact.sifts) if v == 1]
             result_entry['interacting_entities'] = contact.contact_type
 
             result_bag.append(result_entry)
+        
+        for contact in self.plane_plane_contacts:
+            result_entry = {}
+            result_entry['bgn'] = utils.make_pymol_json(contact.bgn_res)
+            result_entry['bgn']['atoms'] = reduce(lambda l, m: f'{l},{m}', contact.bgn_res_atoms)
+            result_entry['end'] = utils.make_pymol_json(contact.end_res)
+            result_entry['end']['atoms'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
+            result_bag['type'] = 'plane-plane'
+            result_entry['distance'] = round(np.float64(contact.distance), 2)
+            result_entry['contact'] = contact.sifts
+            result_entry['interacting_entities'] = contact.contact_type
 
+
+        for contact in self.atom_plane_contacts:
+            result_entry = {}
+            result_entry['bgn'] = utils.make_pymol_json(contact.bgn_atom)
+            result_entry['end'] = utils.make_pymol_json(contact.end_atom)
+            result_entry['end']['atoms'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
+            result_bag['type'] = 'atom-plane'
+            result_entry['distance'] = round(np.float64(contact.distance), 2)
+            result_entry['contact'] = contact.sifts
+            result_entry['interacting_entities'] = contact.contact_type
+# TODOOOOOO
         return result_bag
 
     def minimize_hydrogens(self, minimisation_forcefield, minimisation_method, minimisation_steps):
@@ -280,7 +319,8 @@ class InteractionComplex:
         self._make_selection(user_selections)
         logging.debug('Completed new NeighbourSearch.')
 
-        self._calculate_contacts(interacting_cutoff, vdw_comp, include_sequence_adjacent)
+        self._calculate_atom_contacts(interacting_cutoff, vdw_comp, include_sequence_adjacent)
+        self._calculate_ring_contacts()
 
     def write_atom_sifts(self, wd):
         """Write out per-atom SIFTS. Files: '_sifts' and '_specific_sifts'
@@ -355,9 +395,9 @@ class InteractionComplex:
             for atom in self.selection_plus:
                 writer.writerow([utils.make_pymol_string(atom)]
                                 + [atom.potential_hbonds,
-                                   atom.potential_polars,
-                                   atom.actual_hbonds,
-                                   atom.actual_polars])
+                                 atom.potential_polars,
+                                 atom.actual_hbonds,
+                                 atom.actual_polars])
                 p_writer.writerow([utils.make_pymol_string(atom)] +
                                   [atom.potential_hbonds,
                                    atom.potential_polars,
@@ -538,7 +578,7 @@ class InteractionComplex:
 
         Args:
             path (str): Path where the data will be exported.
-            contacts (list of AtomContacts): List of contacts to be exported.
+            contacts (list of AtomAtomContact): List of contacts to be exported.
         """
         with open(path, 'w') as fo:
             writer = csv.writer(fo, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -564,7 +604,7 @@ class InteractionComplex:
                              ])
             for contact in contacts:
                 writer.writerow([
-                    utils.make_pymol_string(contact.start_atom),
+                    utils.make_pymol_string(contact.bgn_atom),
                     utils.make_pymol_string(contact.end_atom),
                     contact.distance] +
                     contact.sifts
@@ -616,12 +656,12 @@ class InteractionComplex:
             contact_type = 'WATER_WATER'
 
         if not contact_type:
-            logging.error('Could not assign a contact type for {}:{}'.format(atom_bgn, atom_end))
-            raise ValueError('Could not assign a contact type for {}:{}'.format(atom_bgn, atom_end))
+            logging.error(f'Could not assign a contact type for {atom_bgn}:{atom_end}')
+            raise ValueError(f'Could not assign a contact type for {atom_bgn}:{atom_end}')
 
         return contact_type
 
-    def _calculate_contacts(self, interacting_cutoff, vdw_comp_factor, include_sequence_adjacent):
+    def _calculate_atom_contacts(self, interacting_cutoff, vdw_comp_factor, include_sequence_adjacent):
         """Calculate the actual molecular contacts and their type.
 
         Args:
@@ -633,7 +673,7 @@ class InteractionComplex:
                 interactions between residues that are next to each
                 other in sequence
         """
-        self.contacts = []
+        self.atom_contacts = []
 
         for atom_bgn, atom_end in self.ns.search_all(interacting_cutoff):
 
@@ -864,7 +904,266 @@ class InteractionComplex:
             self._update_atom_fsift(atom_bgn, fsift, contact_type)
             self._update_atom_fsift(atom_end, fsift, contact_type)
 
-            self.contacts.append(AtomContacts(start_atom=atom_bgn, end_atom=atom_end, sifts=SIFt, contact_type=contact_type, distance=distance))
+            self.atom_contacts.append(AtomAtomContact(bgn_atom=atom_bgn, end_atom=atom_end, sifts=SIFt, contact_type=contact_type, distance=distance))
+
+    def _calculate_ring_contacts(self):
+        self.plane_plane_contacts = []
+        self.atom_plane_contacts = []
+
+        self.__calculate_plane_plane_contacts()
+        self.__calculate_atom_plane_contacts()
+
+    def __calculate_atom_plane_contacts(self):
+        """
+        """
+        selection_set = set(self.selection)
+
+        for ring in self.biopython_str.rings:
+            ring_key = ring
+            ring = self.biopython_str.rings[ring]
+
+            # CHECK RING IS INVOLVED IN THE SELECTION OR BINDING SITE
+            if ring_key not in self.selection_plus_ring_ids:
+                continue
+
+            for atom in self.ns.search(ring['center'], config.CONTACT_TYPES['aromatic']['met_sulphur_aromatic_distance']):
+
+                # IGNORE ANY HYDROGENS FOR THESE CONTACTS
+                # IF HYDROGENS ARE PRESENT IN THE BIOPYTHON STRUCTURE FOR ANY REASON
+                if atom.element.strip() == 'H':
+                    continue
+
+                # CHECK THAT THE ATOM IS INVOLVED IN THE SELECTION OR BINDING SITE
+                if atom not in self.selection_plus:
+                    continue
+
+                # GET DISTANCE AND CHECK IF FAR ENOUGH
+                distance = np.linalg.norm(atom.coord - ring['center'])
+
+                # NO AROMATIC ATOM-RING INTERACTIONS
+                if 'aromatic' in atom.atom_types:
+                    continue
+
+                # CHECK IF INTRA-RESIDUE
+                intra_residue = False
+
+                if ring['residue'] == atom.get_parent():
+                    intra_residue = True
+
+                # DETERMINE CONTACT TYPE
+                contact_type = ''
+
+                if ring_key not in self.selection_ring_ids and atom not in selection_set:
+                    contact_type = 'INTRA_NON_SELECTION'
+
+                if ring_key in self.selection_plus_ring_ids and atom in self.selection_plus:
+                    contact_type = 'INTRA_BINDING_SITE'
+
+                if ring_key in self.selection_ring_ids and atom in selection_set:
+                    contact_type = 'INTRA_SELECTION'
+
+                if (ring_key in self.selection_ring_ids and atom not in selection_set) or (atom in selection_set and ring_key not in self.selection_ring_ids):
+                    contact_type = 'INTER'
+
+                # DETERMINE INTERACTIONS
+                potential_interactions = set([])
+
+                # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
+                #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
+                #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
+                theta = abs(self._group_angle(ring, ring['center'] - atom.coord, True, True))  # CHECK IF `atom.coord` or `ring['center'] - atom.coord`
+
+                if distance <= config.CONTACT_TYPES['aromatic']['atom_aromatic_distance'] and theta <= 30.0:
+
+                    if atom.element == 'C' and 'weak hbond donor' in atom.atom_types:
+                        potential_interactions.add('CARBONPI')
+
+                    if 'pos ionisable' in atom.atom_types:
+                        potential_interactions.add('CATIONPI')
+
+                    if 'hbond donor' in atom.atom_types:
+                        potential_interactions.add('DONORPI')
+
+                    if 'xbond donor' in atom.atom_types:
+                        potential_interactions.add('HALOGENPI')
+
+                if distance <= config.CONTACT_TYPES['aromatic']['met_sulphur_aromatic_distance']:
+
+                    if atom.get_parent().resname == 'MET' and atom.element == 'S':
+                        potential_interactions.add('METSULPHURPI')
+
+                if not potential_interactions:
+                    continue
+
+                interaction_type = list(potential_interactions)[0]
+
+                # OUTPUT INTRA/INTER RESIDUE AS TEXT RATHER THAN BOOLEAN
+                intra_residue_text = 'INTER_RESIDUE'
+
+                if intra_residue:
+                    intra_residue_text = 'INTRA_RESIDUE'
+
+                # logging.info('Atom: <{}>   Ring: <{}>  Theta = {}'.format(atom.get_full_id(), ring['ring_id'], theta))
+
+                # RESIDUE RING-ATOM SIFT
+                if contact_type == 'INTER' and not intra_residue:
+
+                    for k, i_type in enumerate(('CARBONPI', 'CATIONPI', 'DONORPI', 'HALOGENPI', 'METSULPHURPI')):
+
+                        for potential_interaction in potential_interactions:
+
+                            if potential_interaction == i_type:
+
+                                ring['residue'].ring_atom_inter_integer_sift[k] = ring['residue'].ring_atom_inter_integer_sift[k] + 1
+                                atom.get_parent().atom_ring_inter_integer_sift[k] = atom.get_parent().atom_ring_inter_integer_sift[k] + 1
+
+                                if atom.get_parent() in self.polypeptide_residues:
+
+                                    if atom.name in config.MAINCHAIN_ATOMS:
+                                        atom.get_parent().mc_atom_ring_inter_integer_sift[k] = atom.get_parent().mc_atom_ring_inter_integer_sift[k] + 1
+
+                                    else:
+                                        atom.get_parent().sc_atom_ring_inter_integer_sift[k] = atom.get_parent().sc_atom_ring_inter_integer_sift[k] + 1
+
+                end_ring_atoms = sorted([a.get_id() for a in ring['atoms']])
+
+                contact = AtomPlaneContact(atom, ring['residue'], end_ring_atoms, distance, sorted(list(potential_interactions)), intra_residue_text)
+                self.atom_plane_contacts.append(contact)
+
+    def __calculate_plane_plane_contacts(self):
+        """Calculate plane-plane and plane-atom contacts    
+        `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
+        `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/sql/populate.sql?at=default`
+        `http://marid.bioc.cam.ac.uk/credo/about`
+        """
+
+        for ring in self.biopython_str.rings:
+            ring_key = ring
+            ring = self.biopython_str.rings[ring]
+
+            for ring2 in self.biopython_str.rings:
+
+                ring_key2 = ring2
+                ring2 = self.biopython_str.rings[ring2]
+
+                # CHECK THAT THE RINGS ARE INVOLVED WITH THE SELECTION OR BINDING SITE
+                if ring_key not in self.selection_plus_ring_ids or ring_key2 not in self.selection_plus_ring_ids:
+                    continue
+
+                # NO SELFIES
+                if ring_key == ring_key2:
+                    continue
+
+                # CHECK IF INTERACTION IS WITHIN SAME RESIDUE
+                intra_residue = False
+
+                if ring['residue'] == ring2['residue']:
+                    intra_residue = True
+
+                # DETERMINE CONTACT TYPE
+                contact_type = ''
+
+                if ring_key not in self.selection_ring_ids and ring_key2 not in self.selection_ring_ids:
+                    contact_type = 'INTRA_NON_SELECTION'
+
+                if ring_key in self.selection_plus_ring_ids and ring_key2 in self.selection_plus_ring_ids:
+                    contact_type = 'INTRA_BINDING_SITE'
+
+                if ring_key in self.selection_ring_ids and ring_key2 in self.selection_ring_ids:
+                    contact_type = 'INTRA_SELECTION'
+
+                if (ring_key in self.selection_ring_ids and ring_key2 not in self.selection_ring_ids) or (ring_key2 in self.selection_ring_ids and ring_key not in self.selection_ring_ids):
+                    contact_type = 'INTER'
+
+                # DETERMINE RING-RING DISTANCE
+                distance = np.linalg.norm(ring['center'] - ring2['center'])
+
+                if distance > config.CONTACT_TYPES['aromatic']['centroid_distance']:
+                    continue
+
+                theta_point = ring['center'] - ring2['center']
+                # iota_point = ring2['center'] - ring['center']
+
+                # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
+                #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
+                #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
+                dihedral = abs(self._group_group_angle(ring, ring2, True, True))
+                theta = abs(self._group_angle(ring, theta_point, True, True))
+
+                # logging.info('Dihedral = {}     Theta = {}'.format(dihedral, theta))
+
+                int_type = ''
+
+                if dihedral <= 30.0 and theta <= 30.0:
+                    int_type = 'FF'
+                elif dihedral <= 30.0 and theta <= 60.0:
+                    int_type = 'OF'
+                elif dihedral <= 30.0 and theta <= 90.0:
+                    int_type = 'EE'
+
+                elif 30.0 < dihedral <= 60.0 and theta <= 30.0:
+                    int_type = 'FT'
+                elif 30.0 < dihedral <= 60.0 and theta <= 60.0:
+                    int_type = 'OT'
+                elif 30.0 < dihedral <= 60.0 and theta <= 90.0:
+                    int_type = 'ET'
+
+                elif 60.0 < dihedral <= 90.0 and theta <= 30.0:
+                    int_type = 'FE'
+                elif 60.0 < dihedral <= 90.0 and theta <= 60.0:
+                    int_type = 'OE'
+                elif 60.0 < dihedral <= 90.0 and theta <= 90.0:
+                    int_type = 'EF'
+
+                # DON'T COUNT INTRA-RESIDUE EDGE-TO-EDGE RING INTERACTIONS
+                # TO AVOID INTRA-HETEROCYCLE INTERACTIONS
+                # POTENTIALLY A BUG IF TWO RINGS ARE SEPARATED BY A LONG ALIPHATIC CHAIN
+                # AND MAKE A GENUINE INTRA EE INTERACTION, BUT ASSUMING THIS IS RARE
+                if intra_residue and int_type == 'EE':
+                    continue
+
+                # OUTPUT INTRA/INTER RESIDUE AS TEXT RATHER THAN BOOLEAN
+                intra_residue_text = 'INTER_RESIDUE'
+
+                if intra_residue:
+                    intra_residue_text = 'INTRA_RESIDUE'
+
+                # UPDATE RESIDUE RING INTEGER SIFTS
+
+                # RING-RING INTERACTING SIFT
+                # MUST BE INTER-RESIDUE
+                # MUST BE OF CONTACT TYPE INTER, I.E. BETWEEN SELECTION AND NON-SELECTION
+                # ALL 9 RING INTERACTION TYPES
+                # ADDED ONLY FOR THE FIRST RING, AS THE RECIPROCAL INTERACTION
+                # SHOULD BE COVERED FOR THE OTHER RING
+                if contact_type == 'INTER' and not intra_residue:
+
+                    for k, i_type in enumerate(('FF', 'OF', 'EE', 'FT', 'OT', 'ET', 'FE', 'OE', 'EF')):
+
+                        if int_type == i_type:
+                            ring['residue'].ring_ring_inter_integer_sift[k] = ring['residue'].ring_ring_inter_integer_sift[k] + 1
+
+                # WRITE RING INTERACTION TO FILE
+                bgn_ring_atoms = sorted([a.get_id() for a in ring['atoms']])
+                end_ring_atoms = sorted([a.get_id() for a in ring2['atoms']])
+
+                ring_contact = PlanePlaneContact(ring['residue'], bgn_ring_atoms,
+                                                 ring2['residue'], end_ring_atoms,
+                                                 distance, contact_type, intra_residue_text)
+
+                self.plane_plane_contacts.append(ring_contact)
+
+                # output = [
+                #     ring['ring_id'],
+                #     utils.make_pymol_string(ring['residue']),
+                #     list(ring['center']),
+                #     ring2['ring_id'],
+                #     utils.make_pymol_string(ring2['residue']),
+                #     list(ring2['center']),
+                #     int_type,
+                #     intra_residue_text,
+                #     contact_type
+                # ]
 
     def _make_selection(self, selections):
         """Select residues to calculate interactions
@@ -879,7 +1178,7 @@ class InteractionComplex:
         self.ns = NeighborSearch(entity)
         selection = entity if not selections else utils.selection_parser(selections, entity)
         selection_ring_ids = list(self.biopython_str.rings)
-        selection_amide_ids = list(self.biopython_str .amides)
+        selection_amide_ids = list(self.biopython_str.amides)
 
         if not selection:
             logging.error('Selection was empty.')
@@ -891,8 +1190,8 @@ class InteractionComplex:
         # EXPAND THE SELECTION TO INCLUDE THE BINDING SITE
         selection_plus = set(selection)
         selection_plus_residues = {x.get_parent() for x in selection_plus}
-        selection_plus_ring_ids = set(selection_ring_ids)
-        selection_plus_amide_ids = set(selection_amide_ids)
+        self.selection_plus_ring_ids = set(selection_ring_ids)
+        self.selection_plus_amide_ids = set(selection_amide_ids)
 
         # TODO @Lukas FIX if args.selection:
 
@@ -915,13 +1214,13 @@ class InteractionComplex:
         logging.debug('Expanded to binding site.')
 
         # GET LIST OF RESIDUES IN THE SELECTION PLUS BINDING SITE
-        selection_plus_residues = set([x.get_parent() for x in selection_plus])
+        selection_plus_residues = {x.get_parent() for x in selection_plus}
 
         # MAKE A SET OF ALL RING IDS ASSOCIATED WITH THE SELECTION AND BINDING SITE
-        selection_plus_ring_ids = set([x for x in self.biopython_str.rings if self.biopython_str.rings[x]['residue'] in selection_plus_residues])
+        selection_plus_ring_ids = {x for x in self.biopython_str.rings if self.biopython_str.rings[x]['residue'] in selection_plus_residues}
 
         # MAKE A SET OF ALL AMIDE IDS ASSOCIATED WITH THE SELECTION AND BINDING SITE
-        selection_plus_amide_ids = set([x for x in self.biopython_str.amides if self.biopython_str.amides[x]['residue'] in selection_plus_residues])
+        selection_plus_amide_ids = {x for x in self.biopython_str.amides if self.biopython_str.amides[x]['residue'] in selection_plus_residues}
 
         logging.debug('Flagged selection rings.')
 
@@ -931,6 +1230,10 @@ class InteractionComplex:
         self.selection = selection
         self.selection_plus = selection_plus
         self.selection_plus_residues = selection_plus_residues
+        self.selection_plus_ring_ids = selection_plus_ring_ids
+        self.selection_ring_ids = selection_ring_ids
+        self.selection_amide_ids = selection_amide_ids
+        self.selection_plus_amide_ids = selection_plus_amide_ids
 
     def _assign_aromatic_rings_to_residues(self):
         # NEIGHBORSEARCH

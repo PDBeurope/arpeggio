@@ -99,6 +99,7 @@ def run_arpeggio(args):
     if args.write_hydrogenated:
         i_complex.write_hydrogenated(args.output, args.filename)
 
+    i_complex.initialize()
     i_complex.run_arpeggio(selections, args.interacting, args.vdw_comp, args.include_sequence_adjacent)
 
     # write out files
@@ -109,7 +110,7 @@ def run_arpeggio(args):
     i_complex.write_polar_matching(args.output)  # _polarmatch; _specific_polarmatch
     i_complex.write_residue_sifts(args.output)  # residue_sifts
 
-    logger.info('Program End. Maximum memory usage was {}.'.format(max_mem_usage()))
+    logger.info(f'Program End. Maximum memory usage was {max_mem_usage()}.')
 
 
 def _parse_selection(args):
@@ -129,5 +130,5 @@ def _parse_selection(args):
         with open(args.selection_file, 'r') as f:
             selection = [line for line in f]
 
-    logger.info('Selection perceived: {}'.format(selection))
+    logger.info(f'Selection perceived: {selection}')
     return selection

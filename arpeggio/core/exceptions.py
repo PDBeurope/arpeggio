@@ -17,7 +17,7 @@ class OBBioMatchError(Exception):
             logging.error('An OpenBabel atom could not be matched to a BioPython counterpart.')
 
         else:
-            logging.error('OpenBabel OBAtom with serial number {} could not be matched to a BioPython counterpart.'.format(serial))
+            logging.error(f'OpenBabel OBAtom with serial number {serial} could not be matched to a BioPython counterpart.')
 
 
 class AtomSerialError(Exception):
@@ -35,4 +35,4 @@ class SiftMatchError(Exception):
 class SelectionError(Exception):
 
     def __init__(self, selection):
-        logging.error('Invalid selector: {}'.format(selection))
+        logging.error(f'Invalid selector: {selection}')
