@@ -205,18 +205,27 @@ def make_pymol_json(entity):
         chain = entity.get_parent().get_parent()
         residue = entity.get_parent()
         atom_name = entity.name
-        serial_number = entity.serial_number
+
+        return {
+            'label_comp_id': residue.resname,
+            'auth_seq_id': residue.id[1],
+            'auth_asym_id': chain.id,
+            'auth_atom_id': atom_name,
+            'pdbx_PDB_ins_code': residue.id[2]
+        }
+
+    elif isinstance(entity, Residue):
+        chain = entity.get_parent()
+
+        return {
+            'label_comp_id': entity.resname,
+            'auth_seq_id': entity.id[1],
+            'auth_asym_id': chain.id,
+            'pdbx_PDB_ins_code': entity.id[2]
+        }
 
     else:
-        raise TypeError('Cannot make a json object from non-Atom object.')
-
-    return {
-        'label_comp_id': residue.resname,
-        'auth_seq_id': residue.id[1],
-        'auth_asym_id': chain.id,
-        'auth_atom_id': atom_name,
-        'pdbx_PDB_ins_code': residue.id[2]
-    }
+        raise TypeError('Cannot make a json object from non-Atom/Residue object.')
 
 
 def make_pymol_string(entity):

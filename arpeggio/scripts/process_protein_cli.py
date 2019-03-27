@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 import os
 
@@ -102,13 +103,21 @@ def run_arpeggio(args):
     i_complex.initialize()
     i_complex.run_arpeggio(selections, args.interacting, args.vdw_comp, args.include_sequence_adjacent)
 
+    contacts = i_complex.get_contacts()
+
+    json_name = os.path.basename(args.filename).split('.')[0]
+    path = os.path.join(args.output, f'{json_name}.json')
+
+    with open(path, 'w') as fp:
+        json.dump(contacts, fp, indent=4, sort_keys=True)
+
     # write out files
-    i_complex.write_atom_types(args.output)  # _atomtypes
-    i_complex.write_contacts(selections, args.output)  # _contacts; _bs_contacts
-    i_complex.write_atom_sifts(args.output)  # _sift; _specific_sift
-    i_complex.write_binding_site_sifts(args.output)  # _siftmatch; _specific_siftmatch
-    i_complex.write_polar_matching(args.output)  # _polarmatch; _specific_polarmatch
-    i_complex.write_residue_sifts(args.output)  # residue_sifts
+    #i_complex.write_atom_types(args.output)  # _atomtypes
+    #i_complex.write_contacts(selections, args.output)  # _contacts; _bs_contacts
+    #i_complex.write_atom_sifts(args.output)  # _sift; _specific_sift
+    #i_complex.write_binding_site_sifts(args.output)  # _siftmatch; _specific_siftmatch
+    #i_complex.write_polar_matching(args.output)  # _polarmatch; _specific_polarmatch
+    #i_complex.write_residue_sifts(args.output)  # residue_sifts
 
     logger.info(f'Program End. Maximum memory usage was {max_mem_usage()}.')
 

@@ -8,12 +8,12 @@ from functools import reduce
 import numpy as np
 import openbabel as ob
 from Bio.PDB import NeighborSearch
+from Bio.PDB.Atom import DisorderedAtom
 from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB.Polypeptide import PPBuilder
-from Bio.PDB.Atom import DisorderedAtom
 
-from arpeggio.core import (AtomSerialError, OBBioMatchError,
-                           SiftMatchError, config, protein_reader, utils)
+from arpeggio.core import (AtomSerialError, OBBioMatchError, SiftMatchError,
+                           config, protein_reader, utils)
 
 AtomPlaneContact = collections.namedtuple('AtomPlaneContact',
                                           ['bgn_atom', 'end_res', 'end_res_atoms', 'distance',
@@ -22,7 +22,7 @@ AtomPlaneContact = collections.namedtuple('AtomPlaneContact',
 PlanePlaneContact = collections.namedtuple('PlanePlaneContact',
                                            ['bgn_res', 'bgn_res_atoms',
                                             'end_res', 'end_res_atoms',
-                                            'distance', 'sifts', 'text'])
+                                            'distance', 'contact_type', 'text'])
 
 AtomAtomContact = collections.namedtuple('AtomAtomContact',
                                          ['bgn_atom', 'end_atom', 'sifts', 'contact_type', 'distance'])
@@ -69,9 +69,11 @@ class InteractionComplex:
         self.selection_ring_ids = []
         self.selection_plus_residues = []  # residue
         self.selection_plus_ring_ids = []
-        self.selection_plus_amide_ids = []        
+        self.selection_plus_amide_ids = []
+
+        # result bags
         self.atom_contacts = []
-        self.plane_plane_contacts = []
+        self.atom_plane_contacts = []
         self.plane_plane_contacts = []
 
         self.params = Parameters(
@@ -165,40 +167,44 @@ class InteractionComplex:
         contacts = ['clash', 'covalent', 'vdw_clash', 'vdw', 'proximal', 'hbond', 'weak_hbond',
                     'xbond', 'ionic', 'metal_complex', 'aromatic', 'hydrophobic', 'carbonyl',
                     'polar', 'weak_polar']
+
         result_bag = []
         for contact in self.atom_contacts:
             result_entry = {}
             result_entry['bgn'] = utils.make_pymol_json(contact.bgn_atom)
             result_entry['end'] = utils.make_pymol_json(contact.end_atom)
-            result_bag['type'] = 'atom-atom'
+            result_entry['type'] = 'atom-atom'
             result_entry['distance'] = round(np.float64(contact.distance), 2)
             result_entry['contact'] = [k for k, v in zip(contacts, contact.sifts) if v == 1]
             result_entry['interacting_entities'] = contact.contact_type
 
             result_bag.append(result_entry)
-        
+
         for contact in self.plane_plane_contacts:
             result_entry = {}
             result_entry['bgn'] = utils.make_pymol_json(contact.bgn_res)
-            result_entry['bgn']['atoms'] = reduce(lambda l, m: f'{l},{m}', contact.bgn_res_atoms)
+            result_entry['bgn']['auth_atom_ids'] = reduce(lambda l, m: f'{l},{m}', contact.bgn_res_atoms)
             result_entry['end'] = utils.make_pymol_json(contact.end_res)
-            result_entry['end']['atoms'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
-            result_bag['type'] = 'plane-plane'
+            result_entry['end']['auth_atom_ids'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
+            result_entry['type'] = 'plane-plane'
             result_entry['distance'] = round(np.float64(contact.distance), 2)
-            result_entry['contact'] = contact.sifts
-            result_entry['interacting_entities'] = contact.contact_type
+            result_entry['contact'] = contact.contact_type
+            result_entry['interacting_entities'] = contact.text
 
+            result_bag.append(result_entry)
 
         for contact in self.atom_plane_contacts:
             result_entry = {}
             result_entry['bgn'] = utils.make_pymol_json(contact.bgn_atom)
-            result_entry['end'] = utils.make_pymol_json(contact.end_atom)
-            result_entry['end']['atoms'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
-            result_bag['type'] = 'atom-plane'
+            result_entry['end'] = utils.make_pymol_json(contact.end_res)
+            result_entry['end']['auth_atom_ids'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
+            result_entry['type'] = 'atom-plane'
             result_entry['distance'] = round(np.float64(contact.distance), 2)
             result_entry['contact'] = contact.sifts
-            result_entry['interacting_entities'] = contact.contact_type
-# TODOOOOOO
+            result_entry['interacting_entities'] = contact.text
+
+            result_bag.append(result_entry)
+
         return result_bag
 
     def minimize_hydrogens(self, minimisation_forcefield, minimisation_method, minimisation_steps):
@@ -332,10 +338,10 @@ class InteractionComplex:
         specific_sifts = os.path.join(wd, self.id + '_specific_sifts.csv')
 
         sifts_content = [[utils.make_pymol_string(atom)] + atom.sift for atom in self.selection_plus]
-        specific_sifts_content = [[utils.make_pymol_string(atom)]
-                                  + atom.sift_inter_only
-                                  + atom.sift_intra_only
-                                  + atom.sift_water_only
+        specific_sifts_content = [[utils.make_pymol_string(atom)] +
+                                  atom.sift_inter_only +
+                                  atom.sift_intra_only +
+                                  atom.sift_water_only
                                   for atom in self.selection_plus]
 
         self.__write_atom_sifts(sifts, sifts_content)
@@ -371,12 +377,12 @@ class InteractionComplex:
 
                 writer.writerow([utils.make_pymol_string(atom)] + sift_match + [utils.int3(sift_match)] + [human_readable])
                 s_writer.writerow([utils.make_pymol_string(atom)] +
-                                  sift_match_inter
-                                  + [self._human_sift_match(sift_match_inter)]
-                                  + sift_match_intra
-                                  + [self._human_sift_match(sift_match_intra)]
-                                  + sift_match_water
-                                  + [self._human_sift_match(sift_match_water)])
+                                  sift_match_inter +
+                                  [self._human_sift_match(sift_match_inter)] +
+                                  sift_match_intra +
+                                  [self._human_sift_match(sift_match_intra)] +
+                                  sift_match_water +
+                                  [self._human_sift_match(sift_match_water)])
 
     def write_polar_matching(self, wd):
         """Write out potential polar contacts
@@ -393,11 +399,11 @@ class InteractionComplex:
 
             # TODO add header
             for atom in self.selection_plus:
-                writer.writerow([utils.make_pymol_string(atom)]
-                                + [atom.potential_hbonds,
-                                 atom.potential_polars,
-                                 atom.actual_hbonds,
-                                 atom.actual_polars])
+                writer.writerow([utils.make_pymol_string(atom)] +
+                                [atom.potential_hbonds,
+                                   atom.potential_polars,
+                                   atom.actual_hbonds,
+                                   atom.actual_polars])
                 p_writer.writerow([utils.make_pymol_string(atom)] +
                                   [atom.potential_hbonds,
                                    atom.potential_polars,
@@ -607,8 +613,8 @@ class InteractionComplex:
                     utils.make_pymol_string(contact.bgn_atom),
                     utils.make_pymol_string(contact.end_atom),
                     contact.distance] +
-                    contact.sifts
-                    + [contact.contact_type]
+                    contact.sifts +
+                    [contact.contact_type]
                 )
 
     def __get_contact_type(self, atom_bgn, atom_end, selection_set):
@@ -998,7 +1004,7 @@ class InteractionComplex:
                 interaction_type = list(potential_interactions)[0]
 
                 # OUTPUT INTRA/INTER RESIDUE AS TEXT RATHER THAN BOOLEAN
-                intra_residue_text = 'INTER_RESIDUE'
+                intra_residue_text = 'INTER'
 
                 if intra_residue:
                     intra_residue_text = 'INTRA_RESIDUE'
@@ -1031,7 +1037,7 @@ class InteractionComplex:
                 self.atom_plane_contacts.append(contact)
 
     def __calculate_plane_plane_contacts(self):
-        """Calculate plane-plane and plane-atom contacts    
+        """Calculate plane-plane and plane-atom contacts
         `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
         `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/sql/populate.sql?at=default`
         `http://marid.bioc.cam.ac.uk/credo/about`
@@ -1123,7 +1129,7 @@ class InteractionComplex:
                     continue
 
                 # OUTPUT INTRA/INTER RESIDUE AS TEXT RATHER THAN BOOLEAN
-                intra_residue_text = 'INTER_RESIDUE'
+                intra_residue_text = 'INTER'
 
                 if intra_residue:
                     intra_residue_text = 'INTRA_RESIDUE'
@@ -1149,7 +1155,8 @@ class InteractionComplex:
 
                 ring_contact = PlanePlaneContact(ring['residue'], bgn_ring_atoms,
                                                  ring2['residue'], end_ring_atoms,
-                                                 distance, contact_type, intra_residue_text)
+                                                 distance, int_type,
+                                                 intra_residue_text)
 
                 self.plane_plane_contacts.append(ring_contact)
 
@@ -1260,7 +1267,7 @@ class InteractionComplex:
 
             if closest_atom[0] is None:
 
-                logging.warn('Residue assignment was not possible for ring {}.'.format(ring_id))
+                logging.warning('Residue assignment was not possible for ring {}.'.format(ring_id))
                 self.biopython_str.rings[ring_id]['residue'] = None
 
             else:
