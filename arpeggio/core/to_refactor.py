@@ -13,27 +13,8 @@
 # IMPORTS #
 ###########
 
-import argparse
-import collections
-import logging
-import operator
-import sys
-from collections import OrderedDict
-from functools import reduce
-from os import path
-import platform
 
 import numpy as np
-import openbabel as ob
-from Bio.PDB import NeighborSearch
-from Bio.PDB.Atom import Atom
-from Bio.PDB.PDBParser import PDBParser
-from Bio.PDB.Polypeptide import PPBuilder
-from Bio.PDB.Residue import Residue
-
-import arpeggio.core.config as config
-from arpeggio.core import HydrogenError, OBBioMatchError, AtomSerialError, SiftMatchError, SelectionError
-from arpeggio.core import protein_reader
 
 if __name__ == '__main__':
         

@@ -20,8 +20,8 @@ AtomPlaneContact = collections.namedtuple('AtomPlaneContact',
                                            'sifts', 'text'])
 
 PlanePlaneContact = collections.namedtuple('PlanePlaneContact',
-                                           ['bgn_res', 'bgn_res_atoms',
-                                            'end_res', 'end_res_atoms',
+                                           ['bgn_id', 'bgn_res', 'bgn_res_atoms',
+                                            'end_id', 'end_res', 'end_res_atoms',
                                             'distance', 'contact_type', 'text'])
 
 AtomAtomContact = collections.namedtuple('AtomAtomContact',
@@ -577,7 +577,8 @@ class InteractionComplex:
                              'weak_polar',
                              'interacting_entities'
                              ])
-            [writer.writerow(i) for i in content]
+            for i in content:
+                writer.writerow(i)
 
     def __write_contact_file(self, path, contacts):
         """Write out Arperggio contacts
@@ -1079,6 +1080,7 @@ class InteractionComplex:
                     contact_type = 'INTRA_SELECTION'
 
                 if (ring_key in self.selection_ring_ids and ring_key2 not in self.selection_ring_ids) or (ring_key2 in self.selection_ring_ids and ring_key not in self.selection_ring_ids):
+                #if ring_key in self.selection_ring_ids or ring_key2 in self.selection_ring_ids:
                     contact_type = 'INTER'
 
                 # DETERMINE RING-RING DISTANCE
@@ -1149,16 +1151,26 @@ class InteractionComplex:
                         if int_type == i_type:
                             ring['residue'].ring_ring_inter_integer_sift[k] = ring['residue'].ring_ring_inter_integer_sift[k] + 1
 
-                # WRITE RING INTERACTION TO FILE
                 bgn_ring_atoms = sorted([a.get_id() for a in ring['atoms']])
                 end_ring_atoms = sorted([a.get_id() for a in ring2['atoms']])
 
-                ring_contact = PlanePlaneContact(ring['residue'], bgn_ring_atoms,
-                                                 ring2['residue'], end_ring_atoms,
-                                                 distance, int_type,
-                                                 intra_residue_text)
 
-                self.plane_plane_contacts.append(ring_contact)
+                # for some reason there is plane-plane duplicity. ie. there is 
+                # ring A in contact with B and the interactions is X
+                # however also B is in contact with A and in some cases the contact type is Y
+                identity = list(filter(lambda l: (l.bgn_id == ring_key and l.end_id == ring_key2) or (l.bgn_id == ring_key2 and l.end_id == ring_key), self.plane_plane_contacts))
+
+                if identity:
+                    if int_type not in identity[0].contact_type:
+                        identity[0].contact_type.append(int_type)
+                else:
+                    ring_contact = PlanePlaneContact(ring_key, ring['residue'], bgn_ring_atoms,
+                                                     ring_key2, ring2['residue'], end_ring_atoms,
+                                                     distance, [int_type], contact_type)
+
+
+
+                    self.plane_plane_contacts.append(ring_contact)
 
                 # output = [
                 #     ring['ring_id'],
