@@ -183,9 +183,9 @@ class InteractionComplex:
         for contact in self.plane_plane_contacts:
             result_entry = {}
             result_entry['bgn'] = utils.make_pymol_json(contact.bgn_res)
-            result_entry['bgn']['auth_atom_ids'] = reduce(lambda l, m: f'{l},{m}', contact.bgn_res_atoms)
+            result_entry['bgn']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.bgn_res_atoms)
             result_entry['end'] = utils.make_pymol_json(contact.end_res)
-            result_entry['end']['auth_atom_ids'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
+            result_entry['end']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
             result_entry['type'] = 'plane-plane'
             result_entry['distance'] = round(np.float64(contact.distance), 2)
             result_entry['contact'] = contact.contact_type
@@ -197,7 +197,7 @@ class InteractionComplex:
             result_entry = {}
             result_entry['bgn'] = utils.make_pymol_json(contact.bgn_atom)
             result_entry['end'] = utils.make_pymol_json(contact.end_res)
-            result_entry['end']['auth_atom_ids'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
+            result_entry['end']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
             result_entry['type'] = 'atom-plane'
             result_entry['distance'] = round(np.float64(contact.distance), 2)
             result_entry['contact'] = contact.sifts
