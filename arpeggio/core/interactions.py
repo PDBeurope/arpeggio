@@ -12,8 +12,8 @@ from Bio.PDB.Atom import DisorderedAtom
 from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB.Polypeptide import PPBuilder
 
-from arpeggio.core import (AtomSerialError, OBBioMatchError, SiftMatchError,
-                           config, protein_reader, utils)
+from arpeggio.core import (AtomSerialError, OBBioMatchError, config,
+                           protein_reader, utils)
 
 AtomPlaneContact = collections.namedtuple('AtomPlaneContact',
                                           ['bgn_atom', 'end_res', 'end_res_atoms', 'distance',
@@ -64,10 +64,15 @@ class InteractionComplex:
         self.ns = None  # neighbourhood search
         self.ob_to_bio = {}  # openbabel to biopython atom mapping
         self.bio_to_ob = {}  # biopython to openbabel atom mapping
-        self.selection = []  # user atom selection
-        self.selection_plus = []  # extended user atom selection
+
+        # helper structures
+        self.selection = []
         self.selection_ring_ids = []
-        self.selection_plus_residues = []  # residue
+        self.selection_amide_ids = []
+        self.polypeptide_residues = []
+
+        self.selection_plus = []
+        self.selection_plus_residues = []
         self.selection_plus_ring_ids = []
         self.selection_plus_amide_ids = []
 
@@ -75,6 +80,8 @@ class InteractionComplex:
         self.atom_contacts = []
         self.atom_plane_contacts = []
         self.plane_plane_contacts = []
+        self.group_group_contacts = []
+        self.group_plane_contacts = []
 
         self.params = Parameters(
             vdw_comp_factor=vdw_comp,
@@ -181,28 +188,19 @@ class InteractionComplex:
             result_bag.append(result_entry)
 
         for contact in self.plane_plane_contacts:
-            result_entry = {}
-            result_entry['bgn'] = utils.make_pymol_json(contact.bgn_res)
-            result_entry['bgn']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.bgn_res_atoms)
-            result_entry['end'] = utils.make_pymol_json(contact.end_res)
-            result_entry['end']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
-            result_entry['type'] = 'plane-plane'
-            result_entry['distance'] = round(np.float64(contact.distance), 2)
-            result_entry['contact'] = contact.contact_type
-            result_entry['interacting_entities'] = contact.text
-
+            result_entry = _prepare_plane_plane_contact_for_export(contact, 'plane-plane')
             result_bag.append(result_entry)
 
         for contact in self.atom_plane_contacts:
-            result_entry = {}
-            result_entry['bgn'] = utils.make_pymol_json(contact.bgn_atom)
-            result_entry['end'] = utils.make_pymol_json(contact.end_res)
-            result_entry['end']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
-            result_entry['type'] = 'atom-plane'
-            result_entry['distance'] = round(np.float64(contact.distance), 2)
-            result_entry['contact'] = contact.sifts
-            result_entry['interacting_entities'] = contact.text
+            result_entry = _prepare_atom_plane_contact_for_export(contact, 'atom-plane')
+            result_bag.append(result_entry)
 
+        for contact in self.group_group_contacts:
+            result_entry = _prepare_plane_plane_contact_for_export(contact, 'group-group')
+            result_bag.append(result_entry)
+
+        for contact in self.group_plane_contacts:
+            result_entry = _prepare_plane_plane_contact_for_export(contact, 'group-plane')
             result_bag.append(result_entry)
 
         return result_bag
@@ -269,7 +267,7 @@ class InteractionComplex:
         Args:
             wd (str): working directory
         """
-        filetype = self._setup_filetype(input_structure)
+        filetype = utils.setup_filetype(input_structure)
         conv = ob.OBConversion()
         conv.SetInAndOutFormats(filetype, filetype)
         conv.WriteFile(self.ob_mol, os.path.join(wd, self.id + '_hydrogenated' + '.' + filetype))
@@ -322,11 +320,20 @@ class InteractionComplex:
         logging.debug('Assigned rings to residues.')
 
     def run_arpeggio(self, user_selections, interacting_cutoff, vdw_comp, include_sequence_adjacent):
+        """
+
+        Args:
+            user_selections ([type]): [description]
+            interacting_cutoff ([type]): [description]
+            vdw_comp ([type]): [description]
+            include_sequence_adjacent ([type]): [description]
+        """
         self._make_selection(user_selections)
         logging.debug('Completed new NeighbourSearch.')
 
         self._calculate_atom_contacts(interacting_cutoff, vdw_comp, include_sequence_adjacent)
         self._calculate_ring_contacts()
+        self._calculate_group_contacts()
 
     def write_atom_sifts(self, wd):
         """Write out per-atom SIFTS. Files: '_sifts' and '_specific_sifts'
@@ -338,10 +345,10 @@ class InteractionComplex:
         specific_sifts = os.path.join(wd, self.id + '_specific_sifts.csv')
 
         sifts_content = [[utils.make_pymol_string(atom)] + atom.sift for atom in self.selection_plus]
-        specific_sifts_content = [[utils.make_pymol_string(atom)] +
-                                  atom.sift_inter_only +
-                                  atom.sift_intra_only +
-                                  atom.sift_water_only
+        specific_sifts_content = [[utils.make_pymol_string(atom)]
+                                  + atom.sift_inter_only
+                                  + atom.sift_intra_only
+                                  + atom.sift_water_only
                                   for atom in self.selection_plus]
 
         self.__write_atom_sifts(sifts, sifts_content)
@@ -367,22 +374,22 @@ class InteractionComplex:
             # TODO @Lukas add headers
 
             for atom in self.selection_plus:
-                sift_match = self._sift_match_base3(atom.potential_fsift, atom.actual_fsift)  # WHICH SIFT TO USE?
+                sift_match = utils.sift_match_base3(atom.potential_fsift, atom.actual_fsift)  # WHICH SIFT TO USE?
 
-                sift_match_inter = self._sift_match_base3(atom.potential_fsift, atom.actual_fsift_inter_only)
-                sift_match_intra = self._sift_match_base3(atom.potential_fsift, atom.actual_fsift_intra_only)
-                sift_match_water = self._sift_match_base3(atom.potential_fsift, atom.actual_fsift_water_only)
+                sift_match_inter = utils.sift_match_base3(atom.potential_fsift, atom.actual_fsift_inter_only)
+                sift_match_intra = utils.sift_match_base3(atom.potential_fsift, atom.actual_fsift_intra_only)
+                sift_match_water = utils.sift_match_base3(atom.potential_fsift, atom.actual_fsift_water_only)
 
-                human_readable = self._human_sift_match(sift_match)
+                human_readable = utils.human_sift_match(sift_match)
 
                 writer.writerow([utils.make_pymol_string(atom)] + sift_match + [utils.int3(sift_match)] + [human_readable])
-                s_writer.writerow([utils.make_pymol_string(atom)] +
-                                  sift_match_inter +
-                                  [self._human_sift_match(sift_match_inter)] +
-                                  sift_match_intra +
-                                  [self._human_sift_match(sift_match_intra)] +
-                                  sift_match_water +
-                                  [self._human_sift_match(sift_match_water)])
+                s_writer.writerow([utils.make_pymol_string(atom)]
+                                  + sift_match_inter
+                                  + [utils.human_sift_match(sift_match_inter)]
+                                  + sift_match_intra
+                                  + [utils.human_sift_match(sift_match_intra)]
+                                  + sift_match_water
+                                  [utils.human_sift_match(sift_match_water)])
 
     def write_polar_matching(self, wd):
         """Write out potential polar contacts
@@ -399,22 +406,27 @@ class InteractionComplex:
 
             # TODO add header
             for atom in self.selection_plus:
-                writer.writerow([utils.make_pymol_string(atom)] +
-                                [atom.potential_hbonds,
+                writer.writerow([utils.make_pymol_string(atom)]
+                                + [atom.potential_hbonds,
                                    atom.potential_polars,
                                    atom.actual_hbonds,
                                    atom.actual_polars])
-                p_writer.writerow([utils.make_pymol_string(atom)] +
-                                  [atom.potential_hbonds,
-                                   atom.potential_polars,
-                                   atom.actual_hbonds_inter_only,
-                                   atom.actual_hbonds_intra_only,
-                                   atom.actual_hbonds_water_only,
-                                   atom.actual_polars_inter_only,
-                                   atom.actual_polars_intra_only,
-                                   atom.actual_polars_water_only])
+                p_writer.writerow([utils.make_pymol_string(atom)]
+                                  + [atom.potential_hbonds,
+                                     atom.potential_polars,
+                                     atom.actual_hbonds_inter_only,
+                                     atom.actual_hbonds_intra_only,
+                                     atom.actual_hbonds_water_only,
+                                     atom.actual_polars_inter_only,
+                                     atom.actual_polars_intra_only,
+                                     atom.actual_polars_water_only])
 
     def write_residue_sifts(self, wd):
+        """[summary]
+
+        Args:
+            wd ([type]): [description]
+        """
         self._calc_residue_sifts()
         residue_sifts = os.path.join(wd, self.id + '_residue_sifts.csv')
         with open(residue_sifts, 'w') as f:
@@ -613,10 +625,9 @@ class InteractionComplex:
                 writer.writerow([
                     utils.make_pymol_string(contact.bgn_atom),
                     utils.make_pymol_string(contact.end_atom),
-                    contact.distance] +
-                    contact.sifts +
-                    [contact.contact_type]
-                )
+                    contact.distance]
+                    + contact.sifts
+                    + [contact.contact_type])
 
     def __get_contact_type(self, atom_bgn, atom_end, selection_set):
         """Based on the origin of the interacting guys inferre, whether
@@ -781,7 +792,7 @@ class InteractionComplex:
                     # ATOM_BGN IS DONOR
                     if 'hbond donor' in atom_bgn.atom_types and 'hbond acceptor' in atom_end.atom_types:
 
-                        SIFt[5] = self._is_hbond(atom_bgn, atom_end, vdw_comp_factor)
+                        SIFt[5] = utils.is_hbond(atom_bgn, atom_end, vdw_comp_factor)
 
                         # CHECK DISTANCE FOR POLARS
                         if distance <= config.CONTACT_TYPES["hbond"]["polar distance"]:
@@ -790,7 +801,7 @@ class InteractionComplex:
                     # ATOM_END IS DONOR
                     elif 'hbond donor' in atom_end.atom_types and 'hbond acceptor' in atom_bgn.atom_types:
 
-                        SIFt[5] = self._is_hbond(atom_end, atom_bgn, vdw_comp_factor)
+                        SIFt[5] = utils.is_hbond(atom_end, atom_bgn, vdw_comp_factor)
 
                         # CHECK DISTANCE FOR POLARS
                         if distance <= config.CONTACT_TYPES["hbond"]["polar distance"]:
@@ -833,7 +844,7 @@ class InteractionComplex:
 
                 # ATOM_BGN IS ACCEPTOR, ATOM_END IS CARBON
                 if 'hbond acceptor' in atom_bgn.atom_types and 'weak hbond donor' in atom_end.atom_types:
-                    SIFt[6] = self._is_weak_hbond(atom_end, atom_bgn, vdw_comp_factor)
+                    SIFt[6] = utils.is_weak_hbond(atom_end, atom_bgn, vdw_comp_factor)
 
                     # CHECK DISTANCE FOR WEAK POLARS
                     if distance <= config.CONTACT_TYPES["weak hbond"]["weak polar distance"]:
@@ -841,7 +852,7 @@ class InteractionComplex:
 
                 # ATOM_BGN IS CARBON, ATOM_END IS ACCEPTOR
                 if 'weak hbond donor' in atom_bgn.atom_types and 'hbond acceptor' in atom_end.atom_types:
-                    SIFt[6] = self._is_weak_hbond(atom_bgn, atom_end, vdw_comp_factor)
+                    SIFt[6] = utils.is_weak_hbond(atom_bgn, atom_end, vdw_comp_factor)
 
                     # CHECK DISTANCE FOR WEAK POLARS
                     if distance <= config.CONTACT_TYPES["weak hbond"]["weak polar distance"]:
@@ -849,7 +860,7 @@ class InteractionComplex:
 
                 # ATOM_BGN IS HALOGEN WEAK ACCEPTOR
                 if 'weak hbond acceptor' in atom_bgn.atom_types and atom_bgn.is_halogen and ('hbond donor' in atom_end.atom_types or 'weak hbond donor' in atom_end.atom_types):
-                    SIFt[6] = self._is_halogen_weak_hbond(atom_end, atom_bgn, self.ob_mol, vdw_comp_factor)
+                    SIFt[6] = utils.is_halogen_weak_hbond(atom_end, atom_bgn, self.ob_mol, vdw_comp_factor, self.bio_to_ob, self.ob_to_bio)
 
                     # CHECK DISTANCE FOR WEAK POLARS
                     if distance <= config.CONTACT_TYPES["weak hbond"]["weak polar distance"]:
@@ -857,7 +868,7 @@ class InteractionComplex:
 
                 # ATOM END IS HALOGEN WEAK ACCEPTOR
                 if 'weak hbond acceptor' in atom_end.atom_types and atom_end.is_halogen and ('hbond donor' in atom_bgn.atom_types or 'weak hbond donor' in atom_bgn.atom_types):
-                    SIFt[6] = self._is_halogen_weak_hbond(atom_bgn, atom_end, self.ob_mol, vdw_comp_factor)
+                    SIFt[6] = utils.is_halogen_weak_hbond(atom_bgn, atom_end, self.ob_mol, vdw_comp_factor, self.bio_to_ob, self.ob_to_bio)
 
                     # CHECK DISTANCE FOR WEAK POLARS
                     if distance <= config.CONTACT_TYPES["weak hbond"]["weak polar distance"]:
@@ -867,10 +878,10 @@ class InteractionComplex:
                 if distance <= sum_vdw_radii + vdw_comp_factor:
 
                     if 'xbond donor' in atom_bgn.atom_types and 'xbond acceptor' in atom_end.atom_types:
-                        SIFt[7] = self._is_xbond(atom_bgn, atom_end, self.ob_mol)
+                        SIFt[7] = utils.is_xbond(atom_bgn, atom_end, self.ob_mol, self.bio_to_ob, self.ob_to_bio)
 
                     elif 'xbond donor' in atom_end.atom_types and 'xbond acceptor' in atom_bgn.atom_types:
-                        SIFt[7] = self._is_xbond(atom_end, atom_bgn, self.ob_mol)
+                        SIFt[7] = utils.is_xbond(atom_end, atom_bgn, self.ob_mol, self.bio_to_ob, self.ob_to_bio)
 
                 # IONIC
                 if distance <= config.CONTACT_TYPES['ionic']['distance']:
@@ -899,21 +910,23 @@ class InteractionComplex:
                     SIFt[11] = 1
 
             # UPDATE ATOM INTEGER SIFTS
-            self._update_atom_integer_sift(atom_bgn, SIFt, contact_type)
-            self._update_atom_integer_sift(atom_end, SIFt, contact_type)
+            utils.update_atom_integer_sift(atom_bgn, SIFt, contact_type)
+            utils.update_atom_integer_sift(atom_end, SIFt, contact_type)
 
             # UPDATE ATOM SIFTS
-            self._update_atom_sift(atom_bgn, SIFt, contact_type)
-            self._update_atom_sift(atom_end, SIFt, contact_type)
+            utils.update_atom_sift(atom_bgn, SIFt, contact_type)
+            utils.update_atom_sift(atom_end, SIFt, contact_type)
 
             # UPDATE ATOM FEATURE SIFts
             fsift = SIFt[5:]
-            self._update_atom_fsift(atom_bgn, fsift, contact_type)
-            self._update_atom_fsift(atom_end, fsift, contact_type)
+            utils.update_atom_fsift(atom_bgn, fsift, contact_type)
+            utils.update_atom_fsift(atom_end, fsift, contact_type)
 
             self.atom_contacts.append(AtomAtomContact(bgn_atom=atom_bgn, end_atom=atom_end, sifts=SIFt, contact_type=contact_type, distance=distance))
 
     def _calculate_ring_contacts(self):
+        """Interactions involving rings.
+        """
         self.plane_plane_contacts = []
         self.atom_plane_contacts = []
 
@@ -978,7 +991,7 @@ class InteractionComplex:
                 # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
                 #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
                 #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
-                theta = abs(self._group_angle(ring, ring['center'] - atom.coord, True, True))  # CHECK IF `atom.coord` or `ring['center'] - atom.coord`
+                theta = abs(utils.group_angle(ring, ring['center'] - atom.coord, True, True))  # CHECK IF `atom.coord` or `ring['center'] - atom.coord`
 
                 if distance <= config.CONTACT_TYPES['aromatic']['atom_aromatic_distance'] and theta <= 30.0:
 
@@ -1034,7 +1047,7 @@ class InteractionComplex:
 
                 end_ring_atoms = sorted([a.get_id() for a in ring['atoms']])
 
-                contact = AtomPlaneContact(atom, ring['residue'], end_ring_atoms, distance, sorted(list(potential_interactions)), intra_residue_text)
+                contact = AtomPlaneContact(atom, ring['residue'], end_ring_atoms, distance, sorted(list(potential_interactions)), contact_type)
                 self.atom_plane_contacts.append(contact)
 
     def __calculate_plane_plane_contacts(self):
@@ -1080,7 +1093,7 @@ class InteractionComplex:
                     contact_type = 'INTRA_SELECTION'
 
                 if (ring_key in self.selection_ring_ids and ring_key2 not in self.selection_ring_ids) or (ring_key2 in self.selection_ring_ids and ring_key not in self.selection_ring_ids):
-                #if ring_key in self.selection_ring_ids or ring_key2 in self.selection_ring_ids:
+                    # if ring_key in self.selection_ring_ids or ring_key2 in self.selection_ring_ids:
                     contact_type = 'INTER'
 
                 # DETERMINE RING-RING DISTANCE
@@ -1095,8 +1108,8 @@ class InteractionComplex:
                 # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
                 #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
                 #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
-                dihedral = abs(self._group_group_angle(ring, ring2, True, True))
-                theta = abs(self._group_angle(ring, theta_point, True, True))
+                dihedral = abs(utils.group_group_angle(ring, ring2, True, True))
+                theta = abs(utils.group_angle(ring, theta_point, True, True))
 
                 # logging.info('Dihedral = {}     Theta = {}'.format(dihedral, theta))
 
@@ -1151,11 +1164,7 @@ class InteractionComplex:
                         if int_type == i_type:
                             ring['residue'].ring_ring_inter_integer_sift[k] = ring['residue'].ring_ring_inter_integer_sift[k] + 1
 
-                bgn_ring_atoms = sorted([a.get_id() for a in ring['atoms']])
-                end_ring_atoms = sorted([a.get_id() for a in ring2['atoms']])
-
-
-                # for some reason there is plane-plane duplicity. ie. there is 
+                # for some reason there is plane-plane duplicity. ie. there is
                 # ring A in contact with B and the interactions is X
                 # however also B is in contact with A and in some cases the contact type is Y
                 identity = list(filter(lambda l: (l.bgn_id == ring_key and l.end_id == ring_key2) or (l.bgn_id == ring_key2 and l.end_id == ring_key), self.plane_plane_contacts))
@@ -1164,11 +1173,12 @@ class InteractionComplex:
                     if int_type not in identity[0].contact_type:
                         identity[0].contact_type.append(int_type)
                 else:
+                    bgn_ring_atoms = sorted([a.get_id() for a in ring['atoms']])
+                    end_ring_atoms = sorted([a.get_id() for a in ring2['atoms']])
+
                     ring_contact = PlanePlaneContact(ring_key, ring['residue'], bgn_ring_atoms,
                                                      ring_key2, ring2['residue'], end_ring_atoms,
                                                      distance, [int_type], contact_type)
-
-
 
                     self.plane_plane_contacts.append(ring_contact)
 
@@ -1184,6 +1194,185 @@ class InteractionComplex:
                 #     contact_type
                 # ]
 
+    def _calculate_group_contacts(self):
+        """Interactions involving amides
+        """
+        self.group_group_contacts = []
+        self.group_plane_contacts = []
+
+        self.__calculate_group_group_contacts()
+        self.__calculate_group_plane_contacts()
+
+    def __calculate_group_group_contacts(self):
+        for amide in self.biopython_str.amides:
+
+            amide_key = amide
+            amide = self.biopython_str.amides[amide]
+
+            # CHECK AMIDE IS INVOLVED IN THE SELECTION OR BINDING SITE
+            if amide_key not in self.selection_plus_amide_ids:
+                continue
+
+            for amide2 in self.biopython_str.amides:
+
+                amide_key2 = amide2
+                amide2 = self.biopython_str.amides[amide2]
+
+                # NO SELFIES
+                if amide_key == amide_key2:
+                    continue
+
+                if amide_key == 441 and amide2 == 442:
+                    print('foo')
+
+                # CHECK RING IS INVOLVED WITH THE SELECTION OR BINDING SITE
+                if amide_key2 not in self.selection_plus_amide_ids:
+                    continue
+
+                # CHECK IF INTERACTION IS WITHIN SAME RESIDUE
+                intra_residue = False
+
+                if amide['residue'] == amide2['residue']:
+                    intra_residue = True
+
+                # OUTPUT INTRA/INTER RESIDUE AS TEXT RATHER THAN BOOLEAN
+                intra_residue_text = 'INTER_RESIDUE'
+
+                if intra_residue:
+                    intra_residue_text = 'INTRA_RESIDUE'
+
+                # DETERMINE CONTACT TYPE
+                contact_type = ''
+
+                if amide_key not in self.selection_amide_ids and amide_key2 not in self.selection_amide_ids:
+                    contact_type = 'INTRA_NON_SELECTION'
+
+                if amide_key in self.selection_plus_amide_ids and amide_key2 in self.selection_plus_amide_ids:
+                    contact_type = 'INTRA_BINDING_SITE'
+
+                if amide_key in self.selection_amide_ids and amide_key2 in self.selection_amide_ids:
+                    contact_type = 'INTRA_SELECTION'
+
+                if (amide_key in self.selection_amide_ids and amide_key2 not in self.selection_amide_ids) or (amide_key2 in self.selection_amide_ids and amide_key not in self.selection_amide_ids):
+                    contact_type = 'INTER'
+
+                # DETERMINE AMIDE-RING DISTANCE
+                distance = np.linalg.norm(amide['center'] - amide2['center'])
+
+                if distance > config.CONTACT_TYPES['amide']['centroid_distance']:
+                    continue
+
+                theta_point = amide['center'] - amide2['center']
+
+                # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
+                #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
+                #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
+                dihedral = abs(utils.group_group_angle(amide, amide2, True, True))
+                theta = abs(utils.group_angle(amide, theta_point, True, True))
+
+                # FACE-ON ORIENTATION ONLY
+                if dihedral > 30.0 or theta > 30.0:
+                    continue
+
+                # IF IT'S SURVIVED SO FAR...(!)
+
+                int_type = 'AMIDEAMIDE'
+
+                # SIFT
+                if contact_type == 'INTER' and not intra_residue:
+                    amide['residue'].amide_amide_inter_integer_sift[0] = amide['residue'].amide_amide_inter_integer_sift[0] + 1
+
+                bgn_res_atoms = sorted([a.get_id() for a in amide['atoms']])
+                end_res_atoms = sorted([a.get_id() for a in amide2['atoms']])
+
+                contact = PlanePlaneContact(amide['amide_id'], amide['residue'], bgn_res_atoms,
+                                            amide2['amide_id'], amide2['residue'], end_res_atoms,
+                                            distance, [int_type], contact_type)
+
+                self.group_group_contacts.append(contact)
+
+    def __calculate_group_plane_contacts(self):
+        for amide in self.biopython_str.amides:
+
+            amide_key = amide
+            amide = self.biopython_str.amides[amide]
+
+            # CHECK AMIDE IS INVOLVED IN THE SELECTION OR BINDING SITE
+            if amide_key not in self.selection_plus_amide_ids:
+                continue
+
+            for ring in self.biopython_str.rings:                
+
+                ring_key = ring
+                ring = self.biopython_str.rings[ring]
+
+                # CHECK RING IS INVOLVED WITH THE SELECTION OR BINDING SITE
+                if ring_key not in self.selection_plus_ring_ids:
+                    continue
+
+                # CHECK IF INTERACTION IS WITHIN SAME RESIDUE
+                intra_residue = False
+
+                if amide['residue'] == ring['residue']:
+                    intra_residue = True
+
+                # OUTPUT INTRA/INTER RESIDUE AS TEXT RATHER THAN BOOLEAN
+                intra_residue_text = 'INTER_RESIDUE'
+
+                if intra_residue:
+                    intra_residue_text = 'INTRA_RESIDUE'
+
+                # DETERMINE CONTACT TYPE
+                contact_type = ''
+
+                if amide_key not in self.selection_amide_ids and ring_key not in self.selection_ring_ids:
+                    contact_type = 'INTRA_NON_SELECTION'
+
+                if amide_key in self.selection_plus_amide_ids and ring_key in self.selection_plus_ring_ids:
+                    contact_type = 'INTRA_BINDING_SITE'
+
+                if amide_key in self.selection_amide_ids and ring_key in self.selection_ring_ids:
+                    contact_type = 'INTRA_SELECTION'
+
+                if (amide_key in self.selection_amide_ids and ring_key not in self.selection_ring_ids) or (ring_key in self.selection_ring_ids and amide_key not in self.selection_amide_ids):
+                    contact_type = 'INTER'
+
+                # DETERMINE AMIDE-RING DISTANCE
+                distance = np.linalg.norm(amide['center'] - ring['center'])
+
+                if distance > config.CONTACT_TYPES['amide']['centroid_distance']:
+                    continue
+
+                theta_point = amide['center'] - ring['center']
+
+                # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
+                #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
+                #       BELOW, SHOULD BE UNSIGNED, I.E. `abs()`
+                dihedral = abs(utils.group_group_angle(amide, ring, True, True))
+                theta = abs(utils.group_angle(amide, theta_point, True, True))
+
+                # FACE-ON ORIENTATION ONLY
+                if dihedral > 30.0 or theta > 30.0:
+                    continue
+
+                # IF IT'S SURVIVED SO FAR...(!)
+
+                int_type = 'AMIDERING'
+
+                # SIFTs
+                if contact_type == 'INTER' and not intra_residue:
+                    amide['residue'].amide_ring_inter_integer_sift[0] = amide['residue'].amide_ring_inter_integer_sift[0] + 1
+                    ring['residue'].ring_amide_inter_integer_sift[0] = ring['residue'].ring_amide_inter_integer_sift[0] + 1
+
+                bgn_res_atoms = sorted([a.get_id() for a in amide['atoms']])
+                end_res_atoms = sorted([a.get_id() for a in ring['atoms']])
+
+                contact = PlanePlaneContact(amide['amide_id'], amide['residue'], bgn_res_atoms,
+                                            ring['ring_id'], ring['residue'], end_res_atoms,
+                                            distance, [int_type], contact_type)
+
+                self.group_plane_contacts.append(contact)
+
     def _make_selection(self, selections):
         """Select residues to calculate interactions
 
@@ -1193,7 +1382,7 @@ class InteractionComplex:
                 /<chain_id>/<res_num>[<ins_code>]/<atom_name>
                 or RESNAME:<het_id>
         """
-        entity = list(self.s_atoms)[:]
+        entity = list(self.s_atoms)
         self.ns = NeighborSearch(entity)
         selection = entity if not selections else utils.selection_parser(selections, entity)
         selection_ring_ids = list(self.biopython_str.rings)
@@ -1209,17 +1398,15 @@ class InteractionComplex:
         # EXPAND THE SELECTION TO INCLUDE THE BINDING SITE
         selection_plus = set(selection)
         selection_plus_residues = {x.get_parent() for x in selection_plus}
-        self.selection_plus_ring_ids = set(selection_ring_ids)
-        self.selection_plus_amide_ids = set(selection_amide_ids)
-
-        # TODO @Lukas FIX if args.selection:
+        selection_plus_ring_ids = set(selection_ring_ids)
+        selection_plus_amide_ids = set(selection_amide_ids)
 
         # GET LIST OF RESIDUES IN THE SELECTION PLUS BINDING SITE
-        selection_residues = set([x.get_parent() for x in selection])
+        selection_residues = {x.get_parent() for x in selection}
 
         # MAKE A SET OF ALL RING IDS ASSOCIATED WITH THE SELECTION AND BINDING SITE
-        selection_ring_ids = set([x for x in self.biopython_str.rings if self.biopython_str.rings[x]['residue'] in selection_residues])
-        selection_amide_ids = set([x for x in self.biopython_str.amides if self.biopython_str.amides[x]['residue'] in selection_residues])
+        selection_ring_ids = {x for x in self.biopython_str.rings if self.biopython_str.rings[x]['residue'] in selection_residues}
+        selection_amide_ids = {x for x in self.biopython_str.amides if self.biopython_str.amides[x]['residue'] in selection_residues}
 
         # EXPAND THE SELECTION TO THE BINDING SITE
         for atom_bgn, atom_end in self.ns.search_all(6.0):
@@ -1247,11 +1434,12 @@ class InteractionComplex:
         self.ns = NeighborSearch(selection_plus)
 
         self.selection = selection
+        self.selection_ring_ids = selection_ring_ids
+        self.selection_amide_ids = selection_amide_ids
+
         self.selection_plus = selection_plus
         self.selection_plus_residues = selection_plus_residues
         self.selection_plus_ring_ids = selection_plus_ring_ids
-        self.selection_ring_ids = selection_ring_ids
-        self.selection_amide_ids = selection_amide_ids
         self.selection_plus_amide_ids = selection_plus_amide_ids
 
     def _assign_aromatic_rings_to_residues(self):
@@ -1279,7 +1467,7 @@ class InteractionComplex:
 
             if closest_atom[0] is None:
 
-                logging.warning('Residue assignment was not possible for ring {}.'.format(ring_id))
+                logging.warning(f'Residue assignment was not possible for ring {ring_id}.')
                 self.biopython_str.rings[ring_id]['residue'] = None
 
             else:
@@ -1420,8 +1608,7 @@ class InteractionComplex:
 
             # WARN IF NOT JUST ONE CHAIN ID ASSOCIATED WITH THE POLYPEPTIDE
             if len(polypeptide_chain_id_set) != 1:
-                logging.warn('A polypeptide had {} chains associated with it: {}'.format(len(polypeptide_chain_id_set),
-                                                                                         polypeptide_chain_id_set))
+                logging.warning(f'A polypeptide had {len(polypeptide_chain_id_set)} chains associated with it: {polypeptide_chain_id_set}')
 
             for polypeptide_chain_id in polypeptide_chain_id_set:
                 chain_pieces[polypeptide_chain_id] = chain_pieces[polypeptide_chain_id] + 1
@@ -1437,14 +1624,14 @@ class InteractionComplex:
                 # GET FIRST AND LAST ("GENUINE") TERMINI
                 chain_termini[chain_id] = [chain_break_residues[chain_id][0], chain_break_residues[chain_id][-1]]
             except IndexError:
-                logging.warn('Chain termini could not be determined for chain {}. It may not be a polypeptide chain.'.format(chain_id))
+                logging.warning(f'Chain termini could not be determined for chain {chain_id}. It may not be a polypeptide chain.')
 
             try:
                 # POP OUT THE FIRST AND LAST RESIDUES FROM THE CHAIN BREAK RESIDUES
                 # TO REMOVE THE GENUINE TERMINI
                 chain_break_residues[chain_id] = chain_break_residues[chain_id][1:-1]
             except IndexError:
-                logging.warn('Chain termini could not be extracted from breaks for chain {}. It may not be a polypeptide chain.'.format(chain_id))
+                logging.warning(f'Chain termini could not be extracted from breaks for chain {chain_id}. It may not be a polypeptide chain.')
 
         all_chain_break_residues = []
         all_terminal_residues = []
@@ -1825,7 +2012,7 @@ class InteractionComplex:
         Returns:
             BioPython.Structure: Parsed biopython protein structure
         """
-        extension = self._setup_filetype(path)
+        extension = utils.setup_filetype(path)
 
         s = (PDBParser().get_structure('structure', path)
              if extension == 'pdb'
@@ -1844,7 +2031,7 @@ class InteractionComplex:
         Returns:
             openbabel.OBMol: Parsed openbabel protein structure
         """
-        filetype = self._setup_filetype(path)
+        filetype = utils.setup_filetype(path)
         if filetype == 'pdb':
             ob_conv = ob.OBConversion()
             ob_conv.SetInFormat(filetype)
@@ -1860,392 +2047,53 @@ class InteractionComplex:
 
         return mol
 
-    def _setup_filetype(self, filepath):
-        """Sets up argument type to be consumedd by openbabel
-
-        Args:
-            filepath (str): Path to the source file
-
-        Returns:
-            str: file type
-        """
-        filetype = 'pdb'
-
-        if filepath.endswith('.pdb') or filepath.endswith('.ent'):
-            filetype = 'pdb'
-        elif filepath.endswith('.mmcif') or filepath.endswith('.cif'):
-            filetype = 'mmcif'
-
-        return filetype
-
-    def _get_angle(self, point_a, point_b, point_c):
-        """Get the angle between three points in 3D space.
-        Points should be supplied in Numpy array format.
-
-        http://stackoverflow.com/questions/19729831/angle-between-3-points-in-3d-space
-
-        Args:
-            point_a ([type]): [description]
-            point_b ([type]): [description]
-            point_c ([type]): [description]
-
-        Returns:
-            [type]: [description]
-        """
-        # In pseudo-code, the vector BA (call it v1) is:
-        # v1 = {A.x - B.x, A.y - B.y, A.z - B.z}
-        v1 = point_a - point_b
-
-        # Similarly the vector BC (call it v2) is:
-        # v2 = {C.x - B.x, C.y - B.y, C.z - B.z}
-        v2 = point_c - point_b
-
-        # The dot product of v1 and v2 is a function of the cosine of the angle between them
-        # (it's scaled by the product of their magnitudes). So first normalize v1 and v2:
-
-        # v1mag = sqrt(v1.x * v1.x + v1.y * v1.y + v1.z * v1.z)
-        v1_mag = np.sqrt(v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2])
-
-        # v1norm = {v1.x / v1mag, v1.y / v1mag, v1.z / v1mag}
-        v1_norm = np.array([v1[0] / v1_mag, v1[1] / v1_mag, v1[2] / v1_mag])
-
-        # v2mag = sqrt(v2.x * v2.x + v2.y * v2.y + v2.z * v2.z)
-        v2_mag = np.sqrt(v2[0] * v2[0] + v2[1] * v2[1] + v2[2] * v2[2])
-
-        # v2norm = {v2.x / v2mag, v2.y / v2mag, v2.z / v2mag}
-        v2_norm = np.array([v2[0] / v2_mag, v2[1] / v2_mag, v2[2] / v2_mag])
-
-        # Then calculate the dot product:
-
-        # res = v1norm.x * v2norm.x + v1norm.y * v2norm.y + v1norm.z * v2norm.z
-        res = v1_norm[0] * v2_norm[0] + v1_norm[1] * v2_norm[1] + v1_norm[2] * v2_norm[2]
-
-        # And finally, recover the angle:
-        angle = np.arccos(res)
-
-        if np.isnan(angle):
-            logging.warn('Angle for <{}, {}, {}> was NaN, setting to Pi.'.format(point_a, point_b, point_c))
-            angle = np.pi
-
-        return angle
-
-    def _group_angle(self, group, point_coords, degrees=False, signed=False):
-        '''
-        Adapted from CREDO: `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
-
-        `group` should be a dict with Numpy array 'center' and 'normal' attributes.
-        `point_coords` should be a Numpy array.
-        '''
-
-        cosangle = np.dot(group['normal'], point_coords) / (np.linalg.norm(group['normal']) * np.linalg.norm(point_coords))
-
-        # GET THE ANGLE AS RADIANS
-        rad = np.arccos(cosangle)
-
-        if not degrees:
-            return rad
-
-        # CONVERT RADIANS INTO DEGREES
-        else:
-
-            # CONVERT INTO A SIGNED ANGLE
-            if signed:
-                rad = rad - np.pi if rad > np.pi / 2 else rad
-
-            # RETURN DEGREES
-            return rad * 180 / np.pi
-
-    def _group_group_angle(self, group, group2, degrees=False, signed=False):
-        '''
-        Adapted from CREDO: `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
-
-        `group` and `group2` should be a dict with Numpy array 'center' and 'normal' attributes.
-        '''
-
-        cosangle = np.dot(group['normal'], group2['normal']) / (np.linalg.norm(group['normal']) * np.linalg.norm(group2['normal']))
-
-        # GET THE ANGLE AS RADIANS
-        rad = np.arccos(cosangle)
-
-        if not degrees:
-            return rad
-
-        # CONVERT RADIANS INTO DEGREES
-        else:
-
-            # CONVERT INTO A SIGNED ANGLE
-            if signed:
-                rad = rad - np.pi if rad > np.pi / 2 else rad
-
-            # RETURN DEGREES
-            return rad * 180 / np.pi
-
-    def _is_hbond(self, donor, acceptor, vdw_comp_factor):
-        """Determines if atoms share Hbond.
-
-        Args:
-            donor (OBAtom): First atom
-            acceptor (OBAtom): Second atom
-            vdw_comp_factor (float): Compensation factor for VdW radii
-                dependent interaction types.
-
-        Returns:
-            int: 1/0 binary information whether or not the atoms share
-                Hbond.
-        """
-
-        for hydrogen_coord in donor.h_coords:
-
-            h_dist = np.linalg.norm(hydrogen_coord - acceptor.coord)
-
-            if h_dist <= config.VDW_RADII['H'] + acceptor.vdw_radius + vdw_comp_factor:
-
-                if self._get_angle(donor.coord, hydrogen_coord, acceptor.coord) >= config.CONTACT_TYPES['hbond']['angle rad']:
-
-                    return 1
-
-        return 0
-
-    def _is_weak_hbond(self, donor, acceptor, vdw_comp_factor):
-        """Determines if atoms share a weak Hbond.
-
-        Args:
-            donor (OBAtom): First atom
-            acceptor (OBAtom): Second atom
-            vdw_comp_factor (float): Compensation factor for VdW radii
-                dependent interaction types.
-
-        Returns:
-            int: 1/0 binary information whether or not the atoms share
-                weak Hbond.
-        """
-
-        for hydrogen_coord in donor.h_coords:
-
-            h_dist = np.linalg.norm(hydrogen_coord - acceptor.coord)
-
-            if h_dist <= config.VDW_RADII['H'] + acceptor.vdw_radius + vdw_comp_factor:
-
-                if self._get_angle(donor.coord, hydrogen_coord, acceptor.coord) >= config.CONTACT_TYPES['weak hbond']['angle rad']:
-
-                    return 1
-
-        return 0
-
-    def _is_halogen_weak_hbond(self, donor, halogen, ob_mol, vdw_comp_factor):
-        """Determines if atoms share a weak halogen bond.
-
-        org. desc: `nbr` WILL BE A BIOPYTHON ATOM ... HOPEFULLY
-        Args:
-            donor (OBAtom): Donor atom
-            halogen (OBAtom): Halogen atom
-            ob_mol (OBMol): [description]
-            vdw_comp_factor (float): [description]
-
-        Returns:
-            int: 1/0 binary information whether or not the atoms share
-                weak weak Hbond.
-        """
-
-        # entry 5t45 obabel does not identify bond between
-        # SER 246 A (OG) and BEF 903 A (F1) which makes neighbour to be
-        # None and then it crashes
-        neighbour = utils.get_single_bond_neighbour(ob_mol.GetAtomById(self.bio_to_ob[halogen]))
-        if neighbour is None:
-            return 0
-
-        nbr = self.ob_to_bio[neighbour.GetId()]
-
-        for hydrogen_coord in donor.h_coords:
-
-            h_dist = np.linalg.norm(halogen.coord - hydrogen_coord)
-
-            if h_dist <= config.VDW_RADII['H'] + halogen.vdw_radius + vdw_comp_factor:
-
-                if config.CONTACT_TYPES['weak hbond']['cx angle min rad'] <= self._get_angle(nbr.coord, halogen.coord, hydrogen_coord) <= config.CONTACT_TYPES['weak hbond']['cx angle max rad']:
-
-                    return 1
-
-        return 0
-
-    def _is_xbond(self, donor, acceptor, ob_mol):
-        """Determines if atoms share a weak halogen bond.
-
-        Args:
-            donor (OBAtom): Donor atom
-            acceptor (OBAtom): Halogen atom
-            ob_mol (OBMol): [description]
-
-        Returns:
-            int: 1/0 binary information whether or not the atoms share
-                xbond.
-        """
-
-        # `nbr` WILL BE A BIOPYTHON ATOM
-        # ... HOPEFULLY
-        nbr = self.ob_to_bio[utils.get_single_bond_neighbour(ob_mol.GetAtomById(self.bio_to_ob[donor])).GetId()]
-        theta = self._get_angle(nbr.coord, donor.coord, acceptor.coord)
-
-        if (theta >= config.CONTACT_TYPES['xbond']['angle theta 1 rad']):
-            return 1
-
-        return 0
-
-    def _update_atom_sift(self, atom, addition, contact_type='INTER'):
-        '''
-        '''
-
-        atom.sift = [x or y for x, y in zip(atom.sift, addition)]
-
-        if contact_type == 'INTER':
-            atom.sift_inter_only = [x or y for x, y in zip(atom.sift_inter_only, addition)]
-
-        if 'INTRA' in contact_type:
-            atom.sift_intra_only = [x or y for x, y in zip(atom.sift_intra_only, addition)]
-
-        if 'WATER' in contact_type:
-            atom.sift_water_only = [x or y for x, y in zip(atom.sift_water_only, addition)]
-
-    def _update_atom_fsift(self, atom, addition, contact_type='INTER'):
-        """[summary]
-
-        Args:
-            atom ([type]): [description]
-            addition ([type]): [description]
-            contact_type (str, optional): Defaults to 'INTER'. [description]
-        """'''
-        '''
-
-        atom.actual_fsift = [x or y for x, y in zip(atom.actual_fsift, addition)]
-
-        if contact_type == 'INTER':
-            atom.actual_fsift_inter_only = [x or y for x, y in zip(atom.actual_fsift_inter_only, addition)]
-
-        if 'INTRA' in contact_type:
-            atom.actual_fsift_intra_only = [x or y for x, y in zip(atom.actual_fsift_intra_only, addition)]
-
-        if 'WATER' in contact_type:
-            atom.actual_fsift_water_only = [x or y for x, y in zip(atom.actual_fsift_water_only, addition)]
-
-    def _update_atom_integer_sift(self, atom, addition, contact_type='INTER'):
-        """[summary]
-
-        Args:
-            atom ([type]): [description]
-            addition ([type]): [description]
-            contact_type (str, optional): Defaults to 'INTER'. [description]
-        """'''
-        '''
-
-        atom.integer_sift = [x + y for x, y in zip(atom.sift, addition)]
-
-        if contact_type == 'INTER':
-            atom.integer_sift_inter_only = [x + y for x, y in zip(atom.sift_inter_only, addition)]
-
-        if 'INTRA' in contact_type:
-            atom.integer_sift_intra_only = [x + y for x, y in zip(atom.sift_intra_only, addition)]
-
-        if 'WATER' in contact_type:
-            atom.integer_sift_water_only = [x + y for x, y in zip(atom.sift_water_only, addition)]
-
-    def _sift_xnor(self, sift1, sift2):
-        """[summary]
-
-        Args:
-            sift1 ([type]): [description]
-            sift2 ([type]): [description]
-
-        Raises:
-            ValueError: [description]
-
-        Returns:
-            [type]: [description]
-        """'''
-        '''
-
-        out = []
-
-        for x, y in zip(sift1, sift2):
-
-            if x and not y:  # TF
-                out.append(0)
-
-            elif not x and not y:  # FF
-                out.append(1)
-
-            elif x and y:  # TT
-                out.append(1)
-
-            elif not x and y:  # FT
-                out.append(0)
-
-            else:
-                raise ValueError('Invalid SIFts for matching: {} and {}'.format(sift1, sift2))
-
-        return out
-
-    def _sift_match_base3(self, sift1, sift2):
-        """[summary]
-        0 = UNMATCHED
-        1 = MATCHED
-        2 = MATCH NOT POSSIBLE
-
-        Assuming that sift1 is the potential SIFt, and sift2 is the actual SIFt.
-        Args:
-            sift1 ([type]): [description]
-            sift2 ([type]): [description]
-
-        Raises:
-            SiftMatchError: [description]
-            ValueError: [description]
-
-        Returns:
-            [type]: [description]
-        """
-
-        out = []
-
-        for x, y in zip(sift1, sift2):
-
-            if x and not y:  # TF
-                out.append(0)  # UNMATCHED
-
-            elif not x and not y:  # FF
-                out.append(2)  # MATCH NOT POSSIBLE
-
-            elif x and y:  # TT
-                out.append(1)  # MATCHED
-
-            elif not x and y:  # FT
-                raise SiftMatchError
-
-            else:
-                raise ValueError('Invalid SIFts for matching: {} and {}'.format(sift1, sift2))
-
-        return out
-
-    def _human_sift_match(self, sift_match, feature_sift=config.FEATURE_SIFT):
-        '''
-        Takes a base-3 SIFt indicating contact matched-ness and converts it to a human readable form.
-        '''
-
-        terms = []
-
-        for e, fp in enumerate(sift_match):
-
-            if fp == 2:  # MATCH NOT POSSIBLE
-                continue
-
-            elif fp == 1:
-                terms.append('Matched {}'.format(feature_sift[e]))
-
-            elif fp == 0:
-                terms.append('Unmatched {}'.format(feature_sift[e]))
-
-            else:
-                raise ValueError
-
-        terms.sort()
-        return ':'.join(terms)
-
     # endregion
+
+
+def _prepare_plane_plane_contact_for_export(contact, contact_type):
+    """Convert internal representation of plane-plane or group-group
+    type of contacts into json for export.
+
+    Args:
+        contact (PlanePlaneContact): contact
+        contact_type (str): sring distinguising between plane-plane and
+            group-group type of contact
+
+    Returns:
+        :dict: of str : json-like representation of the contact
+    """
+    result_entry = {}
+    result_entry['bgn'] = utils.make_pymol_json(contact.bgn_res)
+    result_entry['bgn']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.bgn_res_atoms)
+    result_entry['end'] = utils.make_pymol_json(contact.end_res)
+    result_entry['end']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
+    result_entry['type'] = contact_type
+    result_entry['distance'] = round(np.float64(contact.distance), 2)
+    result_entry['contact'] = contact.contact_type
+    result_entry['interacting_entities'] = contact.text
+
+    return result_entry
+
+
+def _prepare_atom_plane_contact_for_export(contact, contact_type):
+    """Convert internal representation of atom-plane or atom-group
+    type of contacts into json for export.
+
+    Args:
+        contact (AtomPlaneContact): contact
+        contact_type (str): string distinguishing between atom-plane and
+            atom-group type of contact
+
+    Returns:
+        :dict: of str: json-like representation of the contact
+    """
+    result_entry = {}
+    result_entry['bgn'] = utils.make_pymol_json(contact.bgn_atom)
+    result_entry['end'] = utils.make_pymol_json(contact.end_res)
+    result_entry['end']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
+    result_entry['type'] = contact_type
+    result_entry['distance'] = round(np.float64(contact.distance), 2)
+    result_entry['contact'] = contact.sifts
+    result_entry['interacting_entities'] = contact.text
+
+    return result_entry
