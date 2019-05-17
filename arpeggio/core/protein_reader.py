@@ -22,7 +22,7 @@ def _get_res_id(atom_sites, i):
 
 
 def _get_ins_code(atom_sites, i):
-    return ' ' if atom_sites['pdbx_PDB_ins_code'][i] == '?' else atom_sites['pdbx_PDB_ins_code'][i]
+    return ' ' if atom_sites['pdbx_PDB_ins_code'][i] in ('.', '?') else atom_sites['pdbx_PDB_ins_code'][i]
 
 
 def _format_formal_charge(atom_sites, i):
@@ -345,11 +345,11 @@ def _init_biopython_atom(builder, atom_sites, i):
 
 
 def _parse_atom_site_biopython(atom_sites, builder):
-    """Parse mmcif atom site list to the BioPython atoms reprensentation.
+    """Parse mmcif atom site list to the BioPython atoms representation.
 
     Args:
         atom_sites (dict of str): _atom_site dictionary of the mmcif file.
-        builder (Bio.PDB.StructureBuilder.StructureBuilder): Bipython
+        builder (Bio.PDB.StructureBuilder.StructureBuilder): Biopython
             structure building object.
     """
     last_model = None
