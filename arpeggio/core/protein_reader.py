@@ -44,7 +44,8 @@ def _trim_models(atom_site):
         dict: first model from the _atom_site
     """
     output = {}
-    length = sum(x == '1' for x in atom_site['pdbx_PDB_model_num'])
+    pivot = atom_site['pdbx_PDB_model_num'][0]
+    length = sum(x == pivot for x in atom_site['pdbx_PDB_model_num'])
 
     for k, v in atom_site.items():
         output[k] = v[:length]
