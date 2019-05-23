@@ -1,9 +1,16 @@
 # Arpeggio
 
-[![Build Status](https://travis-ci.org/harryjubb/arpeggio.svg?branch=master)](https://travis-ci.org/harryjubb/arpeggio)
+## Disclaimer
 
-Outline
---------
+This is a slightly refactored version of the original code by Harry Jubb. Main changes are:
+
+* Python 3 support
+* Support for mmCIF format to process also larger structures.
+* Modular architecture to make Arpeggio PIP installable.
+* Results in JSON format.
+* Few bug fixes
+
+## Outline
 
 Arpeggio calculates interatomic contacts based on the rules defined in [CREDO](http://marid.bioc.cam.ac.uk/credo). The program is freely available and requires only Open Source dependencies.
 
@@ -19,63 +26,42 @@ ISSN 0022-2836,
 https://doi.org/10.1016/j.jmb.2016.12.004.
 (http://www.sciencedirect.com/science/article/pii/S0022283616305332)
 
-Getting Started
----------------
+##Getting Started
 
-## Web Interface
+
+### Web Interface
 
 If you would like to run Arpeggio on a small number of individual structures, the easiest way to get started is to use the [web interface](http://biosig.unimelb.edu.au/arpeggioweb/).
 
-## Programmatically
+### Programmatically
 
 If you need to use Arpeggio programmatically or to run for many structures:
 
-The easiest way to get set up with Arpeggio is using Docker.
+The easiest way to set up with Arpeggio is using [Conda](https://docs.conda.io/en/latest/). In your conda environment run the two following commands:
 
-With Docker installed, you can build the docker image from inside this repository with:
-
-    docker build -t 'arpeggio' .
-
-Once built, Arpeggio can be run using the Docker image:
-
-    docker run --rm -v "$(pwd)":/run -it arpeggio python arpeggio.py /run/1XKK.pdb -s RESNAME:FMM -v
-
-Breaking this down:
-
-- `docker run`: to run the image
-- `--rm`: to clean up the Docker container when the run is finished
-- `-v`: to bind-mount a host machine directory in the container (with your input files, and where your output files will appear). In this case, the current working directory will be mounted to `/run` in the container
-- `-it`: interactive run with a pseudo-TTY terminal
-- `arpeggio`: the name of the built Docker image
-- `python arpeggio.py`: run Arpeggio
-- `/run/1XKK.pdb`: a PDB file in our mounted host directory
-- `-s RESNAME:FMM -v`: options passed to Arpeggio, in this case, to calculate interactions for residue with name FMM, and show verbose output
-
-We will be publishing the image to Dockerhub shortly.
-
-If it is not possible to use Docker, please read on for dependencies for manual installation.
-
-Dependencies
-------------
-
-Arpeggio is written in Python and currently has the following dependencies:
+```bash
+conda install -c openbabel openbabel
+pip install -e git+https://github.com/lpravda/arpeggio.git@master#egg=arpeggio --upgrade
+```
 
 ### Dependencies
+Arpeggio is written in Python and currently has the following dependencies:
 
-- Python (v2.7)
-- Numpy
-- BioPython (>= v1.60)
-- OpenBabel (with Python bindings)
+*  Python (v3.6)
+* Numpy
+* BioPython (>= v1.60)
+* OpenBabel (with Python bindings)
+* PDBeCIF
 
 ### Recommended
-- PyMOL (for visualising contacts)
+
+* PyMOL (for visualising contacts)
 
 Arpeggio may work with earlier versions of BioPython, however these haven't been tested. It is recommended that each dependency be the latest version.
 
-Running
--------
+### Running
 
-`python arpeggio.py pdb [options]`
+`python arpeggio.py mmcif [options]`
 
 Use `python arpeggio.py -h` for available options.
 
