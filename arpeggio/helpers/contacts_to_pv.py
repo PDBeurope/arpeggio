@@ -1,7 +1,6 @@
 import argparse
 import os
 import re
-import sys
 
 from show_contacts import pymol_config
 
@@ -136,13 +135,13 @@ if __name__ == '__main__':
     parser.add_argument('-op', type=str, default='', help='The output postfix you used with Arpeggio (if any).')
 
     args = parser.parse_args()
-    
+
     pdb_filename = args.pdb
-    
+
     # CHANGE TO AN ABSOLUTE PATH
     pdb_filename = os.path.abspath(pdb_filename)
     short_pdb_filename = os.path.split(pdb_filename)[1]
-    
+
     output_postfix = args.op
 
     script_filename = pdb_filename.replace('.pdb', output_postfix + '.pml')
@@ -172,7 +171,7 @@ if __name__ == '__main__':
 
 ''')
 
-    with open(script_filename, 'rb') as fo:
+    with open(script_filename, 'r') as fo:
 
         for line in fo:
 
@@ -180,7 +179,7 @@ if __name__ == '__main__':
 
                 line = line.strip()
 
-                #pseudoatom ring_centers, pos=[0.31440000000000001, 7.6326000000000009, -10.023800000000001]
+                # pseudoatom ring_centers, pos=[0.31440000000000001, 7.6326000000000009, -10.023800000000001]
                 pseudoatom_name = line.split()[1].rstrip(',')
                 pseudoatom_pos = line.split('pos=')[1]
 
@@ -198,20 +197,13 @@ if __name__ == '__main__':
                     dist_pos1 = pseudoatoms['pt1']
                     dist_pos2 = pseudoatoms['pt2']
 
-                    js.append('''
-drawContact(viewer, '{}',
-{},
-{},
-'{}',
-{},
-{});
-'''.format(dist_name,
-           dist_pos1,
-           dist_pos2,
-           group_pymol_config['dashcolor'][dist_name],
-           group_pymol_config['dashradius'][dist_name],
-           group_pymol_config['dashgap'][dist_name] / 3.0,
-           group_pymol_config['dashlength'][dist_name]))
+                    js.append('drawContact(viewer, ''{}'',{},{},''{}'',{},{});'.format(dist_name,
+                                                                                       dist_pos1,
+                                                                                       dist_pos2,
+                                                                                       group_pymol_config['dashcolor'][dist_name],
+                                                                                       group_pymol_config['dashradius'][dist_name],
+                                                                                       group_pymol_config['dashgap'][dist_name] / 3.0,
+                                                                                       group_pymol_config['dashlength'][dist_name]))
 
                     continue
 
@@ -226,22 +218,16 @@ drawContact(viewer, '{}',
                     ins = m.group(5)
                     atm = m.group(6)
 
-                    js.append('''
-drawAtomPositionContactFromPredicate(structure, viewer, '{}',
-{{chain: '{}', rnum: {}, aname: '{}'}},
-{},
-'{}',
-{},
-{});
-'''.format(dist_name,
-           chain,
-           res,
-           atm,
-           dist_pos,
-           group_pymol_config['dashcolor'][dist_name],
-           group_pymol_config['dashradius'][dist_name],
-           group_pymol_config['dashgap'][dist_name] / 3.0,
-           group_pymol_config['dashlength'][dist_name]))
+                    js.append('drawAtomPositionContactFromPredicate(structure, viewer,\
+                     ''{}'',{{chain: ''{}'', rnum: {}, aname: ''{}''}},{},''{}'',{},{});'.format(dist_name,
+                                                                                                 chain,
+                                                                                                 res,
+                                                                                                 atm,
+                                                                                                 dist_pos,
+                                                                                                 group_pymol_config['dashcolor'][dist_name],
+                                                                                                 group_pymol_config['dashradius'][dist_name],
+                                                                                                 group_pymol_config['dashgap'][dist_name] / 3.0,
+                                                                                                 group_pymol_config['dashlength'][dist_name]))
 
                     continue
 
@@ -253,7 +239,7 @@ drawAtomPositionContactFromPredicate(structure, viewer, '{}',
 
                 dist_name = m.group(1)
                 dist_feat, dist_dist = dist_name.split('-')
-                
+
                 if dist_feat == 'undefined' and dist_dist == 'proximal':
                     continue
 
@@ -272,30 +258,23 @@ drawAtomPositionContactFromPredicate(structure, viewer, '{}',
                 js.append("viewer.ballsAndSticks('binding_site', structure.select({{'cname': '{}', 'rnum': {}}}));".format(chain_end, res_end))
 
                 # DRAW CONTACT
-                js.append('''
-drawAtomAtomContactFromPredicates(structure, viewer, '{}',
-{{chain: '{}', rnum: {}, aname: '{}'}},
-{{cname: '{}', rnum: {}, aname: '{}'}},
-'{}',
-{},
-{});
-'''.format(dist_name,
-           chain_bgn,
-           res_bgn,
-           atm_bgn,
-           chain_end,
-           res_end,
-           atm_end,
-           pymol_config['dashcolor'][dist_feat][dist_dist],
-           pymol_config['dashradius'][dist_feat][dist_dist],
-           pymol_config['dashgap'][dist_feat][dist_dist] / 3.0,
-           pymol_config['dashlength'][dist_feat][dist_dist]))
+                js.append('drawAtomAtomContactFromPredicates(structure, viewer,\
+                 ''{}'',{{chain: ''{}'', rnum: {}, aname: ''{}''}},{{cname: ''{}'', rnum: {}, aname: ''{}''}},''{}'',{},{});'.format(dist_name,
+                                                                                                                                     chain_bgn,
+                                                                                                                                     res_bgn,
+                                                                                                                                     atm_bgn,
+                                                                                                                                     chain_end,
+                                                                                                                                     res_end,
+                                                                                                                                     atm_end,
+                                                                                                                                     pymol_config['dashcolor'][dist_feat][dist_dist],
+                                                                                                                                     pymol_config['dashradius'][dist_feat][dist_dist],
+                                                                                                                                     pymol_config['dashgap'][dist_feat][dist_dist] / 3.0,
+                                                                                                                                     pymol_config['dashlength'][dist_feat][dist_dist]))
 
                 # TODO: ADD FOR RING INTERACTIONS (APPEND TO DICTIONARY
                 #       AT THE TOP OF THIS SCRIPT)
                 # except:
                 #     pass
-
 
     # CLOSE LOAD FUNCTION
     js.append('});')
