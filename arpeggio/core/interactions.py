@@ -383,8 +383,8 @@ class InteractionComplex:
                 human_readable = utils.human_sift_match(sift_match)
 
                 writer.writerow([utils.make_pymol_string(atom)] + sift_match + [utils.int3(sift_match)] + [human_readable])
-                s_writer.writerow([utils.make_pymol_string(atom)]
-                                  + sift_match_inter
+                s_writer.writerow([utils.make_pymol_string(atom)] +
+                                  sift_match_inter
                                   + [utils.human_sift_match(sift_match_inter)]
                                   + sift_match_intra
                                   + [utils.human_sift_match(sift_match_intra)]
@@ -408,18 +408,18 @@ class InteractionComplex:
             for atom in self.selection_plus:
                 writer.writerow([utils.make_pymol_string(atom)]
                                 + [atom.potential_hbonds,
+                                 atom.potential_polars,
+                                 atom.actual_hbonds,
+                                 atom.actual_polars])
+                p_writer.writerow([utils.make_pymol_string(atom)] +
+                                  [atom.potential_hbonds,
                                    atom.potential_polars,
-                                   atom.actual_hbonds,
-                                   atom.actual_polars])
-                p_writer.writerow([utils.make_pymol_string(atom)]
-                                  + [atom.potential_hbonds,
-                                     atom.potential_polars,
-                                     atom.actual_hbonds_inter_only,
-                                     atom.actual_hbonds_intra_only,
-                                     atom.actual_hbonds_water_only,
-                                     atom.actual_polars_inter_only,
-                                     atom.actual_polars_intra_only,
-                                     atom.actual_polars_water_only])
+                                   atom.actual_hbonds_inter_only,
+                                   atom.actual_hbonds_intra_only,
+                                   atom.actual_hbonds_water_only,
+                                   atom.actual_polars_inter_only,
+                                   atom.actual_polars_intra_only,
+                                   atom.actual_polars_water_only])
 
     def write_residue_sifts(self, wd):
         """[summary]
@@ -625,8 +625,8 @@ class InteractionComplex:
                 writer.writerow([
                     utils.make_pymol_string(contact.bgn_atom),
                     utils.make_pymol_string(contact.end_atom),
-                    contact.distance]
-                    + contact.sifts
+                    contact.distance] +
+                    contact.sifts
                     + [contact.contact_type])
 
     def __get_contact_type(self, atom_bgn, atom_end, selection_set):
@@ -1301,7 +1301,7 @@ class InteractionComplex:
             if amide_key not in self.selection_plus_amide_ids:
                 continue
 
-            for ring in self.biopython_str.rings:                
+            for ring in self.biopython_str.rings:
 
                 ring_key = ring
                 ring = self.biopython_str.rings[ring]

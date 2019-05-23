@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_namespace_packages
 import arpeggio
 
 setup(
@@ -15,13 +15,10 @@ setup(
     author_email='harry.jubb@sanger.ac.uk',
     license='GNU General Public License v3.0',
     keywords='arpeggio PDB mmCIF protein ligand interactions CREDO',
-    packages=['arpeggio'],
-    scripts=['bin/arpeggio',
-             'bin/run_and_show.sh'],
+    packages=find_namespace_packages(),
+    scripts=['bin/arpeggio'],
     classifiers=[
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
         "Operating System :: Unix",
@@ -34,5 +31,5 @@ setup(
     ],
     zip_safe=False,
     include_package_data=True,
-    install_requires=['pdbecif', 'numpy'],
+    install_requires=['pdbecif', 'numpy', 'biopython'],
     tests_require=['pytest'])
