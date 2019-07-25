@@ -354,6 +354,7 @@ def _parse_atom_site_biopython(atom_sites, builder):
             structure building object.
     """
     last_model = None
+    last_ins_code = None
     last_chain_id = None
     last_res_name = None
     last_res_id = None
@@ -374,9 +375,10 @@ def _parse_atom_site_biopython(atom_sites, builder):
             last_chain_id = atom_sites['auth_asym_id'][i]
             builder.init_chain(last_chain_id)
 
-        if last_res_id != res_id or last_chain_id != atom_sites['auth_asym_id'][i] or last_res_name != atom_sites['label_comp_id'][i]:
+        if last_res_id != res_id or last_chain_id != atom_sites['auth_asym_id'][i] or last_res_name != atom_sites['label_comp_id'][i] or last_ins_code != ins_code:
             last_res_id = res_id
             last_res_name = atom_sites['label_comp_id'][i]
+            last_ins_code = ins_code
 
             builder.init_residue(atom_sites['label_comp_id'][i],
                                  hetero_flag,
