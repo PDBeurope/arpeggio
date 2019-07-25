@@ -323,10 +323,14 @@ class InteractionComplex:
         """
 
         Args:
-            user_selections ([type]): [description]
-            interacting_cutoff ([type]): [description]
-            vdw_comp ([type]): [description]
-            include_sequence_adjacent ([type]): [description]
+            user_selections (str): molecular string selection /<chain_id>/<res_num>[<ins_code>]/<atom_name>
+            interacting_cutoff (float): Distance cutoff for grid points
+                to be \'interacting\' with the entity.
+            vdw_comp (float): Compensation factor for VdW radii dependent
+                interaction types.
+            include_sequence_adjacent (bool): Include non-bonding
+                interactions between residues that are next to each
+                other in sequence
         """
         self._make_selection(user_selections)
         logging.debug('Completed new NeighbourSearch.')
@@ -408,9 +412,9 @@ class InteractionComplex:
             for atom in self.selection_plus:
                 writer.writerow([utils.make_pymol_string(atom)]
                                 + [atom.potential_hbonds,
-                                 atom.potential_polars,
-                                 atom.actual_hbonds,
-                                 atom.actual_polars])
+                                   atom.potential_polars,
+                                   atom.actual_hbonds,
+                                   atom.actual_polars])
                 p_writer.writerow([utils.make_pymol_string(atom)] +
                                   [atom.potential_hbonds,
                                    atom.potential_polars,
@@ -1987,7 +1991,7 @@ class InteractionComplex:
         # THIS AVOIDS LOOPING THROUGH `s_atoms` MANY TIMES
         serial_to_bio = {x.serial_number: x for x in self.s_atoms}
         for ob_atom in ob.OBMolAtomIter(self.ob_mol):
-            serial = ob_atom.GetResidue().GetSerialNum(ob_atom)
+            serial = ob_atom.GetId()
 
             # MATCH TO THE BIOPYTHON ATOM BY SERIAL NUMBER
             try:
