@@ -71,12 +71,6 @@ Use `arpeggio -h` for available options.
 
 Arpeggio doesn't do any checking of your PDB structure, other than what BioPython does by default. Alternate locations and missing density are not explicitly accounted for and may result in anomalous results. Please use with caution.
 
-# Frequently Asked Questions
-
-**BioPython/OpenBabel are complaining about my structure, what's happening?**
-
-Both can be picky about the format of PDB files, for example atom serials must be unique (to map between BioPython and OpenBabel structures), and other issues can raise BioPython errors.
-
 ## Output
 
 The only output presently available is in the JSON format with all the contacts given.
