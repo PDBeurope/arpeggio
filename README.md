@@ -44,7 +44,7 @@ The easiest way to set up with Arpeggio is using [Conda](https://docs.conda.io/e
 
 ```bash
 conda install -c openbabel openbabel
-pip install git+https://github.com/lpravda/arpeggio.git
+pip install git+https://github.com/PDBeurope/arpeggio.git
 ```
 
 To create conda environment please use e.g. the following command:
@@ -111,14 +111,12 @@ The only output presently available is in the JSON format with all the contacts 
 
 Follows nomenclature established by [Chakrabarti and Bhattacharyya (2007)](https://doi.org/10.1016/j.pbiomolbio.2007.03.016)
 
-
 #### group-group/plane interactions
 
 | Key | Interaction | Description |
 | --- | ----------- | ----------- |
 | AMIDEAMIDE | amide - amide  |  [[ref]](https://doi.org/10.1002/jcc.21212) |
 | AMIDERING | amide - ring | [[ref]](https://doi.org/10.1016/0014-5793(86)80730-X) |
-
 
 ### Interacting entities
 
@@ -129,12 +127,12 @@ Follows nomenclature established by [Chakrabarti and Bhattacharyya (2007)](https
 | INTRA_NON_SELECTION | Between two atoms that are both not in the user's selection |
 | SELECTION_WATER | Between an atom in the user's selection and a water molecule |
 | NON_SELECTION_WATER | Between an atom that is not in the user's selection and a |water molecule
-|WATER_WATER | Between two water molecules |
-
+| WATER_WATER | Between two water molecules |
 
 ### Examples
 
 #### atom-atom interaction
+
 ```json
    {
         "bgn": {
@@ -161,8 +159,8 @@ Follows nomenclature established by [Chakrabarti and Bhattacharyya (2007)](https
     },
 ```
 
-
 #### atom-plane interaction
+
 ```json
     {
         "bgn": {
