@@ -135,7 +135,7 @@ def _parse_selection(args):
 
     if args.selection:
         selection = args.selection
-    elif os.path.isfile(args.selection_file):
+    elif args.selection_file and os.path.isfile(args.selection_file):
         with open(args.selection_file, 'r') as f:
             selection = f.read().splitlines()
 
