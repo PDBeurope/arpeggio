@@ -84,10 +84,10 @@ def run_arpeggio(args):
     args.output = os.getcwd() if args.output is None else args.output
     os.makedirs(args.output, exist_ok=True)
 
+    selections = _parse_selection(args)
+
     i_complex = InteractionComplex(args.filename, args.vdw_comp, args.interacting, args.ph)
     i_complex.structure_checks()
-
-    selections = _parse_selection(args)
 
     if args.use_ambiguities:
         i_complex.address_ambiguities()
@@ -135,9 +135,12 @@ def _parse_selection(args):
 
     if args.selection:
         selection = args.selection
-    else:
+    elif args.selection_file and os.path.isfile(args.selection_file):
         with open(args.selection_file, 'r') as f:
-            selection = [line for line in f]
+            selection = f.read().splitlines()
 
-    logger.info(f'Selection perceived: {selection}')
+    if selection:
+        logger.info(f'Selection perceived: {selection}')
+    else:
+        logger.warning(f'No selection was perceived. Defaults into full structure!!')
     return selection
