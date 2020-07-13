@@ -35,7 +35,7 @@ Arpeggio is written in Python and currently has the following dependencies:
 * Python (v3.6)
 * Numpy
 * BioPython (>= v1.60)
-* OpenBabel (with Python bindings)
+* OpenBabel (>=3.0)
 * PDBeCIF
 
 If you need to use Arpeggio programmatically or to run for many structures:
