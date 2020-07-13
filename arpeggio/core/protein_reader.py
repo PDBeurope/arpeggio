@@ -9,8 +9,7 @@ import numpy
 from Bio import PDB
 from Bio.PDB.StructureBuilder import StructureBuilder
 from mmCif.mmcifIO import MMCIF2Dict
-import openbabel as ob
-
+from openbabel import openbabel as ob
 
 # region common
 
@@ -102,7 +101,6 @@ def _parse_atom_site_openbabel(parsed):
     perceived_atom_site = parsed["_atom_site"]
     atom_site = _trim_models(perceived_atom_site)
 
-    table = ob.OBElementTable()
     last_res_id = None
     last_res_name = None
     last_chain_id = None
@@ -136,10 +134,10 @@ def _parse_atom_site_openbabel(parsed):
             res.SetName(atom_site["label_comp_id"][i])
             res.SetInsertionCode(ins_code)
 
-        _init_openbabel_atom(table, mol, res, atom_site, i)
+        _init_openbabel_atom(mol, res, atom_site, i)
 
     resdat = ob.OBResidueData()
-    resdat.AssignBonds(mol, ob.OBBitVec())
+    resdat.AssignBonds(mol)
     mol.ConnectTheDots()
     mol.PerceiveBondOrders()
 
@@ -236,12 +234,10 @@ def __add_bond_to_openbabel(mol, atom_id_a, atom_id_b):
     b.SetBondOrder(1)
 
 
-def _init_openbabel_atom(table, mol, res, atom_sites, i):
+def _init_openbabel_atom(mol, res, atom_sites, i):
     """Initialize openbabel atom
 
     Args:
-        table (OBElementTable): Element table to translate element type
-            to element numbers.
         mol (ob.OBMol): Molecule the atom will be added to.
         res (OBResidue): Residue the atom will be added to.
         atom_sites (dict of str): Parsed mmcif structure of the input file.
@@ -257,7 +253,11 @@ def _init_openbabel_atom(table, mol, res, atom_sites, i):
         float(atom_sites["Cartn_y"][i]),
         float(atom_sites["Cartn_z"][i]),
     )
-    atomic_num = table.GetAtomicNum(atom_sites["type_symbol"][i])
+    
+    type_symbol = atom_sites["type_symbol"][i]
+    element = f'{type_symbol[0]}{type_symbol[1].lower()}' if len(type_symbol) == 2 else type_symbol
+    
+    atomic_num = ob.GetAtomicNum(element)
     atom.SetAtomicNum(atomic_num)
     atom.SetFormalCharge(_format_formal_charge(atom_sites, i))
 

@@ -29,7 +29,7 @@ def create_parser():
         - Python (v3.6)
         - Numpy
         - BioPython (>= v1.60)
-        - OpenBabel (with Python bindings)
+        - OpenBabel (>= 3.0)
 
         ''', formatter_class=argparse.RawTextHelpFormatter)
 
