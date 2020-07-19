@@ -8,7 +8,7 @@ import os
 import numpy
 from Bio import PDB
 from Bio.PDB.StructureBuilder import StructureBuilder
-from mmCif.mmcifIO import MMCIF2Dict
+from pdbecif.mmcif_io import MMCIF2Dict
 from openbabel import openbabel as ob
 
 # region common

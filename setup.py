@@ -31,7 +31,11 @@ setup(
     ],
     zip_safe=False,
     include_package_data=True,
-    install_requires=["pdbecif<2.0", "numpy", "biopython"],
+    install_requires=[
+        "numpy",
+        "biopython",
+        "pdbecif @ git+https://github.com/PDBeurope/pdbecif.git@master#egg=pdbecif",
+    ],
     tests_require=["pytest"],
     entry_points={
         "console_scripts": ["arpeggio=arpeggio.scripts.process_protein_cli:main"]
