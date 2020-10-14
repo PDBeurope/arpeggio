@@ -1226,9 +1226,6 @@ class InteractionComplex:
                 if amide_key == amide_key2:
                     continue
 
-                if amide_key == 441 and amide2 == 442:
-                    print('foo')
-
                 # CHECK RING IS INVOLVED WITH THE SELECTION OR BINDING SITE
                 if amide_key2 not in self.selection_plus_amide_ids:
                     continue
