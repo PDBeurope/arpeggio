@@ -144,3 +144,7 @@ def _parse_selection(args):
     else:
         logger.warning(f'No selection was perceived. Defaults into full structure!!')
     return selection
+
+
+if __name__ == "__main__":
+    main()
