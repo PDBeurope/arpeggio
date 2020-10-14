@@ -31,8 +31,10 @@ setup(
     ],
     zip_safe=False,
     include_package_data=True,
-    install_requires=["pdbecif", "numpy", "biopython"],
-    tests_require=["pytest"],
+    install_requires=["pdbecif>=1.5", "numpy", "biopython"],
+    extras_require={
+        "tests": ["pytest", "pytest-cov"]
+    },
     entry_points={
         "console_scripts": ["arpeggio=arpeggio.scripts.process_protein_cli:main"]
     },
