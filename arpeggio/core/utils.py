@@ -65,7 +65,7 @@ def max_mem_usage():
         base = 1024.0 if platform.system() == 'Linux' else 1048576.0
         return str(round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / base, 2)) + ' MB'
     except Exception as err:
-        return 'Resource usage information not available {}'.format(str(err))
+        return f'Resource usage information not available {str(err)}'
 # endregion
 
 # region bonds identification
@@ -275,7 +275,7 @@ def sift_xnor(sift1, sift2):
             out.append(0)
 
         else:
-            raise ValueError('Invalid SIFts for matching: {} and {}'.format(sift1, sift2))
+            raise ValueError(f'Invalid SIFts for matching: {sift1} and {sift2}')
 
     return out
 
@@ -316,7 +316,7 @@ def sift_match_base3(sift1, sift2):
             raise SiftMatchError
 
         else:
-            raise ValueError('Invalid SIFts for matching: {} and {}'.format(sift1, sift2))
+            raise ValueError(f'Invalid SIFts for matching: {sift1} and {sift2}')
 
     return out
 
@@ -343,10 +343,10 @@ def human_sift_match(sift_match, feature_sift=config.FEATURE_SIFT):
             continue
 
         elif fp == 1:
-            terms.append('Matched {}'.format(feature_sift[e]))
+            terms.append(f'Matched {feature_sift[e]}')
 
         elif fp == 0:
-            terms.append('Unmatched {}'.format(feature_sift[e]))
+            terms.append(f'Unmatched {feature_sift[e]}')
 
         else:
             raise ValueError
@@ -364,7 +364,7 @@ def int2(x):
     '''
 
     if isinstance(x, collections.Iterable):
-        x = ''.join([str(k) for k in x])
+        x = ''.join(str(k) for k in x)
     else:
         x = str(x)
 
@@ -387,7 +387,7 @@ def int3(x):
     '''
 
     if isinstance(x, collections.Iterable):
-        x = ''.join([str(k) for k in x])
+        x = ''.join(str(k) for k in x)
     else:
         x = str(x)
 
@@ -409,7 +409,7 @@ def selection_parser(selection_list, atom_list):
     adding /A/91/C23 won't make any difference.
     '''
 
-    final_atom_list = set([])
+    final_atom_list = set()
 
     for selection in selection_list:
 
@@ -450,7 +450,7 @@ def selection_parser(selection_list, atom_list):
                                  not x.get_parent().is_polypeptide  # MUST NOT BE POLYPEPTIDE
                                  and len(x.get_parent().child_list) >= 5  # MIN NUMBER OF ATOMS
                                  and len(x.get_parent().child_list) <= 100  # MAX NUMBER OF ATOMS
-                                 and 'C' in set([y.element for y in x.get_parent().child_list])  # MUST CONTAIN CARBON
+                                 and 'C' in {y.element for y in x.get_parent().child_list}  # MUST CONTAIN CARBON
                                  and x.get_parent().resname.strip().upper() not in config.COMMON_SOLVENTS  # MUST NOT BE COMMON SOLVENT
                                  and x.get_parent().resname.strip().upper() not in config.STANDARD_NUCLEOTIDES  # MUST NOT BE NUCLEOTIDE
                                  and not x.get_parent().resname.startswith('+')  # MUST NOT BE MODIFIED NUCLEOTIDE

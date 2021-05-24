@@ -363,23 +363,23 @@ if __name__ == '__main__':
 
     # ARGUMENT PARSING
     parser = argparse.ArgumentParser(description='''
-    
+
     ############
     # ARPEGGIO #
     ############
-    
+
     Interaction Viewer
-    
+
     A program for calculating interatomic interactions,
     using only Open Source dependencies.
-    
+
     Dependencies:
     - Python (v2.7)
     - PyMOL, run as `pymol -R` to enable the XML-RPC server.
-    
+
     **You must have already run your structure with Arpeggio to generate the required output files**.
     Be careful about absolute and relative paths, this script might not mind but PyMOL probably will.
-    
+
     ''', formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument('pdb', type=str, help='Path to the PDB file to be analysed.')
@@ -412,7 +412,7 @@ if __name__ == '__main__':
     script_filename = pdb_filename.replace('.pdb', output_postfix + '.pml')
 
     if args.xml_rpc:
-        srv = xmlrpc.client.Server('http://{}:{}'.format(host, port))
+        srv = xmlrpc.client.Server(f'http://{host}:{port}')
 
     do = None
 
@@ -498,7 +498,7 @@ if __name__ == '__main__':
     do("rebuild")
 
     # LOAD STRUCTURE
-    do('load {}'.format(pdb_filename))
+    do(f'load {pdb_filename}')
 
     do('select binding_site, None')
 
@@ -508,7 +508,7 @@ if __name__ == '__main__':
     # GET CONTACTS
     with open(contacts_filename, 'rb') as fo:
 
-        used_interaction_types = set([])
+        used_interaction_types = set()
 
         for n_lines, line in enumerate(fo):
 
@@ -616,24 +616,24 @@ if __name__ == '__main__':
 
             for interaction_type, flag in interactions:
 
-                do('distance {}-{}, {}, {}'.format(interaction_type, flag, atom_bgn, atom_end))
+                do(f'distance {interaction_type}-{flag}, {atom_bgn}, {atom_end}')
 
-                do('show sticks, byres {}'.format(atom_bgn))
-                do('show sticks, byres {}'.format(atom_end))
+                do(f'show sticks, byres {atom_bgn}')
+                do(f'show sticks, byres {atom_end}')
 
-                do('select binding_site, binding_site + byres {}'.format(atom_bgn))
-                do('select binding_site, binding_site + byres {}'.format(atom_end))
+                do(f'select binding_site, binding_site + byres {atom_bgn}')
+                do(f'select binding_site, binding_site + byres {atom_end}')
 
                 used_interaction_types.add((interaction_type, flag))
 
             if not n_lines % 500:
-                print('Drew {} contacts.'.format(n_lines))
+                print(f'Drew {n_lines} contacts.')
 
-        print('Drew {} total contacts.'.format(n_lines))
+        print(f'Drew {n_lines} total contacts.')
 
         for interaction_type, flag in used_interaction_types:
 
-            label = '{}-{}'.format(interaction_type, flag)
+            label = f'{interaction_type}-{flag}'
 
             do('color {}, {}'.format(pymol_config['dashcolor'][interaction_type][flag], label))
             do('set dash_radius, {}, {}'.format(pymol_config['dashradius'][interaction_type][flag], label))
@@ -647,7 +647,7 @@ if __name__ == '__main__':
         for line in fo:
             line = line.strip().split('\t')
 
-            do('pseudoatom ring_centers, pos={}'.format(line[2]))
+            do(f'pseudoatom ring_centers, pos={line[2]}')
 
     do('hide everything, ring_centers')
     #do('show spheres, ring_centers')
@@ -660,10 +660,10 @@ if __name__ == '__main__':
             if line[8] == 'INTRA_NON_SELECTION':
                 continue
 
-            do('pseudoatom pt1, pos={}'.format(line[2]))
-            do('pseudoatom pt2, pos={}'.format(line[5]))
+            do(f'pseudoatom pt1, pos={line[2]}')
+            do(f'pseudoatom pt2, pos={line[5]}')
 
-            do('distance ring-{}, pt1, pt2'.format(line[6]))
+            do(f'distance ring-{line[6]}, pt1, pt2')
 
             do('delete pt1')
             do('delete pt2')
@@ -677,7 +677,7 @@ if __name__ == '__main__':
         for line in fo:
             line = line.strip().split('\t')
 
-            do('pseudoatom pt1, pos={}'.format(line[3]))
+            do(f'pseudoatom pt1, pos={line[3]}')
 
             if line[6] == 'INTRA_NON_SELECTION':
                 continue
@@ -685,7 +685,7 @@ if __name__ == '__main__':
             if type(eval(line[4])) is list:
 
                 for itype in eval(line[4]):
-                    do('distance {}, pt1, {}'.format(itype, line[0]))
+                    do(f'distance {itype}, pt1, {line[0]}')
 
             do('delete pt1')
 
@@ -706,8 +706,8 @@ if __name__ == '__main__':
             if line[8] == 'INTRA_NON_SELECTION':
                 continue
 
-            do('pseudoatom pt1, pos={}'.format(line[2]))
-            do('pseudoatom pt2, pos={}'.format(line[5]))
+            do(f'pseudoatom pt1, pos={line[2]}')
+            do(f'pseudoatom pt2, pos={line[5]}')
 
             do('distance amide-ring, pt1, pt2')
 
@@ -727,8 +727,8 @@ if __name__ == '__main__':
             if line[8] == 'INTRA_NON_SELECTION':
                 continue
 
-            do('pseudoatom pt1, pos={}'.format(line[2]))
-            do('pseudoatom pt2, pos={}'.format(line[5]))
+            do(f'pseudoatom pt1, pos={line[2]}')
+            do(f'pseudoatom pt2, pos={line[5]}')
 
             do('distance amide-amide, pt1, pt2')
 

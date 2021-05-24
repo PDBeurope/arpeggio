@@ -50,7 +50,7 @@ class InteractionComplex:
         self.id = os.path.basename(filename).split('.')[0]
         # Biopython part
         self.biopython_str = self._read_in_biopython(filename)
-        self.s_atoms = list()
+        self.s_atoms = []
         for atom in list(self.biopython_str.get_atoms()):
             if isinstance(atom, DisorderedAtom):
                 for altloc, alt_atom in atom.child_dict.items():
@@ -93,8 +93,8 @@ class InteractionComplex:
 
         if self.params.has_hydrogens:
             self.input_has_hydrogens = True
-            logging.debug(("Detected that the input structure contains hydrogens. "
-                           "Hydrogen addition will be skipped."))
+            logging.debug("Detected that the input structure contains hydrogens. "
+                          "Hydrogen addition will be skipped.")
         else:
             self.ob_mol.AddHydrogens(False, True, ph)
             self.input_has_hydrogens = False
@@ -296,8 +296,8 @@ class InteractionComplex:
         self._ob_atom_typing()
 
         self._handle_hydrogens()
-        logging.debug(("Determined atom explicit and implicit valences, bond orders, "
-                       "atomic numbers, formal charge and number of bound hydrogens."))
+        logging.debug("Determined atom explicit and implicit valences, bond orders, "
+                      "atomic numbers, formal charge and number of bound hydrogens.")
 
         self._initialize_atom_sift()
         self._initialize_residue_sift()
@@ -990,7 +990,7 @@ class InteractionComplex:
                     contact_type = 'INTER'
 
                 # DETERMINE INTERACTIONS
-                potential_interactions = set([])
+                potential_interactions = set()
 
                 # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
                 #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
@@ -1049,7 +1049,7 @@ class InteractionComplex:
                                     else:
                                         atom.get_parent().sc_atom_ring_inter_integer_sift[k] = atom.get_parent().sc_atom_ring_inter_integer_sift[k] + 1
 
-                end_ring_atoms = sorted([a.get_id() for a in ring['atoms']])
+                end_ring_atoms = sorted(a.get_id() for a in ring['atoms'])
 
                 contact = AtomPlaneContact(atom, ring['residue'], end_ring_atoms, distance, sorted(list(potential_interactions)), contact_type)
                 self.atom_plane_contacts.append(contact)
@@ -1177,8 +1177,8 @@ class InteractionComplex:
                     if int_type not in identity[0].contact_type:
                         identity[0].contact_type.append(int_type)
                 else:
-                    bgn_ring_atoms = sorted([a.get_id() for a in ring['atoms']])
-                    end_ring_atoms = sorted([a.get_id() for a in ring2['atoms']])
+                    bgn_ring_atoms = sorted(a.get_id() for a in ring['atoms'])
+                    end_ring_atoms = sorted(a.get_id() for a in ring2['atoms'])
 
                     ring_contact = PlanePlaneContact(ring_key, ring['residue'], bgn_ring_atoms,
                                                      ring_key2, ring2['residue'], end_ring_atoms,
@@ -1283,8 +1283,8 @@ class InteractionComplex:
                 if contact_type == 'INTER' and not intra_residue:
                     amide['residue'].amide_amide_inter_integer_sift[0] = amide['residue'].amide_amide_inter_integer_sift[0] + 1
 
-                bgn_res_atoms = sorted([a.get_id() for a in amide['atoms']])
-                end_res_atoms = sorted([a.get_id() for a in amide2['atoms']])
+                bgn_res_atoms = sorted(a.get_id() for a in amide['atoms'])
+                end_res_atoms = sorted(a.get_id() for a in amide2['atoms'])
 
                 contact = PlanePlaneContact(amide['amide_id'], amide['residue'], bgn_res_atoms,
                                             amide2['amide_id'], amide2['residue'], end_res_atoms,
@@ -1365,8 +1365,8 @@ class InteractionComplex:
                     amide['residue'].amide_ring_inter_integer_sift[0] = amide['residue'].amide_ring_inter_integer_sift[0] + 1
                     ring['residue'].ring_amide_inter_integer_sift[0] = ring['residue'].ring_amide_inter_integer_sift[0] + 1
 
-                bgn_res_atoms = sorted([a.get_id() for a in amide['atoms']])
-                end_res_atoms = sorted([a.get_id() for a in ring['atoms']])
+                bgn_res_atoms = sorted(a.get_id() for a in amide['atoms'])
+                end_res_atoms = sorted(a.get_id() for a in ring['atoms'])
 
                 contact = PlanePlaneContact(amide['amide_id'], amide['residue'], bgn_res_atoms,
                                             ring['ring_id'], ring['residue'], end_res_atoms,
@@ -1590,7 +1590,7 @@ class InteractionComplex:
         # CHAIN BREAKS AND TERMINI
 
         # MAKE DATA STRUCTURES FOR CHAIN POLYPEPTIDES
-        chain_ids = set([x.id for x in self.biopython_str.get_chains()])
+        chain_ids = {x.id for x in self.biopython_str.get_chains()}
         chain_pieces = collections.OrderedDict()
         chain_polypeptides = collections.OrderedDict()
         chain_break_residues = collections.OrderedDict()
@@ -1603,7 +1603,7 @@ class InteractionComplex:
             chain_polypeptides[chain_id] = []
 
         # GET THE CHAIN_ID(S) ASSOCIATED WITH EACH POLYPEPTIDE
-        polypeptide_chain_id_sets = [set([k.get_parent().id for k in x]) for x in polypeptides]
+        polypeptide_chain_id_sets = [{k.get_parent().id for k in x} for x in polypeptides]
 
         for e, polypeptide_chain_id_set in enumerate(polypeptide_chain_id_sets):
 
@@ -1648,7 +1648,7 @@ class InteractionComplex:
             pass
 
         # POLYPEPTIDE RESIDUES
-        self.polypeptide_residues = set([])
+        self.polypeptide_residues = set()
 
         for pp in polypeptides:
 
@@ -1972,7 +1972,7 @@ class InteractionComplex:
 
     def _extend_atom_properties(self):
         for atom in self.s_atoms:
-            atom.atom_types = set([])
+            atom.atom_types = set()
             atom.h_coords = []
 
             atom.is_metal = atom.element.upper() in config.METALS

@@ -82,7 +82,7 @@ def read_mmcif_to_openbabel(path):
         openbabel.OBMol: openbabel structure
     """
     if not os.path.isfile(path):
-        raise IOError("File {} not found".format(path))
+        raise OSError(f"File {path} not found")
 
     parsed = MMCIF2Dict().parse(path)
     mol = _parse_atom_site_openbabel(list(parsed.values())[0])
@@ -295,7 +295,7 @@ def read_mmcif_to_biopython(path):
         Bio.PDB.Structure.Structure: BioPython PDB structure
     """
     if not os.path.isfile(path):
-        raise IOError("File {} not found".format(path))
+        raise OSError(f"File {path} not found")
 
     structure_builder = StructureBuilder()
     parsed = MMCIF2Dict().parse(path)

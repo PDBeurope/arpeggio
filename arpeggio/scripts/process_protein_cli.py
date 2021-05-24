@@ -112,12 +112,12 @@ def run_arpeggio(args):
         json.dump(contacts, fp, indent=4, sort_keys=True)
 
     # write out files
-    #i_complex.write_atom_types(args.output)  # _atomtypes
-    #i_complex.write_contacts(selections, args.output)  # _contacts; _bs_contacts
-    #i_complex.write_atom_sifts(args.output)  # _sift; _specific_sift
-    #i_complex.write_binding_site_sifts(args.output)  # _siftmatch; _specific_siftmatch
-    #i_complex.write_polar_matching(args.output)  # _polarmatch; _specific_polarmatch
-    #i_complex.write_residue_sifts(args.output)  # residue_sifts
+    # i_complex.write_atom_types(args.output)  # _atomtypes
+    # i_complex.write_contacts(selections, args.output)  # _contacts; _bs_contacts
+    # i_complex.write_atom_sifts(args.output)  # _sift; _specific_sift
+    # i_complex.write_binding_site_sifts(args.output)  # _siftmatch; _specific_siftmatch
+    # i_complex.write_polar_matching(args.output)  # _polarmatch; _specific_polarmatch
+    # i_complex.write_residue_sifts(args.output)  # residue_sifts
 
     logger.info(f'Program End. Maximum memory usage was {max_mem_usage()}.')
 
@@ -136,13 +136,13 @@ def _parse_selection(args):
     if args.selection:
         selection = args.selection
     elif args.selection_file and os.path.isfile(args.selection_file):
-        with open(args.selection_file, 'r') as f:
+        with open(args.selection_file) as f:
             selection = f.read().splitlines()
 
     if selection:
         logger.info(f'Selection perceived: {selection}')
     else:
-        logger.warning(f'No selection was perceived. Defaults into full structure!!')
+        logger.warning('No selection was perceived. Defaults into full structure!!')
     return selection
 
 
