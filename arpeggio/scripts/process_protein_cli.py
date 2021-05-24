@@ -26,10 +26,10 @@ def create_parser():
         using only Open Source dependencies.
 
         Dependencies:
-        - Python (v3.6)
+        - Python (v3.7+)
         - Numpy
         - BioPython (>= v1.60)
-        - OpenBabel (with Python bindings)
+        - OpenBabel v2.x (with Python bindings)
 
         ''', formatter_class=argparse.RawTextHelpFormatter)
 

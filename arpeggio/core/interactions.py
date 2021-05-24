@@ -1521,7 +1521,7 @@ class InteractionComplex:
     def _perceive_amide_groups(self):
         # DETECT AMIDE GROUPS
         # AMIDES FOR AMIDE-RELATED NON-BONDING INTERACTIONS
-        self.biopython_str.amides = collections.OrderedDict()
+        self.biopython_str.amides = {}
 
         # GET OPENBABEL ATOM MATCHES TO THE SMARTS PATTERN
         ob_smart = ob.OBSmartsPattern()
@@ -1591,11 +1591,11 @@ class InteractionComplex:
 
         # MAKE DATA STRUCTURES FOR CHAIN POLYPEPTIDES
         chain_ids = {x.id for x in self.biopython_str.get_chains()}
-        chain_pieces = collections.OrderedDict()
-        chain_polypeptides = collections.OrderedDict()
-        chain_break_residues = collections.OrderedDict()
-        chain_termini = collections.OrderedDict()
-        # chain_sequences = OrderedDict()
+        chain_pieces = {}
+        chain_polypeptides = {}
+        chain_break_residues = {}
+        chain_termini = {}
+        # chain_sequences = {}
 
         for chain_id in chain_ids:
             chain_pieces[chain_id] = 0
@@ -1688,7 +1688,7 @@ class InteractionComplex:
         """Perceive aromatic rings
         """
 
-        self.biopython_str.rings = collections.OrderedDict()
+        self.biopython_str.rings = {}
 
         for e, ob_ring in enumerate(self.ob_mol.GetSSSR()):
 

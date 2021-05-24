@@ -1,6 +1,4 @@
-from collections import OrderedDict
-
-DEFAULT_SIFT = OrderedDict()
+DEFAULT_SIFT = {}
 
 # FEATURE SIFTS
 # 5: 0: HBOND
