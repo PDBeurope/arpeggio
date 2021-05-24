@@ -2015,11 +2015,11 @@ class InteractionComplex:
         """
         extension = utils.setup_filetype(path)
 
-        s = (PDBParser().get_structure('structure', path)
-             if extension == 'pdb'
-             else protein_reader.read_mmcif_to_biopython(path))
-
-        logging.debug('Loaded PDB structure (BioPython)')
+        if extension == 'pdb':
+            s = PDBParser().get_structure('structure', path)
+            logging.debug('Loaded PDB structure (BioPython)')
+        else:
+            s = protein_reader.read_mmcif_to_biopython(path)
 
         return s
 
