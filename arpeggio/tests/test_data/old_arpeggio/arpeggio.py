@@ -1143,7 +1143,7 @@ Dependencies:
 
             residue.is_terminal_or_break = residue.is_terminal or residue.is_chain_break
 
-            # DETERMINE PRECEEDING AND NEXT RESIDUES IN THE SEQUENCE
+            # DETERMINE PRECEDING AND NEXT RESIDUES IN THE SEQUENCE
             residue.prev_residue = None
             residue.next_residue = None
 
@@ -1156,7 +1156,7 @@ Dependencies:
 
     logging.info('Determined polypeptide residues, chain breaks, termini') # and amide bonds.')
 
-    # PERCIEVE AROMATIC RINGS
+    # PERCEIVE AROMATIC RINGS
     s.rings = OrderedDict()
 
     for e, ob_ring in enumerate(mol.GetSSSR()):

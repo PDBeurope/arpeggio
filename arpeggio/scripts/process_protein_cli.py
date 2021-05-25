@@ -11,19 +11,18 @@ logger.addHandler(logging.NullHandler())
 
 
 def create_parser():
-    """Create command line parser
+    """Create a command-line parser.
 
     Returns:
-        argsparser: args parser
-    """
+        argsparser: args parser.
 
+    """
     parser = argparse.ArgumentParser(description='''
         ############
         # ARPEGGIO #
         ############
 
-        A program for calculating interactions,
-        using only Open Source dependencies.
+        A program for calculating interactions, using only Open Source dependencies.
 
         Dependencies:
         - Python (v3.7+)
@@ -56,12 +55,12 @@ def create_parser():
 
 
 def _setup_logging(args):
-    """Set up logging and working directory
+    """Set up logging and working directory.
 
     Args:
-        args (ArgumentParser): parsed arguments from the command line
-    """
+        args (ArgumentParser): parsed arguments from the command line.
 
+    """
     logging_level = logging.WARNING if args.mute else logging.DEBUG
     logging.basicConfig(level=logging_level,
                         format='%(levelname)s//%(asctime)s.%(msecs).03d//%(message)s',
@@ -71,8 +70,7 @@ def _setup_logging(args):
 
 
 def main():
-    """Run Arpeggio algorithm
-    """
+    """Do all the magic."""
     parser = create_parser()
     args = parser.parse_args()
     _setup_logging(args)
@@ -80,7 +78,7 @@ def main():
 
 
 def run_arpeggio(args):
-
+    """Run Arpeggio algorithm."""
     args.output = os.getcwd() if args.output is None else args.output
     os.makedirs(args.output, exist_ok=True)
 
@@ -123,13 +121,14 @@ def run_arpeggio(args):
 
 
 def _parse_selection(args):
-    """Parse user defined selection
+    """Parse user-defined selection.
 
     Args:
-        args (ArgumentParser): Application arguments
+        args (ArgumentParser): Application arguments.
 
     Returns:
         list of str: Selections in the textual form.
+
     """
     selection = []
 
