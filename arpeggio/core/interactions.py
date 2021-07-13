@@ -1987,18 +1987,28 @@ class InteractionComplex:
         # FIRST MAP PDB SERIAL NUMBERS TO BIOPYTHON ATOMS FOR SPEED LATER
         # THIS AVOIDS LOOPING THROUGH `s_atoms` MANY TIMES
         serial_to_bio = {x.serial_number: x for x in self.s_atoms}
-        for ob_atom in ob.OBMolAtomIter(self.ob_mol):
-            serial = ob_atom.GetId()
 
+        # `Id` IS A UNIQUE AND STABLE ID IN OPENBABEL
+        # CAN RECOVER THE ATOM WITH `mol.GetAtomById(id)`
+        serial_to_ob = {x.GetId(): x for x in ob.OBMolAtomIter(self.ob_mol)}
+
+        if 0 in serial_to_ob and 0 not in serial_to_bio:
+            offset = 1
+            logging.debug('OB atom serial numbers start with 0, but there are no BioPython atoms with serial number 0. Adding 1 to all OB serials for mapping purposes.')
+        else:
+            offset = 0
+
+        for serial, ob_atom in serial_to_ob.items():
             # MATCH TO THE BIOPYTHON ATOM BY SERIAL NUMBER
             try:
-                biopython_atom = serial_to_bio[serial]
-
+                biopython_atom = serial_to_bio[serial + offset]
             except KeyError:
-                raise OBBioMatchError(serial)
+                raise OBBioMatchError("Failed to match OB atom to a BioPython atom: {},{} : {}({})".format(serial, serial + offset, ob_atom.GetType()[:1], ob_atom.GetType()))
+            
+            # Sanity check that elements match, for debugging
+            if ob_atom.GetType()[:1] != biopython_atom.element[:1]:
+                raise OBBioMatchError("Failed to correctly match atoms with different elements: {},{} : {}({}) != {}({}, {})".format(serial, serial + offset, ob_atom.GetType()[:1], ob_atom.GetType(), biopython_atom.element[:1], biopython_atom.element, biopython_atom.name))
 
-            # `Id` IS A UNIQUE AND STABLE ID IN OPENBABEL
-            # CAN RECOVER THE ATOM WITH `mol.GetAtomById(id)`
             self.ob_to_bio[ob_atom.GetId()] = biopython_atom
             self.bio_to_ob[biopython_atom] = ob_atom.GetId()
 
