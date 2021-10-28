@@ -2006,8 +2006,8 @@ class InteractionComplex:
                 raise OBBioMatchError("Failed to match OB atom to a BioPython atom: {},{} : {}({})".format(serial, serial + offset, ob_atom.GetType()[:1], ob_atom.GetType()))
             
             # Sanity check that elements match, for debugging
-            if ob_atom.GetType()[:1] != biopython_atom.element[:1]:
-                raise OBBioMatchError("Failed to correctly match atoms with different elements: {},{} : {}({}) != {}({}, {})".format(serial, serial + offset, ob_atom.GetType()[:1], ob_atom.GetType(), biopython_atom.element[:1], biopython_atom.element, biopython_atom.name))
+            # if ob_atom.GetType()[:1] != biopython_atom.element[:1]:
+            #    raise OBBioMatchError("Failed to correctly match atoms with different elements: {},{} : {}({}) != {}({}, {})".format(serial, serial + offset, ob_atom.GetType()[:1], ob_atom.GetType(), biopython_atom.element[:1], biopython_atom.element, biopython_atom.name))
 
             self.ob_to_bio[ob_atom.GetId()] = biopython_atom
             self.bio_to_ob[biopython_atom] = ob_atom.GetId()
