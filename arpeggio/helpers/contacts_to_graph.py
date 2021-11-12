@@ -6,6 +6,7 @@
 
 import argparse
 import os
+
 import igraph
 
 #############

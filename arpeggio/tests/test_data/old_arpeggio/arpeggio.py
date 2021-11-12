@@ -18,33 +18,32 @@ import collections
 import logging
 #import math
 import operator
+
 try:
     import resource
 except ImportError:
     logging.info('Resource module not available, resource usage info won\'t be logged.')
 import sys
-
 from collections import OrderedDict
 
 import numpy as np
-
-#from Bio.PDB import PDBIO
-from Bio.PDB.PDBParser import PDBParser
+import openbabel as ob
 from Bio.PDB import NeighborSearch
 from Bio.PDB.Atom import Atom
-from Bio.PDB.Residue import Residue
+#from Bio.PDB import PDBIO
+from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB.Polypeptide import PPBuilder
-
-import openbabel as ob
+from Bio.PDB.Residue import Residue
+from config import (AMIDE_SMARTS, ATOM_TYPES, COMMON_SOLVENTS, CONTACT_TYPES,
+                    CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, HALOGENS,
+                    MAINCHAIN_ATOMS, METALS, PROT_ATOM_TYPES,
+                    STANDARD_NUCLEOTIDES, STD_RES, THETA_REQUIRED, VALENCE,
+                    VDW_RADII)
 
 #############
 # CONSTANTS #
 #############
 
-from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, \
-                   HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, VALENCE, \
-                   MAINCHAIN_ATOMS, THETA_REQUIRED, STD_RES, PROT_ATOM_TYPES, \
-                   AMIDE_SMARTS, COMMON_SOLVENTS, STANDARD_NUCLEOTIDES
 
 ###########
 # CLASSES #

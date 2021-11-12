@@ -6,10 +6,10 @@ Create an internal representation of proteins in Biopython and OpenBabel.
 import os
 
 import numpy
+import openbabel as ob
 from Bio import PDB
 from Bio.PDB.StructureBuilder import StructureBuilder
 from pdbecif.mmcif_io import MMCIF2Dict
-import openbabel as ob
 
 # region common
 
