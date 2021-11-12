@@ -16,12 +16,12 @@ from arpeggio.core import (AtomSerialError, OBBioMatchError, config,
                            protein_reader, utils)
 
 AtomPlaneContact = collections.namedtuple('AtomPlaneContact',
-                                          ['bgn_atom', 'end_res', 'end_res_atoms', 'distance',
+                                          ['bgn_atom', 'end_res', 'end_res_atoms', 'end_res_center', 'distance',
                                            'sifts', 'text'])
 
 PlanePlaneContact = collections.namedtuple('PlanePlaneContact',
-                                           ['bgn_id', 'bgn_res', 'bgn_res_atoms',
-                                            'end_id', 'end_res', 'end_res_atoms',
+                                           ['bgn_id', 'bgn_res', 'bgn_res_atoms', 'bgn_res_center',
+                                            'end_id', 'end_res', 'end_res_atoms', 'end_res_center',
                                             'distance', 'contact_type', 'text'])
 
 AtomAtomContact = collections.namedtuple('AtomAtomContact',
@@ -1066,7 +1066,7 @@ class InteractionComplex:
 
                 end_ring_atoms = sorted(a.get_id() for a in ring['atoms'])
 
-                contact = AtomPlaneContact(atom, ring['residue'], end_ring_atoms, distance, sorted(list(potential_interactions)), contact_type)
+                contact = AtomPlaneContact(atom, ring['residue'], end_ring_atoms, ring['center'], distance, sorted(list(potential_interactions)), contact_type)
                 self.atom_plane_contacts.append(contact)
 
     def __calculate_plane_plane_contacts(self):
@@ -1197,8 +1197,8 @@ class InteractionComplex:
                     bgn_ring_atoms = sorted(a.get_id() for a in ring['atoms'])
                     end_ring_atoms = sorted(a.get_id() for a in ring2['atoms'])
 
-                    ring_contact = PlanePlaneContact(ring_key, ring['residue'], bgn_ring_atoms,
-                                                     ring_key2, ring2['residue'], end_ring_atoms,
+                    ring_contact = PlanePlaneContact(ring_key, ring['residue'], bgn_ring_atoms, ring['center'],
+                                                     ring_key2, ring2['residue'], end_ring_atoms, ring2['center'],
                                                      distance, [int_type], contact_type)
 
                     self.plane_plane_contacts.append(ring_contact)
@@ -1302,8 +1302,8 @@ class InteractionComplex:
                 bgn_res_atoms = sorted(a.get_id() for a in amide['atoms'])
                 end_res_atoms = sorted(a.get_id() for a in amide2['atoms'])
 
-                contact = PlanePlaneContact(amide['amide_id'], amide['residue'], bgn_res_atoms,
-                                            amide2['amide_id'], amide2['residue'], end_res_atoms,
+                contact = PlanePlaneContact(amide['amide_id'], amide['residue'], bgn_res_atoms, amide['center'],
+                                            amide2['amide_id'], amide2['residue'], end_res_atoms, amide2['center'],
                                             distance, [int_type], contact_type)
 
                 self.group_group_contacts.append(contact)
@@ -1384,8 +1384,8 @@ class InteractionComplex:
                 bgn_res_atoms = sorted(a.get_id() for a in amide['atoms'])
                 end_res_atoms = sorted(a.get_id() for a in ring['atoms'])
 
-                contact = PlanePlaneContact(amide['amide_id'], amide['residue'], bgn_res_atoms,
-                                            ring['ring_id'], ring['residue'], end_res_atoms,
+                contact = PlanePlaneContact(amide['amide_id'], amide['residue'], bgn_res_atoms, amide['center'],
+                                            ring['ring_id'], ring['residue'], end_res_atoms, ring['center'],
                                             distance, [int_type], contact_type)
 
                 self.group_plane_contacts.append(contact)
@@ -2085,8 +2085,10 @@ def _prepare_plane_plane_contact_for_export(contact, contact_type):
     result_entry = {}
     result_entry['bgn'] = utils.make_pymol_json(contact.bgn_res)
     result_entry['bgn']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.bgn_res_atoms)
+    result_entry['bgn']['center'] = np.array2string(contact.bgn_res_center, separator=', ')
     result_entry['end'] = utils.make_pymol_json(contact.end_res)
     result_entry['end']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
+    result_entry['end']['center'] = np.array2string(contact.end_res_center, separator=', ')
     result_entry['type'] = contact_type
     result_entry['distance'] = round(np.float64(contact.distance), 2)
     result_entry['contact'] = contact.contact_type
@@ -2112,6 +2114,7 @@ def _prepare_atom_plane_contact_for_export(contact, contact_type):
     result_entry['bgn'] = utils.make_pymol_json(contact.bgn_atom)
     result_entry['end'] = utils.make_pymol_json(contact.end_res)
     result_entry['end']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
+    result_entry['end']['center'] = np.array2string(contact.end_res_center, separator=', ')
     result_entry['type'] = contact_type
     result_entry['distance'] = round(np.float64(contact.distance), 2)
     result_entry['contact'] = contact.sifts
