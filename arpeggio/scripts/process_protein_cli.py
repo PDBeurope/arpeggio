@@ -3,6 +3,7 @@ import json
 import logging
 import os
 
+import arpeggio
 from arpeggio.core import InteractionComplex
 from arpeggio.core.utils import max_mem_usage
 
@@ -17,10 +18,11 @@ def create_parser():
         argsparser: args parser.
 
     """
-    parser = argparse.ArgumentParser(description='''
-        ############
-        # ARPEGGIO #
-        ############
+
+    parser = argparse.ArgumentParser(description=f'''
+        ##################
+        # ARPEGGIO {arpeggio.__version__} #
+        ##################
 
         A program for calculating interactions, using only Open Source dependencies.
 
