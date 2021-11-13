@@ -10,7 +10,7 @@ setup(
         "Documentation": "https://github.com/PDBeurope/arpeggio",
         "Author's repository": "https://github.com/harryjubb/arpeggio",
         "Paper": "https://doi.org/10.1016/j.jmb.2016.12.004",
-        "Web server": "http://biosig.unimelb.edu.au/arpeggioweb/",
+        "Web server": "https://biosig.unimelb.edu.au/arpeggioweb/",
     },
     author="Harry Jubb",
     author_email="harry.jubb@sanger.ac.uk",
@@ -20,7 +20,9 @@ setup(
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Operating System :: Unix",
         "Operating System :: MacOS",
         "Operating System :: POSIX",
@@ -32,6 +34,7 @@ setup(
     zip_safe=False,
     include_package_data=True,
     install_requires=["pdbecif>=1.5", "numpy", "biopython"],
+    python_requires='>=3.7',
     extras_require={
         "tests": ["pytest", "pytest-cov"]
     },

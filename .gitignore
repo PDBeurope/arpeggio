@@ -5,3 +5,6 @@ examples/*
 .pytest_cache/*
 .mypy_cache
 arpeggio.egg-info
+build/*
+dist/*
+__pycache__/*

@@ -1,11 +1,12 @@
+import json
 import os
-import pytest
 import shutil
 import subprocess
-import json
 from collections import namedtuple
-import arpeggio
 
+import pytest
+
+import arpeggio
 from arpeggio.tests.helpers.utils import process_arpeggio_pair
 
 """Regression test to check if results provided by original implementation

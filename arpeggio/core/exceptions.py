@@ -1,5 +1,5 @@
-"""Exception classes to distinguis internal errors
-"""
+"""Exception classes to distinguish internal errors."""
+
 import logging
 
 

@@ -111,24 +111,24 @@ group_pymol_config = {
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='''
-    
+
     ############
     # ARPEGGIO #
     ############
-    
+
     Interaction Viewer output to PV Viewer Format.
-    
+
     A program for calculating interatomic interactions,
     using only Open Source dependencies.
-    
+
     Dependencies:
     - Python (v2.7)
     - PV Viewer ()
-    
+
     **You must have already run your structure with Arpeggio to generate the required output files,
       and also run show_contacts.py and made a .pml file.**.
     Be careful about absolute and relative paths.
-    
+
     ''', formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument('pdb', type=str, help='Path to the PDB file to be analysed.')
@@ -158,8 +158,8 @@ if __name__ == '__main__':
     js = []
 
     # DEFINE LOAD FUNCTION
-    js.append('function {}() {{'.format(function_name))
-    js.append("pv.io.fetchPdb('{}', function(structure) {{".format(short_pdb_filename))
+    js.append(f'function {function_name}() {{')
+    js.append(f"pv.io.fetchPdb('{short_pdb_filename}', function(structure) {{")
 
     js.append('''
 
@@ -171,7 +171,7 @@ if __name__ == '__main__':
 
 ''')
 
-    with open(script_filename, 'r') as fo:
+    with open(script_filename) as fo:
 
         for line in fo:
 
@@ -254,8 +254,8 @@ if __name__ == '__main__':
                 atm_end = m.group(9)
 
                 # SHOW STICKS FOR BINDING RESIDUES
-                js.append("viewer.ballsAndSticks('binding_site', structure.select({{'cname': '{}', 'rnum': {}}}));".format(chain_bgn, res_bgn))
-                js.append("viewer.ballsAndSticks('binding_site', structure.select({{'cname': '{}', 'rnum': {}}}));".format(chain_end, res_end))
+                js.append(f"viewer.ballsAndSticks('binding_site', structure.select({{'cname': '{chain_bgn}', 'rnum': {res_bgn}}}));")
+                js.append(f"viewer.ballsAndSticks('binding_site', structure.select({{'cname': '{chain_end}', 'rnum': {res_end}}}));")
 
                 # DRAW CONTACT
                 js.append('drawAtomAtomContactFromPredicates(structure, viewer,\
@@ -281,7 +281,7 @@ if __name__ == '__main__':
     js.append('}')
 
     # LOAD STRUCTURE WHEN DOM READY
-    js.append('''document.addEventListener('DOMContentLoaded', {});'''.format(function_name))
+    js.append(f'''document.addEventListener('DOMContentLoaded', {function_name});''')
 
     with open(js_filename, 'wb') as fo:
         fo.write('\n'.join(js))

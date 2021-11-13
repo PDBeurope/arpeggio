@@ -16,12 +16,12 @@ from arpeggio.core import (AtomSerialError, OBBioMatchError, config,
                            protein_reader, utils)
 
 AtomPlaneContact = collections.namedtuple('AtomPlaneContact',
-                                          ['bgn_atom', 'end_res', 'end_res_atoms', 'distance',
+                                          ['bgn_atom', 'end_res', 'end_res_atoms', 'end_res_center', 'distance',
                                            'sifts', 'text'])
 
 PlanePlaneContact = collections.namedtuple('PlanePlaneContact',
-                                           ['bgn_id', 'bgn_res', 'bgn_res_atoms',
-                                            'end_id', 'end_res', 'end_res_atoms',
+                                           ['bgn_id', 'bgn_res', 'bgn_res_atoms', 'bgn_res_center',
+                                            'end_id', 'end_res', 'end_res_atoms', 'end_res_center',
                                             'distance', 'contact_type', 'text'])
 
 AtomAtomContact = collections.namedtuple('AtomAtomContact',
@@ -34,8 +34,7 @@ Parameters = collections.namedtuple('Parameters',
 
 class InteractionComplex:
     def __init__(self, filename, vdw_comp=0.1, interacting=5.0, ph=7.4):
-        """Creates interaction complex to be used by Arperggio for
-        calculations.
+        """Create interaction complex for use by Arperggio in calculations.
 
         Args:
             filename (str): Path to the structure to be processed.
@@ -45,12 +44,13 @@ class InteractionComplex:
                 cutoff for grid points to be \'interacting\' with
                 the entity.
             ph (float, optional): Defaults to 7.4. Ph to be used if
-                structure does not containg hydrogens.
+                structure does not contain hydrogens.
+
         """
         self.id = os.path.basename(filename).split('.')[0]
         # Biopython part
         self.biopython_str = self._read_in_biopython(filename)
-        self.s_atoms = list()
+        self.s_atoms = []
         for atom in list(self.biopython_str.get_atoms()):
             if isinstance(atom, DisorderedAtom):
                 for altloc, alt_atom in atom.child_dict.items():
@@ -89,12 +89,12 @@ class InteractionComplex:
             has_hydrogens=any(x.element == 'H' for x in self.s_atoms),
             ph=ph)
 
-        self._establish_structure_mappping()
+        self._establish_structure_mapping()
 
         if self.params.has_hydrogens:
             self.input_has_hydrogens = True
-            logging.debug(("Detected that the input structure contains hydrogens. "
-                           "Hydrogen addition will be skipped."))
+            logging.debug("Detected that the input structure contains hydrogens. "
+                          "Hydrogen addition will be skipped.")
         else:
             self.ob_mol.AddHydrogens(False, True, ph)
             self.input_has_hydrogens = False
@@ -103,10 +103,11 @@ class InteractionComplex:
     # region public methods
 
     def structure_checks(self):
-        """Check if structure is properly formated
+        """Check if structure is properly formatted.
 
         Raises:
             AtomSerialError: in case there are duplicities in atom ids.
+
         """
         all_serials = [x.serial_number for x in self.s_atoms]
 
@@ -114,8 +115,7 @@ class InteractionComplex:
             raise AtomSerialError
 
     def address_ambiguities(self):
-        """Remove ambiguous definitions from the config
-        """
+        """Remove ambiguous definitions from the config."""
         # REMOVE FROM SMARTS DEFINITIONS
         config.ATOM_TYPES['hbond acceptor'].pop('NH2 terminal amide', None)
         config.ATOM_TYPES['hbond donor'].pop('oxygen amide term', None)
@@ -133,6 +133,7 @@ class InteractionComplex:
 
         Args:
             wd (str): Working directory where the output will be stored.
+
         """
         filepath = os.path.join(wd, self.id + '_atomtypes.csv')
         with open(filepath, 'w') as fo:
@@ -145,12 +146,12 @@ class InteractionComplex:
         logging.debug('Typed atoms.')
 
     def write_contacts(self, selection, wd):
-        """Write out contacts detected by arpergio for the structure
-        and the selection.
+        """Write out contactsfor the structure and selection.
 
         Args:
             selection (list of Atoms): Selection perceived by Arpergio
             wd (str): Working directory
+
         """
         contacts = os.path.join(wd, self.id + '_contacts.csv')
         self.__write_contact_file(contacts, self.atom_contacts)
@@ -170,6 +171,7 @@ class InteractionComplex:
 
         Returns:
             [list of dict]: Json-like structure of contacts data.
+
         """
         contacts = ['clash', 'covalent', 'vdw_clash', 'vdw', 'proximal', 'hbond', 'weak_hbond',
                     'xbond', 'ionic', 'metal_complex', 'aromatic', 'hydrophobic', 'carbonyl',
@@ -206,13 +208,14 @@ class InteractionComplex:
         return result_bag
 
     def minimize_hydrogens(self, minimisation_forcefield, minimisation_method, minimisation_steps):
-        """Minimize structures hydrogen.
+        """Minimize hydrogen atoms in structure.
 
         Args:
             minimisation_forcefield (str): One of the following: MMFF94, UFF, Ghemical.
             minimisation_method (str): One of the following: ConjugateGradients, SteepestDescent,
                 DistanceGeometry.
             minimisation_steps (int): Number of minimisation steps
+
         """
         # MINIMIZE HYDROGENS ONLY
         # `https://www.mail-archive.com/openbabel-discuss@lists.sourceforge.net/msg02216.html`
@@ -266,6 +269,7 @@ class InteractionComplex:
 
         Args:
             wd (str): working directory
+
         """
         filetype = utils.setup_filetype(input_structure)
         conv = ob.OBConversion()
@@ -279,7 +283,7 @@ class InteractionComplex:
             logging.debug('Wrote hydrogenated structure file. Hydrogens were from the input file.')
 
     def initialize(self):
-        """Run the arpergio algorithm on the structure
+        """Initialize the calculation the calculation.
 
         Args:
             user_selections (list of Atoms): atom selection representing
@@ -291,13 +295,14 @@ class InteractionComplex:
             include_sequence_adjacent (bool): Include non-bonding
                 interactions between residues that are next to each
                 other in sequence
+
         """
         self._extend_atom_properties()
         self._ob_atom_typing()
 
         self._handle_hydrogens()
-        logging.debug(("Determined atom explicit and implicit valences, bond orders, "
-                       "atomic numbers, formal charge and number of bound hydrogens."))
+        logging.debug("Determined atom explicit and implicit valences, bond orders, "
+                      "atomic numbers, formal charge and number of bound hydrogens.")
 
         self._initialize_atom_sift()
         self._initialize_residue_sift()
@@ -307,7 +312,7 @@ class InteractionComplex:
         logging.debug('Determined polypeptide residues, chain breaks, termini')  # and amide bonds.')
 
         self._perceive_rings()
-        logging.debug('Percieved and stored rings.')
+        logging.debug('Perceived and stored rings.')
 
         self._perceive_amide_groups()
         logging.debug('Perceived and stored amide groups.')
@@ -320,7 +325,7 @@ class InteractionComplex:
         logging.debug('Assigned rings to residues.')
 
     def run_arpeggio(self, user_selections, interacting_cutoff, vdw_comp, include_sequence_adjacent):
-        """
+        """Run the Arpeggio algorithm on the structure.
 
         Args:
             user_selections (str): molecular string selection /<chain_id>/<res_num>[<ins_code>]/<atom_name>
@@ -328,9 +333,9 @@ class InteractionComplex:
                 to be \'interacting\' with the entity.
             vdw_comp (float): Compensation factor for VdW radii dependent
                 interaction types.
-            include_sequence_adjacent (bool): Include non-bonding
-                interactions between residues that are next to each
-                other in sequence
+            include_sequence_adjacent (bool): Include non-bonding interactions
+                between residues that are next to each other in sequence
+
         """
         self._make_selection(user_selections)
         logging.debug('Completed new NeighbourSearch.')
@@ -340,10 +345,13 @@ class InteractionComplex:
         self._calculate_group_contacts()
 
     def write_atom_sifts(self, wd):
-        """Write out per-atom SIFTS. Files: '_sifts' and '_specific_sifts'
+        """Write out per-atom SIFTS.
+
+        Files: '_sifts' and '_specific_sifts'
 
         Args:
             wd (str): Working directory
+
         """
         sifts = os.path.join(wd, self.id + '_sifts.csv')
         specific_sifts = os.path.join(wd, self.id + '_specific_sifts.csv')
@@ -359,7 +367,7 @@ class InteractionComplex:
         self.__write_atom_sifts(specific_sifts, specific_sifts_content)
 
     def write_binding_site_sifts(self, wd):
-        """ Write out sift matching ligand and binding site (`selection_plus`)
+        """Write out sift matching ligand and binding site (`selection_plus`).
 
         Args:
             wd (str): Working directory
@@ -368,6 +376,7 @@ class InteractionComplex:
             ValueError: [description]
             OBBioMatchError: [description]
             SiftMatchError: [description]
+
         """
         siftmatch = os.path.join(wd, self.id + '_siftmatch.csv')
         spec_siftmatch = os.path.join(wd, self.id + '_specific_siftmatch.csv')
@@ -396,10 +405,11 @@ class InteractionComplex:
                                   [utils.human_sift_match(sift_match_water)])
 
     def write_polar_matching(self, wd):
-        """Write out potential polar contacts
+        """Write out potential polar contacts.
 
         Args:
             wd (str): Working directory
+
         """
         polarmatch = os.path.join(wd, self.id + '_polarmatch.csv')
         s_polarmatch = os.path.join(wd, self.id + '_specific_polarmatch.csv')
@@ -430,6 +440,7 @@ class InteractionComplex:
 
         Args:
             wd ([type]): [description]
+
         """
         self._calc_residue_sifts()
         residue_sifts = os.path.join(wd, self.id + '_residue_sifts.csv')
@@ -567,11 +578,12 @@ class InteractionComplex:
             residue.amide_amide_inter_sift = [1 if x else 0 for x in residue.amide_amide_inter_integer_sift]
 
     def __write_atom_sifts(self, path, content):
-        """Routine to actually do the file writing.
+        """Write the results to a file.
 
         Args:
             path (str): File to store the data.
             content (list of any): Data to be written.
+
         """
         with open(path, 'w') as f:
             writer = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -597,11 +609,12 @@ class InteractionComplex:
                 writer.writerow(i)
 
     def __write_contact_file(self, path, contacts):
-        """Write out Arperggio contacts
+        """Write out Arpeggio contacts.
 
         Args:
             path (str): Path where the data will be exported.
             contacts (list of AtomAtomContact): List of contacts to be exported.
+
         """
         with open(path, 'w') as fo:
             writer = csv.writer(fo, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -656,6 +669,7 @@ class InteractionComplex:
 
         Returns:
             str: Type of the contact for a given atom.
+
         """
         contact_type = ''
 
@@ -694,6 +708,7 @@ class InteractionComplex:
             include_sequence_adjacent (bool): Include non-bonding
                 interactions between residues that are next to each
                 other in sequence
+
         """
         self.atom_contacts = []
 
@@ -990,7 +1005,7 @@ class InteractionComplex:
                     contact_type = 'INTER'
 
                 # DETERMINE INTERACTIONS
-                potential_interactions = set([])
+                potential_interactions = set()
 
                 # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
                 #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
@@ -1049,18 +1064,20 @@ class InteractionComplex:
                                     else:
                                         atom.get_parent().sc_atom_ring_inter_integer_sift[k] = atom.get_parent().sc_atom_ring_inter_integer_sift[k] + 1
 
-                end_ring_atoms = sorted([a.get_id() for a in ring['atoms']])
+                end_ring_atoms = sorted(a.get_id() for a in ring['atoms'])
 
-                contact = AtomPlaneContact(atom, ring['residue'], end_ring_atoms, distance, sorted(list(potential_interactions)), contact_type)
+                contact = AtomPlaneContact(atom, ring['residue'], end_ring_atoms, ring['center'], distance, sorted(list(potential_interactions)), contact_type)
                 self.atom_plane_contacts.append(contact)
 
     def __calculate_plane_plane_contacts(self):
-        """Calculate plane-plane and plane-atom contacts
-        `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
-        `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/sql/populate.sql?at=default`
-        `http://marid.bioc.cam.ac.uk/credo/about`
-        """
+        """Calculate plane-plane and plane-atom contacts.
 
+        See:
+        https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default
+        https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/sql/populate.sql?at=default
+        http://marid.bioc.cam.ac.uk/credo/about
+
+        """
         for ring in self.biopython_str.rings:
             ring_key = ring
             ring = self.biopython_str.rings[ring]
@@ -1177,11 +1194,11 @@ class InteractionComplex:
                     if int_type not in identity[0].contact_type:
                         identity[0].contact_type.append(int_type)
                 else:
-                    bgn_ring_atoms = sorted([a.get_id() for a in ring['atoms']])
-                    end_ring_atoms = sorted([a.get_id() for a in ring2['atoms']])
+                    bgn_ring_atoms = sorted(a.get_id() for a in ring['atoms'])
+                    end_ring_atoms = sorted(a.get_id() for a in ring2['atoms'])
 
-                    ring_contact = PlanePlaneContact(ring_key, ring['residue'], bgn_ring_atoms,
-                                                     ring_key2, ring2['residue'], end_ring_atoms,
+                    ring_contact = PlanePlaneContact(ring_key, ring['residue'], bgn_ring_atoms, ring['center'],
+                                                     ring_key2, ring2['residue'], end_ring_atoms, ring2['center'],
                                                      distance, [int_type], contact_type)
 
                     self.plane_plane_contacts.append(ring_contact)
@@ -1199,8 +1216,7 @@ class InteractionComplex:
                 # ]
 
     def _calculate_group_contacts(self):
-        """Interactions involving amides
-        """
+        """Interactions involving amides."""
         self.group_group_contacts = []
         self.group_plane_contacts = []
 
@@ -1283,11 +1299,11 @@ class InteractionComplex:
                 if contact_type == 'INTER' and not intra_residue:
                     amide['residue'].amide_amide_inter_integer_sift[0] = amide['residue'].amide_amide_inter_integer_sift[0] + 1
 
-                bgn_res_atoms = sorted([a.get_id() for a in amide['atoms']])
-                end_res_atoms = sorted([a.get_id() for a in amide2['atoms']])
+                bgn_res_atoms = sorted(a.get_id() for a in amide['atoms'])
+                end_res_atoms = sorted(a.get_id() for a in amide2['atoms'])
 
-                contact = PlanePlaneContact(amide['amide_id'], amide['residue'], bgn_res_atoms,
-                                            amide2['amide_id'], amide2['residue'], end_res_atoms,
+                contact = PlanePlaneContact(amide['amide_id'], amide['residue'], bgn_res_atoms, amide['center'],
+                                            amide2['amide_id'], amide2['residue'], end_res_atoms, amide2['center'],
                                             distance, [int_type], contact_type)
 
                 self.group_group_contacts.append(contact)
@@ -1365,23 +1381,25 @@ class InteractionComplex:
                     amide['residue'].amide_ring_inter_integer_sift[0] = amide['residue'].amide_ring_inter_integer_sift[0] + 1
                     ring['residue'].ring_amide_inter_integer_sift[0] = ring['residue'].ring_amide_inter_integer_sift[0] + 1
 
-                bgn_res_atoms = sorted([a.get_id() for a in amide['atoms']])
-                end_res_atoms = sorted([a.get_id() for a in ring['atoms']])
+                bgn_res_atoms = sorted(a.get_id() for a in amide['atoms'])
+                end_res_atoms = sorted(a.get_id() for a in ring['atoms'])
 
-                contact = PlanePlaneContact(amide['amide_id'], amide['residue'], bgn_res_atoms,
-                                            ring['ring_id'], ring['residue'], end_res_atoms,
+                contact = PlanePlaneContact(amide['amide_id'], amide['residue'], bgn_res_atoms, amide['center'],
+                                            ring['ring_id'], ring['residue'], end_res_atoms, ring['center'],
                                             distance, [int_type], contact_type)
 
                 self.group_plane_contacts.append(contact)
 
     def _make_selection(self, selections):
-        """Select residues to calculate interactions
+        """Select residues to calculate interactions.
 
         Args:
-            selections (list of str): User structure selection in the
-                following formars:
+            selections (list of str): User structure selection in one of the
+                following formats:
                 /<chain_id>/<res_num>[<ins_code>]/<atom_name>
                 or RESNAME:<het_id>
+                or LIGANDS
+
         """
         entity = list(self.s_atoms)
         self.ns = NeighborSearch(entity)
@@ -1485,8 +1503,7 @@ class InteractionComplex:
                 closest_residue.rings.append(ring_id)
 
     def _add_atomic_radii(self):
-        """Add atomic radii to the structure atoms.
-        """
+        """Add atomic radii to the structure atoms."""
         # ADD VDW RADII TO ENTITY ATOMS
         # USING OPENBABEL VDW RADII
         for atom in self.s_atoms:
@@ -1502,8 +1519,10 @@ class InteractionComplex:
         logging.debug('Added covalent radii.')
 
     def _add_hydrogens_to_biopython(self):
-        """Add hydrogens atom to the biopython structure
+        """Add hydrogens atom to the biopython structure.
+
         Note: TODO @Lukas Not sure why it is here.
+
         """
         for atom in ob.OBMolAtomIter(self.ob_mol):
             # IF THE ATOM HAS EXPLICIT HYDROGENS
@@ -1521,7 +1540,7 @@ class InteractionComplex:
     def _perceive_amide_groups(self):
         # DETECT AMIDE GROUPS
         # AMIDES FOR AMIDE-RELATED NON-BONDING INTERACTIONS
-        self.biopython_str.amides = collections.OrderedDict()
+        self.biopython_str.amides = {}
 
         # GET OPENBABEL ATOM MATCHES TO THE SMARTS PATTERN
         ob_smart = ob.OBSmartsPattern()
@@ -1581,8 +1600,8 @@ class InteractionComplex:
     def _handle_chains_residues_and_breaks(self):
         """Detection of polypeptides, residues, chains breaks and
         C/N termin. Create underlying data structures and such.
-        """
 
+        """
         # DETECT POLYPEPTIDES, RESIDUES, CHAIN BREAKS AND TERMINI
         ppb = PPBuilder()
         polypeptides = ppb.build_peptides(self.biopython_str, aa_only=False)
@@ -1590,12 +1609,12 @@ class InteractionComplex:
         # CHAIN BREAKS AND TERMINI
 
         # MAKE DATA STRUCTURES FOR CHAIN POLYPEPTIDES
-        chain_ids = set([x.id for x in self.biopython_str.get_chains()])
-        chain_pieces = collections.OrderedDict()
-        chain_polypeptides = collections.OrderedDict()
-        chain_break_residues = collections.OrderedDict()
-        chain_termini = collections.OrderedDict()
-        # chain_sequences = OrderedDict()
+        chain_ids = {x.id for x in self.biopython_str.get_chains()}
+        chain_pieces = {}
+        chain_polypeptides = {}
+        chain_break_residues = {}
+        chain_termini = {}
+        # chain_sequences = {}
 
         for chain_id in chain_ids:
             chain_pieces[chain_id] = 0
@@ -1603,7 +1622,7 @@ class InteractionComplex:
             chain_polypeptides[chain_id] = []
 
         # GET THE CHAIN_ID(S) ASSOCIATED WITH EACH POLYPEPTIDE
-        polypeptide_chain_id_sets = [set([k.get_parent().id for k in x]) for x in polypeptides]
+        polypeptide_chain_id_sets = [{k.get_parent().id for k in x} for x in polypeptides]
 
         for e, polypeptide_chain_id_set in enumerate(polypeptide_chain_id_sets):
 
@@ -1648,7 +1667,7 @@ class InteractionComplex:
             pass
 
         # POLYPEPTIDE RESIDUES
-        self.polypeptide_residues = set([])
+        self.polypeptide_residues = set()
 
         for pp in polypeptides:
 
@@ -1673,7 +1692,7 @@ class InteractionComplex:
 
                 residue.is_terminal_or_break = residue.is_terminal or residue.is_chain_break
 
-                # DETERMINE PRECEEDING AND NEXT RESIDUES IN THE SEQUENCE
+                # DETERMINE PRECEDING AND NEXT RESIDUES IN THE SEQUENCE
                 residue.prev_residue = None
                 residue.next_residue = None
 
@@ -1685,10 +1704,8 @@ class InteractionComplex:
                 last_residue = residue
 
     def _perceive_rings(self):
-        """Perceive aromatic rings
-        """
-
-        self.biopython_str.rings = collections.OrderedDict()
+        """Perceive aromatic rings."""
+        self.biopython_str.rings = {}
 
         for e, ob_ring in enumerate(self.ob_mol.GetSSSR()):
 
@@ -1742,6 +1759,7 @@ class InteractionComplex:
 
             # 8: POLAR - H-BONDS WITHOUT ANGLES
             # 9: WEAK POLAR - WEAK H-BONDS WITHOUT ANGLES
+
         """
         for atom in self.s_atoms:
 
@@ -1842,8 +1860,7 @@ class InteractionComplex:
                 atom.potential_fsift[9] = 1
 
     def _initialize_residue_sift(self):
-        """Initialize residue SIFT.
-        """
+        """Initialize residue SIFT."""
         for residue in self.biopython_str.get_residues():
 
             # INITIALISE POLYPEPTIDE FLAG
@@ -1873,8 +1890,7 @@ class InteractionComplex:
             residue.amide_amide_inter_integer_sift = [0]
 
     def _handle_hydrogens(self):
-        """Determine atom valences and explicit hydrogen counts.
-        """
+        """Determine atom valences and explicit hydrogen counts."""
         for ob_atom in ob.OBMolAtomIter(self.ob_mol):
             if not self.input_has_hydrogens:
                 if ob_atom.IsHydrogen():
@@ -1909,8 +1925,7 @@ class InteractionComplex:
             bio_atom.formal_charge = formal_charge
 
     def _ob_atom_typing(self):
-        """Atom type structure using openbabel.
-        """
+        """Atom type structure using OpenBabel."""
         for atom_type, smartsdict in list(config.ATOM_TYPES.items()):
 
             # logging.debug('Typing: {}'.format(atom_type))
@@ -1972,17 +1987,18 @@ class InteractionComplex:
 
     def _extend_atom_properties(self):
         for atom in self.s_atoms:
-            atom.atom_types = set([])
+            atom.atom_types = set()
             atom.h_coords = []
 
             atom.is_metal = atom.element.upper() in config.METALS
             atom.is_halogen = atom.element.upper() in config.HALOGENS
 
-    def _establish_structure_mappping(self):
-        """Maps biopython atoms to openbabel ones and vice-versa.
+    def _establish_structure_mapping(self):
+        """Map Biopython atoms to OpenBabel ones and vice-versa.
 
         Raises:
             OBBioMatchError: If we cant match an OB atom to a biopython
+
         """
         # FIRST MAP PDB SERIAL NUMBERS TO BIOPYTHON ATOMS FOR SPEED LATER
         # THIS AVOIDS LOOPING THROUGH `s_atoms` MANY TIMES
@@ -2005,32 +2021,34 @@ class InteractionComplex:
         logging.debug('Mapped OB to BioPython atoms and vice-versa.')
 
     def _read_in_biopython(self, path):
-        """Reads in molecule using Biopython
+        """Read in molecule using Biopython
 
         Args:
             path (str): path to the input molecule
 
         Returns:
             BioPython.Structure: Parsed biopython protein structure
+
         """
         extension = utils.setup_filetype(path)
 
-        s = (PDBParser().get_structure('structure', path)
-             if extension == 'pdb'
-             else protein_reader.read_mmcif_to_biopython(path))
-
-        logging.debug('Loaded PDB structure (BioPython)')
+        if extension == 'pdb':
+            s = PDBParser().get_structure('structure', path)
+            logging.debug('Loaded PDB structure (BioPython)')
+        else:
+            s = protein_reader.read_mmcif_to_biopython(path)
 
         return s
 
     def _read_openbabel(self, path):
-        """Reads in molecule using openbabel.
+        """Read in molecule using OpenBabel.
 
         Args:
             path (str): Path to the structure
 
         Returns:
             openbabel.OBMol: Parsed openbabel protein structure
+
         """
         filetype = utils.setup_filetype(path)
         if filetype == 'pdb':
@@ -2057,17 +2075,20 @@ def _prepare_plane_plane_contact_for_export(contact, contact_type):
 
     Args:
         contact (PlanePlaneContact): contact
-        contact_type (str): sring distinguising between plane-plane and
+        contact_type (str): sring distinguishing between plane-plane and
             group-group type of contact
 
     Returns:
         :dict: of str : json-like representation of the contact
+
     """
     result_entry = {}
     result_entry['bgn'] = utils.make_pymol_json(contact.bgn_res)
     result_entry['bgn']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.bgn_res_atoms)
+    result_entry['bgn']['center'] = np.array2string(contact.bgn_res_center, separator=', ')
     result_entry['end'] = utils.make_pymol_json(contact.end_res)
     result_entry['end']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
+    result_entry['end']['center'] = np.array2string(contact.end_res_center, separator=', ')
     result_entry['type'] = contact_type
     result_entry['distance'] = round(np.float64(contact.distance), 2)
     result_entry['contact'] = contact.contact_type
@@ -2088,10 +2109,12 @@ def _prepare_atom_plane_contact_for_export(contact, contact_type):
     Returns:
         :dict: of str: json-like representation of the contact
     """
+
     result_entry = {}
     result_entry['bgn'] = utils.make_pymol_json(contact.bgn_atom)
     result_entry['end'] = utils.make_pymol_json(contact.end_res)
     result_entry['end']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
+    result_entry['end']['center'] = np.array2string(contact.end_res_center, separator=', ')
     result_entry['type'] = contact_type
     result_entry['distance'] = round(np.float64(contact.distance), 2)
     result_entry['contact'] = contact.sifts

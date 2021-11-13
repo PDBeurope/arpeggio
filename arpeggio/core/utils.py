@@ -1,5 +1,4 @@
-"""Arpeggio helper methods
-"""
+"""Arpeggio helper methods."""
 
 import collections
 import logging
@@ -17,13 +16,14 @@ from arpeggio.core import SelectionError, SiftMatchError, config
 
 
 def setup_filetype(filepath):
-    """Sets up argument type to be consumedd by openbabel
+    """Set up argument type to be used by OpenBabel.
 
     Args:
         filepath (str): Path to the source file
 
     Returns:
         str: file type
+
     """
     filetype = 'pdb'
 
@@ -36,7 +36,7 @@ def setup_filetype(filepath):
 
 
 def rename_output_file(original_filename, new_extension):
-    """
+    """Rename file.
 
     Args:
         original_filename (str): [description]
@@ -44,6 +44,7 @@ def rename_output_file(original_filename, new_extension):
 
     Returns:
         str: new output file name
+
     """
     original_extension = os.path.splitext(original_filename)[-1]
 
@@ -54,18 +55,18 @@ def rename_output_file(original_filename, new_extension):
 
 
 def max_mem_usage():
-    """Returns maximum memory usage of the program thus far, in megabytes, as a string.
+    """Return maximum memory usage of the program in megabytes.
 
     Returns:
         str: Program message
-    """
 
+    """
     try:
         import resource
         base = 1024.0 if platform.system() == 'Linux' else 1048576.0
         return str(round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / base, 2)) + ' MB'
     except Exception as err:
-        return 'Resource usage information not available {}'.format(str(err))
+        return f'Resource usage information not available {str(err)}'
 # endregion
 
 # region bonds identification
@@ -81,8 +82,8 @@ def is_hbond(donor, acceptor, vdw_comp_factor):
             dependent interaction types.
 
     Returns:
-        int: 1/0 binary information whether or not the atoms share
-            Hbond.
+        int: 1/0 binary information whether or not the atoms share Hbond.
+
     """
     for hydrogen_coord in donor.h_coords:
         h_dist = np.linalg.norm(hydrogen_coord - acceptor.coord)
@@ -132,8 +133,8 @@ def is_halogen_weak_hbond(donor, halogen, ob_mol, vdw_comp_factor, bio_to_ob, ob
     Returns:
         int: 1/0 binary information whether or not the atoms share
             weak weak Hbond.
-    """
 
+    """
     # entry 5t45 obabel does not identify bond between
     # SER 246 A (OG) and BEF 903 A (F1) which makes neighbour to be
     # None and then it crashes
@@ -165,10 +166,9 @@ def is_xbond(donor, acceptor, ob_mol, bio_to_ob, ob_to_bio):
         ob_mol (OBMol): [description]
 
     Returns:
-        int: 1/0 binary information whether or not the atoms share
-            xbond.
-    """
+        int: 1/0 binary information whether or not the atoms share xbond.
 
+    """
     # `nbr` WILL BE A BIOPYTHON ATOM
     # ... HOPEFULLY
     nbr = ob_to_bio[get_single_bond_neighbour(ob_mol.GetAtomById(bio_to_ob[donor])).GetId()]
@@ -187,8 +187,8 @@ def update_atom_sift(atom, addition, contact_type='INTER'):
         atom ([type]): [description]
         addition ([type]): [description]
         contact_type (str, optional): Defaults to 'INTER'. [description]
-    """
 
+    """
     atom.sift = [x or y for x, y in zip(atom.sift, addition)]
 
     if contact_type == 'INTER':
@@ -208,8 +208,8 @@ def update_atom_fsift(atom, addition, contact_type='INTER'):
         atom ([type]): [description]
         addition ([type]): [description]
         contact_type (str, optional): Defaults to 'INTER'. [description]
-    """
 
+    """
     atom.actual_fsift = [x or y for x, y in zip(atom.actual_fsift, addition)]
 
     if contact_type == 'INTER':
@@ -229,8 +229,8 @@ def update_atom_integer_sift(atom, addition, contact_type='INTER'):
         atom ([type]): [description]
         addition ([type]): [description]
         contact_type (str, optional): Defaults to 'INTER'. [description]
-    """
 
+    """
     atom.integer_sift = [x + y for x, y in zip(atom.sift, addition)]
 
     if contact_type == 'INTER':
@@ -255,9 +255,8 @@ def sift_xnor(sift1, sift2):
 
     Returns:
         [type]: [description]
-    """'''
-    '''
 
+    """
     out = []
 
     for x, y in zip(sift1, sift2):
@@ -275,18 +274,20 @@ def sift_xnor(sift1, sift2):
             out.append(0)
 
         else:
-            raise ValueError('Invalid SIFts for matching: {} and {}'.format(sift1, sift2))
+            raise ValueError(f'Invalid SIFts for matching: {sift1} and {sift2}')
 
     return out
 
 
 def sift_match_base3(sift1, sift2):
     """[summary]
+
     0 = UNMATCHED
     1 = MATCHED
     2 = MATCH NOT POSSIBLE
 
     Assuming that sift1 is the potential SIFt, and sift2 is the actual SIFt.
+
     Args:
         sift1 ([type]): [description]
         sift2 ([type]): [description]
@@ -297,8 +298,8 @@ def sift_match_base3(sift1, sift2):
 
     Returns:
         [type]: [description]
-    """
 
+    """
     out = []
 
     for x, y in zip(sift1, sift2):
@@ -316,13 +317,14 @@ def sift_match_base3(sift1, sift2):
             raise SiftMatchError
 
         else:
-            raise ValueError('Invalid SIFts for matching: {} and {}'.format(sift1, sift2))
+            raise ValueError(f'Invalid SIFts for matching: {sift1} and {sift2}')
 
     return out
 
 
 def human_sift_match(sift_match, feature_sift=config.FEATURE_SIFT):
-    """Takes a base-3 SIFt indicating contact matched-ness and converts it to a human readable form.
+    """Take a base-3 SIFt indicating contact matched-ness and converts it to a 
+    human readable form.
 
     Args:
         sift_match ([type]): [description]
@@ -333,8 +335,8 @@ def human_sift_match(sift_match, feature_sift=config.FEATURE_SIFT):
 
     Returns:
         [type]: [description]
-    """
 
+    """
     terms = []
 
     for e, fp in enumerate(sift_match):
@@ -343,10 +345,10 @@ def human_sift_match(sift_match, feature_sift=config.FEATURE_SIFT):
             continue
 
         elif fp == 1:
-            terms.append('Matched {}'.format(feature_sift[e]))
+            terms.append(f'Matched {feature_sift[e]}')
 
         elif fp == 0:
-            terms.append('Unmatched {}'.format(feature_sift[e]))
+            terms.append(f'Unmatched {feature_sift[e]}')
 
         else:
             raise ValueError
@@ -357,14 +359,13 @@ def human_sift_match(sift_match, feature_sift=config.FEATURE_SIFT):
 
 
 def int2(x):
-    '''
-    Return integer from base 2 number.
+    """Return integer from base 2 number.
 
     Can accept a list/tuple of 0s and 1s.
-    '''
 
+    """
     if isinstance(x, collections.Iterable):
-        x = ''.join([str(k) for k in x])
+        x = ''.join(str(k) for k in x)
     else:
         x = str(x)
 
@@ -380,14 +381,13 @@ def is_digit(x):
 
 
 def int3(x):
-    '''
-    Return integer from base 3 number.
+    """Return integer from base 3 number.
 
     Can accept a list/tuple of 0s, 1s and 2s.
-    '''
 
+    """
     if isinstance(x, collections.Iterable):
-        x = ''.join([str(k) for k in x])
+        x = ''.join(str(k) for k in x)
     else:
         x = str(x)
 
@@ -395,7 +395,8 @@ def int3(x):
 
 
 def selection_parser(selection_list, atom_list):
-    '''
+    """Parse selection.
+
     Selection syntax:
 
     /<chain_id>/<res_num>[<ins_code>]/<atom_name>
@@ -407,9 +408,9 @@ def selection_parser(selection_list, atom_list):
 
     Selections are additive, so if you select chain A with /A//,
     adding /A/91/C23 won't make any difference.
-    '''
 
-    final_atom_list = set([])
+    """ 
+    final_atom_list = set()
 
     for selection in selection_list:
 
@@ -450,7 +451,7 @@ def selection_parser(selection_list, atom_list):
                                  not x.get_parent().is_polypeptide  # MUST NOT BE POLYPEPTIDE
                                  and len(x.get_parent().child_list) >= 5  # MIN NUMBER OF ATOMS
                                  and len(x.get_parent().child_list) <= 100  # MAX NUMBER OF ATOMS
-                                 and 'C' in set([y.element for y in x.get_parent().child_list])  # MUST CONTAIN CARBON
+                                 and 'C' in {y.element for y in x.get_parent().child_list}  # MUST CONTAIN CARBON
                                  and x.get_parent().resname.strip().upper() not in config.COMMON_SOLVENTS  # MUST NOT BE COMMON SOLVENT
                                  and x.get_parent().resname.strip().upper() not in config.STANDARD_NUCLEOTIDES  # MUST NOT BE NUCLEOTIDE
                                  and not x.get_parent().resname.startswith('+')  # MUST NOT BE MODIFIED NUCLEOTIDE
@@ -528,15 +529,14 @@ def selection_parser(selection_list, atom_list):
 
 
 def make_pymol_json(entity):
-    '''
-    Feed me a BioPython atom or BioPython residue.
+    """Feed me a BioPython atom or BioPython residue.
 
     See `http://pymol.sourceforge.net/newman/user/S0220commands.html`.
 
     chain-identifier/resi-identifier/name-identifier
     chain-identifier/resi-identifier/
-    '''
 
+    """
     if isinstance(entity, Atom):
         chain = entity.get_parent().get_parent()
         residue = entity.get_parent()
@@ -580,8 +580,8 @@ def make_pymol_string(entity):
 
     Returns:
         str: String representation of the entity
-    """
 
+    """
     if isinstance(entity, Atom):
 
         chain = entity.get_parent().get_parent()
@@ -617,9 +617,8 @@ def get_single_bond_neighbour(ob_atom):
 
     Returns:
         [type]: [description]
-    """'''
-    '''
 
+    """
     for bond in ob.OBAtomBondIter(ob_atom):
 
         if not bond.IsSingle():
@@ -636,13 +635,14 @@ def get_single_bond_neighbour(ob_atom):
 
 
 def group_angle(group, point_coords, degrees=False, signed=False):
-    """
+    """[summary]
+
     Adapted from CREDO: `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
 
     `group` should be a dict with Numpy array 'center' and 'normal' attributes.
     `point_coords` should be a Numpy array.
-    """
 
+    """
     cosangle = np.dot(group['normal'], point_coords) / (np.linalg.norm(group['normal']) * np.linalg.norm(point_coords))
 
     # GET THE ANGLE AS RADIANS
@@ -661,9 +661,12 @@ def group_angle(group, point_coords, degrees=False, signed=False):
 
 
 def group_group_angle(group, group2, degrees=False, signed=False):
-    """Adapted from CREDO: `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
+    """[summary]
+
+    Adapted from CREDO: `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
 
     `group` and `group2` should be a dict with Numpy array 'center' and 'normal' attributes.
+
     Args:
         group ([type]): [description]
         group2 ([type]): [description]
@@ -672,8 +675,8 @@ def group_group_angle(group, group2, degrees=False, signed=False):
 
     Returns:
         [type]: [description]
-    """
 
+    """
     cosangle = np.dot(group['normal'], group2['normal']) / (np.linalg.norm(group['normal']) * np.linalg.norm(group2['normal']))
 
     # GET THE ANGLE AS RADIANS
@@ -695,9 +698,10 @@ def group_group_angle(group, group2, degrees=False, signed=False):
 
 def get_angle(point_a, point_b, point_c):
     """Get the angle between three points in 3D space.
+
     Points should be supplied in Numpy array format.
 
-    http://stackoverflow.com/questions/19729831/angle-between-3-points-in-3d-space
+    https://stackoverflow.com/questions/19729831/angle-between-3-points-in-3d-space
 
     Args:
         point_a ([type]): [description]
@@ -706,6 +710,7 @@ def get_angle(point_a, point_b, point_c):
 
     Returns:
         [type]: [description]
+
     """
     # In pseudo-code, the vector BA (call it v1) is:
     # v1 = {A.x - B.x, A.y - B.y, A.z - B.z}

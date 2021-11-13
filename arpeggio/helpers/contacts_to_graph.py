@@ -6,6 +6,7 @@
 
 import argparse
 import os
+
 import igraph
 
 #############
@@ -69,7 +70,7 @@ Dependencies:
     pdb_filename = args.pdb
 
     # ALLOWABLE TYPES
-    allowable_types = set(['INTER'])
+    allowable_types = {'INTER'}
 
     if args.allow_intra:
         allowable_types.add('INTRA_NON_SELECTION')
@@ -175,11 +176,11 @@ Dependencies:
             add_vertex_without_duplication(contacts, name=node_end)
             contacts.add_edge(node_bgn, node_end, label=label_string)
 
-    contacts.write(contacts_filename.replace(contacts_extension, '_all{}.net'.format(output_postfix2)), format='pajek')
-    contacts.write(contacts_filename.replace(contacts_extension, '_all{}.gml'.format(output_postfix2)), format='gml')
+    contacts.write(contacts_filename.replace(contacts_extension, f'_all{output_postfix2}.net'), format='pajek')
+    contacts.write(contacts_filename.replace(contacts_extension, f'_all{output_postfix2}.gml'), format='gml')
 
-    polar_contacts.write(contacts_filename.replace(contacts_extension, '_polar{}.net'.format(output_postfix2)), format='pajek')
-    polar_contacts.write(contacts_filename.replace(contacts_extension, '_polar{}.gml'.format(output_postfix2)), format='gml')
+    polar_contacts.write(contacts_filename.replace(contacts_extension, f'_polar{output_postfix2}.net'), format='pajek')
+    polar_contacts.write(contacts_filename.replace(contacts_extension, f'_polar{output_postfix2}.gml'), format='gml')
 
-    apolar_contacts.write(contacts_filename.replace(contacts_extension, '_apolar{}.net'.format(output_postfix2)), format='pajek')
-    apolar_contacts.write(contacts_filename.replace(contacts_extension, '_apolar{}.gml'.format(output_postfix2)), format='gml')
+    apolar_contacts.write(contacts_filename.replace(contacts_extension, f'_apolar{output_postfix2}.net'), format='pajek')
+    apolar_contacts.write(contacts_filename.replace(contacts_extension, f'_apolar{output_postfix2}.gml'), format='gml')

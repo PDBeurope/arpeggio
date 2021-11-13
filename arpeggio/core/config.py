@@ -1,6 +1,4 @@
-from collections import OrderedDict
-
-DEFAULT_SIFT = OrderedDict()
+DEFAULT_SIFT = {}
 
 # FEATURE SIFTS
 # 5: 0: HBOND
@@ -22,15 +20,15 @@ VDW_RADII = {
     'H': 1.2
 }
 
-METALS = set(['LI', 'BE', 'NA', 'MG', 'AL', 'K', 'CA', 'SC', 'TI', 'V', 'CR', 'MN', 'FE', 'CO', 'NI',
-              'CU', 'ZN', 'GA', 'RB', 'SR', 'Y', 'ZR', 'NB', 'MO', 'TC', 'RU', 'RH', 'PD', 'AG', 'CD',
-              'IN', 'SN', 'CS', 'BA', 'LA', 'CE', 'PR', 'ND', 'PM', 'SM', 'EU', 'GD', 'TB', 'DY', 'HO',
-              'ER', 'TM', 'YB', 'LU', 'HF', 'TA', 'W', 'RE', 'OS', 'IR', 'PT', 'AU', 'HG', 'TL', 'PB', 'BI',
-              'PO', 'FR', 'RA', 'AC', 'TH', 'PA', 'U', 'NP', 'PU', 'AM', 'CM', 'BK', 'CF'])
+METALS = {'LI', 'BE', 'NA', 'MG', 'AL', 'K', 'CA', 'SC', 'TI', 'V', 'CR', 'MN', 'FE', 'CO', 'NI',
+          'CU', 'ZN', 'GA', 'RB', 'SR', 'Y', 'ZR', 'NB', 'MO', 'TC', 'RU', 'RH', 'PD', 'AG', 'CD',
+          'IN', 'SN', 'CS', 'BA', 'LA', 'CE', 'PR', 'ND', 'PM', 'SM', 'EU', 'GD', 'TB', 'DY', 'HO',
+          'ER', 'TM', 'YB', 'LU', 'HF', 'TA', 'W', 'RE', 'OS', 'IR', 'PT', 'AU', 'HG', 'TL', 'PB', 'BI',
+          'PO', 'FR', 'RA', 'AC', 'TH', 'PA', 'U', 'NP', 'PU', 'AM', 'CM', 'BK', 'CF'}
 
-HALOGENS = set(['F', 'CL', 'BR', 'I', 'AT'])
+HALOGENS = {'F', 'CL', 'BR', 'I', 'AT'}
 
-MAINCHAIN_ATOMS = set(['N', 'C', 'CA', 'O', 'OXT'])
+MAINCHAIN_ATOMS = {'N', 'C', 'CA', 'O', 'OXT'}
 
 AMIDE_SMARTS = '[NX3][CX3](=[OX1])[#6]'  # DEFINITION FROM `http://www.daylight.com/dayhtml_tutorials/languages/smarts/smarts_examples.html`
 
@@ -142,8 +140,8 @@ ATOM_TYPES = {
         }
 }
 
-STD_RES = set(['ALA', 'CYS', 'ASP', 'GLU', 'PHE', 'GLY', 'HIS', 'ILE', 'LYS', 'LEU', 'MET', 'ASN', 'PRO',
-               'GLN', 'ARG', 'SER', 'THR', 'VAL', 'TRP', 'TYR'])
+STD_RES = {'ALA', 'CYS', 'ASP', 'GLU', 'PHE', 'GLY', 'HIS', 'ILE', 'LYS', 'LEU', 'MET', 'ASN', 'PRO',
+           'GLN', 'ARG', 'SER', 'THR', 'VAL', 'TRP', 'TYR'}
 
 PROT_ATOM_TYPES = {
     "hbond acceptor": [
@@ -657,57 +655,57 @@ CONTACT_TYPES = {
         }
 }
 
-THETA_REQUIRED = set(['CARBONPI', 'CATIONPI', 'DONORPI', 'HALOGENPI'])
+THETA_REQUIRED = {'CARBONPI', 'CATIONPI', 'DONORPI', 'HALOGENPI'}
 
-COMMON_SOLVENTS = set(["MA4", "EOH", "AGC", "EOM", "3CN", "CPS", "CPT", "TAU", "TAR", "TAS", "SPK",
-                       "1FH", "SPM", "VA3", "SPD", "XPE", "GD", "GA", "EHN", "PE8", "LAK", "OES",
-                       "MAC", "LAT", "CP2", "MAN", "TSM", "DTN", "TSD", "TSE", "YBT", "EDO", "PCL",
-                       "CB5", "BEQ", "F09", "DTV", "NO3", "NI1", "IUM", "ZN", "MN3", "NFC", "NFB",
-                       "NFO", "K", "NFS", "NFR", "DVT", "HSG", "MG", "NOE", "MN", "PC4", "CBM", "SE",
-                       "CBX", "MXE", "BE7", "GLO", "MM4", "GLC", "DOD", "SMO", "GLY", "DOX", "FE",
-                       "12P", "543", "FCY", "MDD", "AU3", "FCL", "FCO", "MW3", "AUC", "VER", "F",
-                       "FMT", "FMS", "JEF", "V", "SX", "SBT", "SR", "SBY", "LMT", "LMU", "T3A", "SM",
-                       "SBE", "SB", "SBO", "MMC", "YH", "DPR", "YB", "CAT", "DPG", "DPO", "CAC", "NHE",
-                       "PGE", "LA", "PGO", "PGL", "HG2", "LI", "LU", "PGR", "PGQ", "144", "PG6", "NH4",
-                       "PG4", "PG5", "ZRC", "PG0", "HGI", "HGC", "CFN", "CFO", "CFM", "TFH", "NCP",
-                       "OC5", "TFA", "OC7", "NCO", "Y1", "CFT", "TFP", "SF4", "ZNO", "SF3", "FNE",
-                       "EGL", "7PE", "RU", "LBT", "SAL", "RE", "RB", "BF4", "URE", "MRY", "CHM", "MRD",
-                       "IPA", "IPH", "ZN3", "ZN2", "LI1", "4OA", "RHD", "OCM", "OCL", "OCO", "OCN",
-                       "NGN", "P2K", "HDD", "PEG", "HDN", "MG8", "BMA", "2FU", "WO5", "WO4", "YT3",
-                       "WO2", "CEQ", "2FH", "AF3", "ENC", "GCD", "B3P", "CE1", "EU", "XCC", "MGF",
-                       "TBR", "TBU", "WCC", "OC8", "BTC", "BTB", "OC1", "OC3", "I42", "OC4", "XL1",
-                       "OC6", "3OF", "ATO", "B7G", "EMC", "SEA", "SEK", "MO1", "EU3", "CLN", "CLO",
-                       "DUM", "UNX", "BEF", "CLF", "PDT", "MO6", "PDO", "TLA", "FRU", "BBX", "BBU",
-                       "CLP", "OMO", "ZEM", "KR", "P6G", "2ME", "2MO", "CYS", "POR", "POP", "PON",
-                       "2BM", "FEO", "CYN", "PNL", "GOL", "202", "F50", "DHE", "DHD", "PO2", "PO3",
-                       "MLP", "OTE", "KO4", "E1H", "NRU", "3CO", "BGC", "2PA", "2PE", "NI2", "NI3",
-                       "DZZ", "2PO", "2PN", "TCN", "MQD", "HSH", "TZZ", "OF2", "OF3", "OF1", "HSW",
-                       "C2O", "TCH", "VXA", "GPX", "BNG", "NIK", "C2C", "F2O", "SYL", "NAW", "FDE",
-                       "FDD", "DMF", "MO3", "GBL", "CRY", "MO7", "NFE", "MO5", "MO4", "DMS", "DMU",
-                       "DMX", "RGI", "AEM", "PS5", "PR", "LDA", "PT", "PB", "ZO3", "PD", "MH2", "MH3",
-                       "MHM", "BU2", "BU3", "DDQ", "BU1", "MHA", "S", "DDH", "T1A", "LCP", "MOS",
-                       "O4M", "MOH", "MOO", "BCN", "UMQ", "HNI", "PEU", "FSO", "TMA", "ETF", "CD1",
-                       "PEJ", "CD3", "FSX", "COH", "ETI", "COM", "RU7", "CON", "HE5", "HE6", "BF2",
-                       "16D", "16A", "P33", "ND4", "HEV", "CO", "CN", "CM", "HES", "CA", "HEZ", "CD",
-                       "HEA", "HEB", "HEC", "CS", "CR", "CU", "PIS", "CO5", "PSL", "PE4", "PE5", "PE7",
-                       "PE3", "FS1", "FS2", "FS3", "FS4", "PC3", "OEC", "NMO", "NML", "DIO", "DIA",
-                       "C8E", "MSF", "C10", "C15", "DIS", "SOG", "PPK", "IR3", "SOM", "TBA", "PPM",
-                       "SOR", "GAI", "IR", "3NI", "IRI", "SO4", "MTL", "IN", "VX", "PP9", "MTF", "CM5",
-                       "MTD", "ARS", "SDS", "BA", "CCN", "CCH", "BR", "EPE", "O2", "BOG", "PIN", "MYQ",
-                       "MYR", "POL", "PIG", "N8E", "F3S", "IOH", "IOD", "CD5", "BO4", "DR6", "NA2",
-                       "NA6", "CXE", "NA5", "OS", "REO", "HLT", "U1", "FLH", "HO", "FLO", "MP1", "EEE",
-                       "HG", "PTN", "SCN", "SFO", "ETN", "MNR", "MNH", "OSM", "ROP", "SFN", "MNC",
-                       "PO4", "3BR", "FMI", "OX", "TRE", "MN5", "O", "PBM", "TRS", "PT4", "TRT", "HTG",
-                       "MW2", "MPD", "HTO", "MPO", "MTO", "6WO", "MPR", "MPS", "CNB", "ACA", "GD3",
-                       "SUC", "IDT", "SUL", "P4C", "ACN", "2OF", "S0H", "IDO", "HFM", "ACU", "ACT",
-                       "ACY", "2OS", "NI", "CNM", "CU1", "NO", "NA", "MW1", "TEE", "FE2", "TEP", "1BO",
-                       "FEC", "FEA", "DET", "FEL", "CUZ", "FES", "CUA", "CUO", "CUN", "CUM", "CUL",
-                       "PTL", "MN6", "BRP", "BRO", "BRM", "BRJ", "MES", "AZI", "VO3", "1PG", "1PE",
-                       "CIT", "1PS", "CN1", "CL", "TL", "SGM", "HO3", "TE", "TB", "ICI", "AG", "FPO",
-                       "AL", "CNF", "AR", "AU", "CE", "SRM", "ICT", "15P", "ZH3", "RTC", "2NO", "DXG",
-                       "DXE", "VSO"])
+COMMON_SOLVENTS = {"MA4", "EOH", "AGC", "EOM", "3CN", "CPS", "CPT", "TAU", "TAR", "TAS", "SPK",
+                   "1FH", "SPM", "VA3", "SPD", "XPE", "GD", "GA", "EHN", "PE8", "LAK", "OES",
+                   "MAC", "LAT", "CP2", "MAN", "TSM", "DTN", "TSD", "TSE", "YBT", "EDO", "PCL",
+                   "CB5", "BEQ", "F09", "DTV", "NO3", "NI1", "IUM", "ZN", "MN3", "NFC", "NFB",
+                   "NFO", "K", "NFS", "NFR", "DVT", "HSG", "MG", "NOE", "MN", "PC4", "CBM", "SE",
+                   "CBX", "MXE", "BE7", "GLO", "MM4", "GLC", "DOD", "SMO", "GLY", "DOX", "FE",
+                   "12P", "543", "FCY", "MDD", "AU3", "FCL", "FCO", "MW3", "AUC", "VER", "F",
+                   "FMT", "FMS", "JEF", "V", "SX", "SBT", "SR", "SBY", "LMT", "LMU", "T3A", "SM",
+                   "SBE", "SB", "SBO", "MMC", "YH", "DPR", "YB", "CAT", "DPG", "DPO", "CAC", "NHE",
+                   "PGE", "LA", "PGO", "PGL", "HG2", "LI", "LU", "PGR", "PGQ", "144", "PG6", "NH4",
+                   "PG4", "PG5", "ZRC", "PG0", "HGI", "HGC", "CFN", "CFO", "CFM", "TFH", "NCP",
+                   "OC5", "TFA", "OC7", "NCO", "Y1", "CFT", "TFP", "SF4", "ZNO", "SF3", "FNE",
+                   "EGL", "7PE", "RU", "LBT", "SAL", "RE", "RB", "BF4", "URE", "MRY", "CHM", "MRD",
+                   "IPA", "IPH", "ZN3", "ZN2", "LI1", "4OA", "RHD", "OCM", "OCL", "OCO", "OCN",
+                   "NGN", "P2K", "HDD", "PEG", "HDN", "MG8", "BMA", "2FU", "WO5", "WO4", "YT3",
+                   "WO2", "CEQ", "2FH", "AF3", "ENC", "GCD", "B3P", "CE1", "EU", "XCC", "MGF",
+                   "TBR", "TBU", "WCC", "OC8", "BTC", "BTB", "OC1", "OC3", "I42", "OC4", "XL1",
+                   "OC6", "3OF", "ATO", "B7G", "EMC", "SEA", "SEK", "MO1", "EU3", "CLN", "CLO",
+                   "DUM", "UNX", "BEF", "CLF", "PDT", "MO6", "PDO", "TLA", "FRU", "BBX", "BBU",
+                   "CLP", "OMO", "ZEM", "KR", "P6G", "2ME", "2MO", "CYS", "POR", "POP", "PON",
+                   "2BM", "FEO", "CYN", "PNL", "GOL", "202", "F50", "DHE", "DHD", "PO2", "PO3",
+                   "MLP", "OTE", "KO4", "E1H", "NRU", "3CO", "BGC", "2PA", "2PE", "NI2", "NI3",
+                   "DZZ", "2PO", "2PN", "TCN", "MQD", "HSH", "TZZ", "OF2", "OF3", "OF1", "HSW",
+                   "C2O", "TCH", "VXA", "GPX", "BNG", "NIK", "C2C", "F2O", "SYL", "NAW", "FDE",
+                   "FDD", "DMF", "MO3", "GBL", "CRY", "MO7", "NFE", "MO5", "MO4", "DMS", "DMU",
+                   "DMX", "RGI", "AEM", "PS5", "PR", "LDA", "PT", "PB", "ZO3", "PD", "MH2", "MH3",
+                   "MHM", "BU2", "BU3", "DDQ", "BU1", "MHA", "S", "DDH", "T1A", "LCP", "MOS",
+                   "O4M", "MOH", "MOO", "BCN", "UMQ", "HNI", "PEU", "FSO", "TMA", "ETF", "CD1",
+                   "PEJ", "CD3", "FSX", "COH", "ETI", "COM", "RU7", "CON", "HE5", "HE6", "BF2",
+                   "16D", "16A", "P33", "ND4", "HEV", "CO", "CN", "CM", "HES", "CA", "HEZ", "CD",
+                   "HEA", "HEB", "HEC", "CS", "CR", "CU", "PIS", "CO5", "PSL", "PE4", "PE5", "PE7",
+                   "PE3", "FS1", "FS2", "FS3", "FS4", "PC3", "OEC", "NMO", "NML", "DIO", "DIA",
+                   "C8E", "MSF", "C10", "C15", "DIS", "SOG", "PPK", "IR3", "SOM", "TBA", "PPM",
+                   "SOR", "GAI", "IR", "3NI", "IRI", "SO4", "MTL", "IN", "VX", "PP9", "MTF", "CM5",
+                   "MTD", "ARS", "SDS", "BA", "CCN", "CCH", "BR", "EPE", "O2", "BOG", "PIN", "MYQ",
+                   "MYR", "POL", "PIG", "N8E", "F3S", "IOH", "IOD", "CD5", "BO4", "DR6", "NA2",
+                   "NA6", "CXE", "NA5", "OS", "REO", "HLT", "U1", "FLH", "HO", "FLO", "MP1", "EEE",
+                   "HG", "PTN", "SCN", "SFO", "ETN", "MNR", "MNH", "OSM", "ROP", "SFN", "MNC",
+                   "PO4", "3BR", "FMI", "OX", "TRE", "MN5", "O", "PBM", "TRS", "PT4", "TRT", "HTG",
+                   "MW2", "MPD", "HTO", "MPO", "MTO", "6WO", "MPR", "MPS", "CNB", "ACA", "GD3",
+                   "SUC", "IDT", "SUL", "P4C", "ACN", "2OF", "S0H", "IDO", "HFM", "ACU", "ACT",
+                   "ACY", "2OS", "NI", "CNM", "CU1", "NO", "NA", "MW1", "TEE", "FE2", "TEP", "1BO",
+                   "FEC", "FEA", "DET", "FEL", "CUZ", "FES", "CUA", "CUO", "CUN", "CUM", "CUL",
+                   "PTL", "MN6", "BRP", "BRO", "BRM", "BRJ", "MES", "AZI", "VO3", "1PG", "1PE",
+                   "CIT", "1PS", "CN1", "CL", "TL", "SGM", "HO3", "TE", "TB", "ICI", "AG", "FPO",
+                   "AL", "CNF", "AR", "AU", "CE", "SRM", "ICT", "15P", "ZH3", "RTC", "2NO", "DXG",
+                   "DXE", "VSO"}
 
-STANDARD_NUCLEOTIDES = set(['A', 'C', 'G', 'I', 'U', 'DA', 'DC', 'DG', 'DI', 'DT', 'DU', 'N'])
+STANDARD_NUCLEOTIDES = {'A', 'C', 'G', 'I', 'U', 'DA', 'DC', 'DG', 'DI', 'DT', 'DU', 'N'}
 
 RESIDUE_SIFT_HEADER = [
     'residue',

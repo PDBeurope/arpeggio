@@ -3,6 +3,7 @@ import json
 import logging
 import os
 
+import arpeggio
 from arpeggio.core import InteractionComplex
 from arpeggio.core.utils import max_mem_usage
 
@@ -11,25 +12,25 @@ logger.addHandler(logging.NullHandler())
 
 
 def create_parser():
-    """Create command line parser
+    """Create a command-line parser.
 
     Returns:
-        argsparser: args parser
+        argsparser: args parser.
+
     """
 
-    parser = argparse.ArgumentParser(description='''
-        ############
-        # ARPEGGIO #
-        ############
+    parser = argparse.ArgumentParser(description=f'''
+        ##################
+        # ARPEGGIO {arpeggio.__version__} #
+        ##################
 
-        A program for calculating interactions,
-        using only Open Source dependencies.
+        A program for calculating interactions, using only Open Source dependencies.
 
         Dependencies:
-        - Python (v3.6)
+        - Python (v3.7+)
         - Numpy
         - BioPython (>= v1.60)
-        - OpenBabel (with Python bindings)
+        - OpenBabel v2.x (with Python bindings)
 
         ''', formatter_class=argparse.RawTextHelpFormatter)
 
@@ -56,12 +57,12 @@ def create_parser():
 
 
 def _setup_logging(args):
-    """Set up logging and working directory
+    """Set up logging and working directory.
 
     Args:
-        args (ArgumentParser): parsed arguments from the command line
-    """
+        args (ArgumentParser): parsed arguments from the command line.
 
+    """
     logging_level = logging.WARNING if args.mute else logging.DEBUG
     logging.basicConfig(level=logging_level,
                         format='%(levelname)s//%(asctime)s.%(msecs).03d//%(message)s',
@@ -71,8 +72,7 @@ def _setup_logging(args):
 
 
 def main():
-    """Run Arpeggio algorithm
-    """
+    """Do all the magic."""
     parser = create_parser()
     args = parser.parse_args()
     _setup_logging(args)
@@ -80,7 +80,7 @@ def main():
 
 
 def run_arpeggio(args):
-
+    """Run Arpeggio algorithm."""
     args.output = os.getcwd() if args.output is None else args.output
     os.makedirs(args.output, exist_ok=True)
 
@@ -112,37 +112,38 @@ def run_arpeggio(args):
         json.dump(contacts, fp, indent=4, sort_keys=True)
 
     # write out files
-    #i_complex.write_atom_types(args.output)  # _atomtypes
-    #i_complex.write_contacts(selections, args.output)  # _contacts; _bs_contacts
-    #i_complex.write_atom_sifts(args.output)  # _sift; _specific_sift
-    #i_complex.write_binding_site_sifts(args.output)  # _siftmatch; _specific_siftmatch
-    #i_complex.write_polar_matching(args.output)  # _polarmatch; _specific_polarmatch
-    #i_complex.write_residue_sifts(args.output)  # residue_sifts
+    # i_complex.write_atom_types(args.output)  # _atomtypes
+    # i_complex.write_contacts(selections, args.output)  # _contacts; _bs_contacts
+    # i_complex.write_atom_sifts(args.output)  # _sift; _specific_sift
+    # i_complex.write_binding_site_sifts(args.output)  # _siftmatch; _specific_siftmatch
+    # i_complex.write_polar_matching(args.output)  # _polarmatch; _specific_polarmatch
+    # i_complex.write_residue_sifts(args.output)  # residue_sifts
 
     logger.info(f'Program End. Maximum memory usage was {max_mem_usage()}.')
 
 
 def _parse_selection(args):
-    """Parse user defined selection
+    """Parse user-defined selection.
 
     Args:
-        args (ArgumentParser): Application arguments
+        args (ArgumentParser): Application arguments.
 
     Returns:
         list of str: Selections in the textual form.
+
     """
     selection = []
 
     if args.selection:
         selection = args.selection
     elif args.selection_file and os.path.isfile(args.selection_file):
-        with open(args.selection_file, 'r') as f:
+        with open(args.selection_file) as f:
             selection = f.read().splitlines()
 
     if selection:
         logger.info(f'Selection perceived: {selection}')
     else:
-        logger.warning(f'No selection was perceived. Defaults into full structure!!')
+        logger.warning('No selection was perceived. Defaults into full structure!!')
     return selection
 
 

@@ -22,15 +22,15 @@ VDW_RADII = {
              'H': 1.2
             }
 
-METALS = set(['LI', 'BE', 'NA', 'MG', 'AL', 'K', 'CA', 'SC', 'TI', 'V', 'CR', 'MN', 'FE', 'CO', 'NI',
+METALS = {'LI', 'BE', 'NA', 'MG', 'AL', 'K', 'CA', 'SC', 'TI', 'V', 'CR', 'MN', 'FE', 'CO', 'NI',
               'CU', 'ZN', 'GA', 'RB', 'SR', 'Y', 'ZR', 'NB', 'MO', 'TC', 'RU', 'RH', 'PD', 'AG', 'CD',
               'IN', 'SN', 'CS', 'BA', 'LA', 'CE', 'PR', 'ND', 'PM', 'SM', 'EU', 'GD', 'TB', 'DY', 'HO',
               'ER', 'TM', 'YB', 'LU', 'HF', 'TA', 'W', 'RE', 'OS', 'IR', 'PT', 'AU', 'HG', 'TL', 'PB', 'BI',
-              'PO', 'FR', 'RA', 'AC', 'TH', 'PA', 'U', 'NP', 'PU', 'AM', 'CM', 'BK', 'CF'])
+              'PO', 'FR', 'RA', 'AC', 'TH', 'PA', 'U', 'NP', 'PU', 'AM', 'CM', 'BK', 'CF'}
 
-HALOGENS = set(['F', 'CL', 'BR', 'I', 'AT'])
+HALOGENS = {'F', 'CL', 'BR', 'I', 'AT'}
 
-MAINCHAIN_ATOMS = set(['N', 'C', 'CA', 'O', 'OXT'])
+MAINCHAIN_ATOMS = {'N', 'C', 'CA', 'O', 'OXT'}
 
 AMIDE_SMARTS = '[NX3][CX3](=[OX1])[#6]' # DEFINITION FROM `http://www.daylight.com/dayhtml_tutorials/languages/smarts/smarts_examples.html`
 
@@ -142,8 +142,8 @@ ATOM_TYPES = {
         }
 }
 
-STD_RES = set(['ALA', 'CYS', 'ASP', 'GLU', 'PHE', 'GLY', 'HIS', 'ILE', 'LYS', 'LEU', 'MET', 'ASN', 'PRO',
-               'GLN', 'ARG', 'SER', 'THR', 'VAL', 'TRP', 'TYR'])
+STD_RES = {'ALA', 'CYS', 'ASP', 'GLU', 'PHE', 'GLY', 'HIS', 'ILE', 'LYS', 'LEU', 'MET', 'ASN', 'PRO',
+               'GLN', 'ARG', 'SER', 'THR', 'VAL', 'TRP', 'TYR'}
 
 PROT_ATOM_TYPES = {
         "hbond acceptor":       [
@@ -668,9 +668,9 @@ CONTACT_TYPES = {
         }
 }
 
-THETA_REQUIRED = set(['CARBONPI', 'CATIONPI', 'DONORPI', 'HALOGENPI'])
+THETA_REQUIRED = {'CARBONPI', 'CATIONPI', 'DONORPI', 'HALOGENPI'}
 
-COMMON_SOLVENTS = set(["MA4", "EOH", "AGC", "EOM", "3CN", "CPS", "CPT", "TAU", "TAR", "TAS", "SPK",
+COMMON_SOLVENTS = {"MA4", "EOH", "AGC", "EOM", "3CN", "CPS", "CPT", "TAU", "TAR", "TAS", "SPK",
 "1FH", "SPM", "VA3", "SPD", "XPE", "GD", "GA", "EHN", "PE8", "LAK", "OES",
 "MAC", "LAT", "CP2", "MAN", "TSM", "DTN", "TSD", "TSE", "YBT", "EDO", "PCL",
 "CB5", "BEQ", "F09", "DTV", "NO3", "NI1", "IUM", "ZN", "MN3", "NFC", "NFB",
@@ -716,6 +716,6 @@ COMMON_SOLVENTS = set(["MA4", "EOH", "AGC", "EOM", "3CN", "CPS", "CPT", "TAU", "
 "PTL", "MN6", "BRP", "BRO", "BRM", "BRJ", "MES", "AZI", "VO3", "1PG", "1PE",
 "CIT", "1PS", "CN1", "CL", "TL", "SGM", "HO3", "TE", "TB", "ICI", "AG", "FPO",
 "AL", "CNF", "AR", "AU", "CE", "SRM", "ICT", "15P", "ZH3", "RTC", "2NO", "DXG",
-"DXE", "VSO"])
+"DXE", "VSO"}
 
-STANDARD_NUCLEOTIDES = set(['A', 'C', 'G', 'I', 'U', 'DA', 'DC', 'DG', 'DI', 'DT', 'DU', 'N'])
+STANDARD_NUCLEOTIDES = {'A', 'C', 'G', 'I', 'U', 'DA', 'DC', 'DG', 'DI', 'DT', 'DU', 'N'}

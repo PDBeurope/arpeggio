@@ -18,33 +18,32 @@ import collections
 import logging
 #import math
 import operator
+
 try:
     import resource
 except ImportError:
     logging.info('Resource module not available, resource usage info won\'t be logged.')
 import sys
-
 from collections import OrderedDict
 
 import numpy as np
-
-#from Bio.PDB import PDBIO
-from Bio.PDB.PDBParser import PDBParser
+import openbabel as ob
 from Bio.PDB import NeighborSearch
 from Bio.PDB.Atom import Atom
-from Bio.PDB.Residue import Residue
+#from Bio.PDB import PDBIO
+from Bio.PDB.PDBParser import PDBParser
 from Bio.PDB.Polypeptide import PPBuilder
-
-import openbabel as ob
+from Bio.PDB.Residue import Residue
+from config import (AMIDE_SMARTS, ATOM_TYPES, COMMON_SOLVENTS, CONTACT_TYPES,
+                    CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, HALOGENS,
+                    MAINCHAIN_ATOMS, METALS, PROT_ATOM_TYPES,
+                    STANDARD_NUCLEOTIDES, STD_RES, THETA_REQUIRED, VALENCE,
+                    VDW_RADII)
 
 #############
 # CONSTANTS #
 #############
 
-from config import ATOM_TYPES, CONTACT_TYPES, VDW_RADII, METALS, \
-                   HALOGENS, CONTACT_TYPES_DIST_MAX, FEATURE_SIFT, VALENCE, \
-                   MAINCHAIN_ATOMS, THETA_REQUIRED, STD_RES, PROT_ATOM_TYPES, \
-                   AMIDE_SMARTS, COMMON_SOLVENTS, STANDARD_NUCLEOTIDES
 
 ###########
 # CLASSES #
@@ -63,7 +62,7 @@ class OBBioMatchError(Exception):
             logging.error('An OpenBabel atom could not be matched to a BioPython counterpart.')
 
         else:
-            logging.error('OpenBabel OBAtom with PDB serial number {} could not be matched to a BioPython counterpart.'.format(serial))
+            logging.error(f'OpenBabel OBAtom with PDB serial number {serial} could not be matched to a BioPython counterpart.')
 
 class AtomSerialError(Exception):
 
@@ -78,7 +77,7 @@ class SiftMatchError(Exception):
 class SelectionError(Exception):
 
     def __init__(self, selection):
-        logging.error('Invalid selector: {}'.format(selection))
+        logging.error(f'Invalid selector: {selection}')
 
 #############
 # FUNCTIONS #
@@ -92,7 +91,7 @@ def int2(x):
     '''
 
     if isinstance(x, collections.Iterable):
-        x = ''.join([str(k) for k in x])
+        x = ''.join(str(k) for k in x)
     else:
         x = str(x)
 
@@ -106,7 +105,7 @@ def int3(x):
     '''
 
     if isinstance(x, collections.Iterable):
-        x = ''.join([str(k) for k in x])
+        x = ''.join(str(k) for k in x)
     else:
         x = str(x)
 
@@ -127,7 +126,7 @@ def selection_parser(selection_list, atom_list):
     adding /A/91/C23 won't make any difference.
     '''
 
-    final_atom_list = set([])
+    final_atom_list = set()
 
     for selection in selection_list:
 
@@ -168,7 +167,7 @@ def selection_parser(selection_list, atom_list):
                                  x.get_parent().is_polypeptide == False and # MUST NOT BE POLYPEPTIDE
                                  len(x.get_parent().child_list) >= 5 and # MIN NUMBER OF ATOMS
                                  len(x.get_parent().child_list) <= 100 and # MAX NUMBER OF ATOMS
-                                 'C' in set([y.element for y in x.get_parent().child_list]) and # MUST CONTAIN CARBON
+                                 'C' in {y.element for y in x.get_parent().child_list} and # MUST CONTAIN CARBON
                                  x.get_parent().resname.strip().upper() not in COMMON_SOLVENTS and # MUST NOT BE COMMON SOLVENT
                                  x.get_parent().resname.strip().upper() not in STANDARD_NUCLEOTIDES and # MUST NOT BE NUCLEOTIDE
                                  not x.get_parent().resname.startswith('+') # MUST NOT BE MODIFIED NUCLEOTIDE
@@ -306,7 +305,7 @@ def max_mem_usage():
     try:
         return str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000.0) + ' MB'
     except Exception as err:
-        logging.warn('Resource usage information not available ().'.format(str(err)))
+        logging.warn(f'Resource usage information not available ().')
 
 def get_angle(point_a, point_b, point_c):
     '''
@@ -348,7 +347,7 @@ def get_angle(point_a, point_b, point_c):
     angle = np.arccos(res)
 
     if np.isnan(angle):
-        logging.warn('Angle for <{}, {}, {}> was NaN, setting to Pi.'.format(point_a, point_b, point_c))
+        logging.warn(f'Angle for <{point_a}, {point_b}, {point_c}> was NaN, setting to Pi.')
         angle = np.pi
 
     return angle
@@ -560,7 +559,7 @@ def sift_xnor(sift1, sift2):
             out.append(0)
 
         else:
-            raise ValueError('Invalid SIFts for matching: {} and {}'.format(sift1, sift2))
+            raise ValueError(f'Invalid SIFts for matching: {sift1} and {sift2}')
 
     return out
 
@@ -590,7 +589,7 @@ def sift_match_base3(sift1, sift2):
             raise SiftMatchError
 
         else:
-            raise ValueError('Invalid SIFts for matching: {} and {}'.format(sift1, sift2))
+            raise ValueError(f'Invalid SIFts for matching: {sift1} and {sift2}')
 
     return out
 
@@ -607,10 +606,10 @@ def human_sift_match(sift_match, feature_sift=FEATURE_SIFT):
             continue
 
         elif fp == 1:
-            terms.append('Matched {}'.format(feature_sift[e]))
+            terms.append(f'Matched {feature_sift[e]}')
 
         elif fp == 0:
-            terms.append('Unmatched {}'.format(feature_sift[e]))
+            terms.append(f'Unmatched {feature_sift[e]}')
 
         else:
             raise ValueError
@@ -770,7 +769,7 @@ Dependencies:
     for atom in s_atoms:
 
         # FOR ATOM TYPING VIA OPENBABEL
-        atom.atom_types = set([])
+        atom.atom_types = set()
 
         # LIST FOR EACH ATOM TO STORE EXPLICIT HYDROGEN COORDINATES
         atom.h_coords = []
@@ -866,7 +865,7 @@ Dependencies:
             )))
 
         for atom in s_atoms:
-            fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom), sorted(tuple(atom.atom_types))]])))
+            fo.write('{}\n'.format('\t'.join(str(x) for x in [make_pymol_string(atom), sorted(tuple(atom.atom_types))])))
 
     logging.info('Typed atoms.')
 
@@ -1059,7 +1058,7 @@ Dependencies:
     # CHAIN BREAKS AND TERMINI
 
     # MAKE DATA STRUCTURES FOR CHAIN POLYPEPTIDES
-    chain_ids = set([x.id for x in s.get_chains()])
+    chain_ids = {x.id for x in s.get_chains()}
     chain_pieces = OrderedDict()
     chain_polypeptides = OrderedDict()
     chain_break_residues = OrderedDict()
@@ -1072,7 +1071,7 @@ Dependencies:
         chain_polypeptides[chain_id] = []
 
     # GET THE CHAIN_ID(S) ASSOCIATED WITH EACH POLYPEPTIDE
-    polypeptide_chain_id_sets = [set([k.get_parent().id for k in x]) for x in polypeptides]
+    polypeptide_chain_id_sets = [{k.get_parent().id for k in x} for x in polypeptides]
 
     for e, polypeptide_chain_id_set in enumerate(polypeptide_chain_id_sets):
 
@@ -1095,14 +1094,14 @@ Dependencies:
             # GET FIRST AND LAST ("GENUINE") TERMINI
             chain_termini[chain_id] = [chain_break_residues[chain_id][0], chain_break_residues[chain_id][-1]]
         except IndexError:
-            logging.warn('Chain termini could not be determined for chain {}. It may not be a polypeptide chain.'.format(chain_id))
+            logging.warn(f'Chain termini could not be determined for chain {chain_id}. It may not be a polypeptide chain.')
 
         try:
             # POP OUT THE FIRST AND LAST RESIDUES FROM THE CHAIN BREAK RESIDUES
             # TO REMOVE THE GENUINE TERMINI
             chain_break_residues[chain_id] = chain_break_residues[chain_id][1:-1]
         except IndexError:
-            logging.warn('Chain termini could not be extracted from breaks for chain {}. It may not be a polypeptide chain.'.format(chain_id))
+            logging.warn(f'Chain termini could not be extracted from breaks for chain {chain_id}. It may not be a polypeptide chain.')
 
     all_chain_break_residues = []
     all_terminal_residues = []
@@ -1118,7 +1117,7 @@ Dependencies:
         pass
 
     # POLYPEPTIDE RESIDUES
-    polypeptide_residues = set([])
+    polypeptide_residues = set()
 
     for pp in polypeptides:
 
@@ -1143,7 +1142,7 @@ Dependencies:
 
             residue.is_terminal_or_break = residue.is_terminal or residue.is_chain_break
 
-            # DETERMINE PRECEEDING AND NEXT RESIDUES IN THE SEQUENCE
+            # DETERMINE PRECEDING AND NEXT RESIDUES IN THE SEQUENCE
             residue.prev_residue = None
             residue.next_residue = None
 
@@ -1156,7 +1155,7 @@ Dependencies:
 
     logging.info('Determined polypeptide residues, chain breaks, termini') # and amide bonds.')
 
-    # PERCIEVE AROMATIC RINGS
+    # PERCEIVE AROMATIC RINGS
     s.rings = OrderedDict()
 
     for e, ob_ring in enumerate(mol.GetSSSR()):
@@ -1378,7 +1377,7 @@ Dependencies:
 
         if closest_atom[0] is None:
 
-            logging.warn('Residue assignment was not possible for ring {}.'.format(ring_id))
+            logging.warn(f'Residue assignment was not possible for ring {ring_id}.')
             s.rings[ring_id]['residue'] = None
 
         else:
@@ -1420,18 +1419,18 @@ Dependencies:
 
     # EXPAND THE SELECTION TO INCLUDE THE BINDING SITE
     selection_plus = set(selection)
-    selection_plus_residues = set([x.get_parent() for x in selection_plus])
+    selection_plus_residues = {x.get_parent() for x in selection_plus}
     selection_plus_ring_ids = set(selection_ring_ids)
     selection_plus_amide_ids = set(selection_amide_ids)
 
     if args.selection:
 
         # GET LIST OF RESIDUES IN THE SELECTION PLUS BINDING SITE
-        selection_residues = set([x.get_parent() for x in selection])
+        selection_residues = {x.get_parent() for x in selection}
 
         # MAKE A SET OF ALL RING IDS ASSOCIATED WITH THE SELECTION AND BINDING SITE
-        selection_ring_ids = set([x for x in s.rings if s.rings[x]['residue'] in selection_residues])
-        selection_amide_ids = set([x for x in s.amides if s.amides[x]['residue'] in selection_residues])
+        selection_ring_ids = {x for x in s.rings if s.rings[x]['residue'] in selection_residues}
+        selection_amide_ids = {x for x in s.amides if s.amides[x]['residue'] in selection_residues}
 
         # EXPAND THE SELECTION TO THE BINDING SITE
         for atom_bgn, atom_end in ns.search_all(6.0):
@@ -1445,13 +1444,13 @@ Dependencies:
         logging.info('Expanded to binding site.')
 
         # GET LIST OF RESIDUES IN THE SELECTION PLUS BINDING SITE
-        selection_plus_residues = set([x.get_parent() for x in selection_plus])
+        selection_plus_residues = {x.get_parent() for x in selection_plus}
 
         # MAKE A SET OF ALL RING IDS ASSOCIATED WITH THE SELECTION AND BINDING SITE
-        selection_plus_ring_ids = set([x for x in s.rings if s.rings[x]['residue'] in selection_plus_residues])
+        selection_plus_ring_ids = {x for x in s.rings if s.rings[x]['residue'] in selection_plus_residues}
 
         # MAKE A SET OF ALL AMIDE IDS ASSOCIATED WITH THE SELECTION AND BINDING SITE
-        selection_plus_amide_ids = set([x for x in s.amides if s.amides[x]['residue'] in selection_plus_residues])
+        selection_plus_amide_ids = {x for x in s.amides if s.amides[x]['residue'] in selection_plus_residues}
 
         logging.info('Flagged selection rings.')
 
@@ -1615,7 +1614,7 @@ Dependencies:
                 contact_type = 'WATER_WATER'
 
             if not contact_type:
-                logging.error('Could not assign a contact type for {}:{}'.format(atom_bgn, atom_end))
+                logging.error(f'Could not assign a contact type for {atom_bgn}:{atom_end}')
                 raise
 
             sum_cov_radii = atom_bgn.cov_radius + atom_end.cov_radius
@@ -1841,12 +1840,12 @@ Dependencies:
             # WRITE OUT CONTACT SIFT TO FILE
             if args.selection:
                 if contact_type in ('INTER', 'SELECTION_WATER', 'WATER_WATER'):
-                    fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt + [contact_type]])))
+                    fo.write('{}\n'.format('\t'.join(str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt + [contact_type])))
 
-                afo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt + [contact_type]])))
+                afo.write('{}\n'.format('\t'.join(str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt + [contact_type])))
 
             else:
-                fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt + [contact_type]])))
+                fo.write('{}\n'.format('\t'.join(str(x) for x in [make_pymol_string(atom_bgn), make_pymol_string(atom_end)] + SIFt + [contact_type])))
 
         logging.info('Calculated pairwise contacts.')
 
@@ -1898,8 +1897,8 @@ Dependencies:
 
         for atom in selection_plus:
 
-            fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom)] + atom.sift])))
-            specific_fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom)] + atom.sift_inter_only + atom.sift_intra_only + atom.sift_water_only])))
+            fo.write('{}\n'.format('\t'.join(str(x) for x in [make_pymol_string(atom)] + atom.sift)))
+            specific_fo.write('{}\n'.format('\t'.join(str(x) for x in [make_pymol_string(atom)] + atom.sift_inter_only + atom.sift_intra_only + atom.sift_water_only)))
 
     # WRITE OUT SIFT MATCHING
     # LIGAND AND BINDING SITE (`selection_plus`)
@@ -1915,29 +1914,29 @@ Dependencies:
             human_readable = human_sift_match(sift_match)
 
             # SUBJECT TO CHANGE
-            fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom)] + sift_match + [int3(sift_match)] + [human_readable]])))
+            fo.write('{}\n'.format('\t'.join(str(x) for x in [make_pymol_string(atom)] + sift_match + [int3(sift_match)] + [human_readable])))
 
-            specific_fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom)] +
+            specific_fo.write('{}\n'.format('\t'.join(str(x) for x in [make_pymol_string(atom)] +
                                                        sift_match_inter +
                                                        [human_sift_match(sift_match_inter)] +
                                                        sift_match_intra +
                                                        [human_sift_match(sift_match_intra)] +
                                                        sift_match_water +
-                                                       [human_sift_match(sift_match_water)]])))
+                                                       [human_sift_match(sift_match_water)])))
 
     # WRITE OUT HBONDS/POLAR MATCHING
     with open(pdb_filename.replace('.pdb', '.polarmatch'), 'wb') as fo, open(pdb_filename.replace('.pdb', '.specific.polarmatch'), 'wb') as specific_fo:
         for atom in selection_plus:
 
             # SUBJECT TO CHANGE
-            fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom)] +
+            fo.write('{}\n'.format('\t'.join(str(x) for x in [make_pymol_string(atom)] +
                                               [atom.potential_hbonds,
                                                atom.potential_polars,
                                                atom.actual_hbonds,
                                                atom.actual_polars]
-                                              ])))
+                                              )))
 
-            specific_fo.write('{}\n'.format('\t'.join([str(x) for x in [make_pymol_string(atom)] +
+            specific_fo.write('{}\n'.format('\t'.join(str(x) for x in [make_pymol_string(atom)] +
                                                        [atom.potential_hbonds,
                                                         atom.potential_polars,
                                                         atom.actual_hbonds_inter_only,
@@ -1947,7 +1946,7 @@ Dependencies:
                                                         atom.actual_polars_intra_only,
                                                         atom.actual_polars_water_only
                                                         ]
-                                                       ])))
+                                                       )))
 
     # RING-RING INTERACTIONS
     # `https://bitbucket.org/blundell/credovi/src/bc337b9191518e10009002e3e6cb44819149980a/credovi/structbio/aromaticring.py?at=default`
@@ -2090,7 +2089,7 @@ Dependencies:
                     contact_type
                 ]
 
-                fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
+                fo.write('{}\n'.format('\t'.join(str(x) for x in output)))
 
     # RINGS AND ATOM-RING INTERACTIONS
     with open(pdb_filename.replace('.pdb', '.ari'), 'wb') as fo, open(pdb_filename.replace('.pdb', '.rings'), 'wb') as ring_fo:
@@ -2164,7 +2163,7 @@ Dependencies:
                     contact_type = 'INTER'
 
                 # DETERMINE INTERACTIONS
-                potential_interactions = set([])
+                potential_interactions = set()
 
                 # N.B.: NOT SURE WHY ADRIAN WAS USING SIGNED, BUT IT SEEMS
                 #       THAT TO FIT THE CRITERIA FOR EACH TYPE OF INTERACTION
@@ -2234,7 +2233,7 @@ Dependencies:
                     contact_type
                 ]
 
-                fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
+                fo.write('{}\n'.format('\t'.join(str(x) for x in output)))
 
             # WRITE RING OUT TO RING FILE
             output = [
@@ -2243,7 +2242,7 @@ Dependencies:
                 list(ring['center'])
             ]
 
-            ring_fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
+            ring_fo.write('{}\n'.format('\t'.join(str(x) for x in output)))
 
     # AMIDE-RING INTERACTIONS
     with open(pdb_filename.replace('.pdb', '.amri'), 'wb') as fo:
@@ -2351,7 +2350,7 @@ Dependencies:
                     #list(theta_point)
                 ]
 
-                fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
+                fo.write('{}\n'.format('\t'.join(str(x) for x in output)))
 
     # AMIDE-AMIDE INTERACTIONS
     with open(pdb_filename.replace('.pdb', '.amam'), 'wb') as fo:
@@ -2461,7 +2460,7 @@ Dependencies:
                     #list(theta_point)
                 ]
 
-                fo.write('{}\n'.format('\t'.join([str(x) for x in output])))
+                fo.write('{}\n'.format('\t'.join(str(x) for x in output)))
 
     # RESIDUE LEVEL OUTPUTS
     # CALCULATE INTEGER SIFTS, FLATTEN THEM TO BINARY SIFTS
@@ -3022,7 +3021,7 @@ Dependencies:
                 output_list = output_list + sift
 
 
-            fo.write('{}\n'.format('\t'.join([str(x) for x in output_list])))
+            fo.write('{}\n'.format('\t'.join(str(x) for x in output_list)))
 
 
-    logging.info('Program End. Maximum memory usage was {}.'.format(max_mem_usage()))
+    logging.info(f'Program End. Maximum memory usage was {max_mem_usage()}.')

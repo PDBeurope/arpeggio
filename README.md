@@ -3,9 +3,9 @@
 This is a slightly refactored version of the original code by Harry Jubb. Main changes are:
 
 * Python 3 support
-* Modular architecture to make Arpeggio PIP installable.
-* Support for mmCIF format to process also larger structures.
-* Results in JSON format.
+* Modular architecture to make Arpeggio installable using `pip`
+* Support for mmCIF format to process also larger structures
+* Results in JSON format
 * Few bug fixes
 
 # Outline
@@ -32,10 +32,10 @@ If you would like to run original version of Arpeggio on a small number of indiv
 
 Arpeggio is written in Python and currently has the following dependencies:
 
-* Python (v3.6)
+* Python v3.7 or above
 * Numpy
 * BioPython (>= v1.60)
-* OpenBabel (with Python bindings)
+* OpenBabel v2.x (with Python bindings)
 * PDBeCIF
 
 If you need to use Arpeggio programmatically or to run for many structures:
@@ -63,7 +63,7 @@ conda activate arpeggio-env
 
 `arpeggio 1tqn_h.cif [options]`
 
-e.g. 
+e.g.,
 
 `arpeggio -s /A/508/ -o out/ 1tqn_h.cif`
 
