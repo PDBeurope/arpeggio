@@ -352,7 +352,7 @@ def _init_biopython_atom(builder, atom_sites, i):
             _get_b_factor(atom_sites, i),
             float(atom_sites["occupancy"][i]),
             " "
-            if atom_sites["label_alt_id"][i] == "."
+            if atom_sites["label_alt_id"][i] in {".", "?"}
             else atom_sites["label_alt_id"][i],
             atom_sites["label_atom_id"][i],
             int(atom_sites["id"][i]),
@@ -371,7 +371,7 @@ def _init_biopython_atom(builder, atom_sites, i):
             _get_b_factor(atom_sites, i),
             float(atom_sites["occupancy"][i]),
             " "
-            if atom_sites["label_alt_id"][i] == "."
+            if atom_sites["label_alt_id"][i] in {".", "?"}
             else atom_sites["label_alt_id"][i],
             atom_sites["label_atom_id"][i],
             int(atom_sites["id"][i]),
