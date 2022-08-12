@@ -16,7 +16,11 @@ import openbabel as ob
 
 
 def _get_res_id(atom_sites, i):
-    return atom_sites["pdbe_label_seq_id"][i] if "pdbe_label_seq_id" in atom_sites else atom_sites["auth_seq_id"][i]
+    return int(
+        atom_sites["pdbe_label_seq_id"][i]
+        if "pdbe_label_seq_id" in atom_sites
+        else atom_sites["auth_seq_id"][i]
+    )
 
 
 def _get_b_factor(atom_sites, i):
