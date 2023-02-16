@@ -6,7 +6,7 @@ import os
 from functools import reduce
 
 import numpy as np
-import openbabel as ob
+from openbabel import openbabel as ob
 from Bio.PDB import NeighborSearch
 from Bio.PDB.Atom import DisorderedAtom
 from Bio.PDB.PDBParser import PDBParser
@@ -86,7 +86,7 @@ class InteractionComplex:
         self.params = Parameters(
             vdw_comp_factor=vdw_comp,
             interacting_threshold=interacting,
-            has_hydrogens=any(x.element == 'H' for x in self.s_atoms),
+            has_hydrogens=any((x.element == 'H') | (x.element == 'D') for x in self.s_atoms),
             ph=ph)
 
         self._establish_structure_mappping()
@@ -226,7 +226,8 @@ class InteractionComplex:
 
         for ob_atom in ob.OBMolAtomIter(self.ob_mol):
 
-            if not ob_atom.IsHydrogen():
+            # if not ob_atom.IsHydrogen():
+            if not ob_atom.GetAtomicNum() == ob.Hydrogen:
                 constraints.AddAtomConstraint(ob_atom.GetIdx())
 
         logging.debug('Constrained non-hydrogen atoms.')
@@ -1490,14 +1491,16 @@ class InteractionComplex:
         # ADD VDW RADII TO ENTITY ATOMS
         # USING OPENBABEL VDW RADII
         for atom in self.s_atoms:
-            atom.vdw_radius = ob.etab.GetVdwRad(self.ob_mol.GetAtomById(self.bio_to_ob[atom]).GetAtomicNum())
+            # atom.vdw_radius = ob.etab.GetVdwRad(self.ob_mol.GetAtomById(self.bio_to_ob[atom]).GetAtomicNum())
+            atom.vdw_radius = ob.GetVdwRad(self.ob_mol.GetAtomById(self.bio_to_ob[atom]).GetAtomicNum())
 
         logging.debug('Added VdW radii.')
 
         # ADD COVALENT RADII TO ENTITY ATOMS
         # USING OPENBABEL VDW RADII
         for atom in self.s_atoms:
-            atom.cov_radius = ob.etab.GetCovalentRad(self.ob_mol.GetAtomById(self.bio_to_ob[atom]).GetAtomicNum())
+            # atom.cov_radius = ob.etab.GetCovalentRad(self.ob_mol.GetAtomById(self.bio_to_ob[atom]).GetAtomicNum())
+            atom.cov_radius = ob.GetCovalentRad(self.ob_mol.GetAtomById(self.bio_to_ob[atom]).GetAtomicNum())
 
         logging.debug('Added covalent radii.')
 
@@ -1513,7 +1516,8 @@ class InteractionComplex:
 
                 # GET THE BONDED ATOMS OF THE OBATOM
                 for atom_neighbour in ob.OBAtomAtomIter(atom):
-                    if atom_neighbour.IsHydrogen():
+                    # if atom_neighbour.IsHydrogen():
+                    if atom_neighbour.GetAtomicNum() == ob.Hydrogen:
 
                         # APPEND THE HYDROGEN COORDINATES TO THE BIOPYTHON ATOM 'h_coords' ATTRIBUTE
                         biopython_atom.h_coords.append(np.array([atom_neighbour.GetX(), atom_neighbour.GetY(), atom_neighbour.GetZ()]))
@@ -1874,21 +1878,26 @@ class InteractionComplex:
 
     def _handle_hydrogens(self):
         """Determine atom valences and explicit hydrogen counts.
+        Methods renamed according to the: https://open-babel.readthedocs.io/en/latest/UseTheLibrary/migration.html
         """
         for ob_atom in ob.OBMolAtomIter(self.ob_mol):
             if not self.input_has_hydrogens:
-                if ob_atom.IsHydrogen():
+                # if ob_atom.IsHydrogen():
+                if ob_atom.GetAtomicNum() == ob.Hydrogen:
                     continue
 
             # `http://openbabel.org/api/2.3/classOpenBabel_1_1OBAtom.shtml`
             # CURRENT NUMBER OF EXPLICIT CONNECTIONS
-            valence = ob_atom.GetValence()
+            # valence = ob_atom.GetValence()
+            valence = ob_atom.GetExplicitDegree()
 
             # MAXIMUM NUMBER OF CONNECTIONS EXPECTED
-            implicit_valence = ob_atom.GetImplicitValence()
+            # implicit_valence = ob_atom.GetImplicitValence()
+            implicit_valence = ob_atom.GetImplicitHCount()
 
             # BOND ORDER
-            bond_order = ob_atom.BOSum()
+            # bond_order = ob_atom.BOSum()
+            bond_order = ob_atom.GetExplicitValence()
 
             # NUMBER OF BOUND HYDROGENS
             num_hydrogens = ob_atom.ExplicitHydrogenCount()

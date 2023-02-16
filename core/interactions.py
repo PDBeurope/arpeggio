@@ -86,7 +86,7 @@ class InteractionComplex:
         self.params = Parameters(
             vdw_comp_factor=vdw_comp,
             interacting_threshold=interacting,
-            has_hydrogens=any(x.element == 'H' for x in self.s_atoms),
+            has_hydrogens=any((x.element == 'H') or (x.element == 'D') for x in self.s_atoms),
             ph=ph)
 
         self._establish_structure_mappping()

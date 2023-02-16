@@ -35,8 +35,8 @@ Arpeggio is written in Python and currently has the following dependencies:
 * Python (v3.6)
 * Numpy
 * BioPython (>= v1.60)
-* OpenBabel (with Python bindings)
-* PDBeCIF
+* OpenBabel 3 (with Python bindings)
+* gemmi
 
 If you need to use Arpeggio programmatically or to run for many structures:
 
@@ -50,7 +50,7 @@ pip install git+https://github.com/PDBeurope/arpeggio.git@master#egg=arpeggio
 To create conda environment please use e.g. the following command:
 
 ```bash
-conda create conda -n arpeggio-env python=3.7
+conda create conda -n arpeggio-env python=3.9
 ```
 
 and activate it:

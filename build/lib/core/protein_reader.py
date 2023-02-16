@@ -8,9 +8,8 @@ import os
 import numpy
 from Bio import PDB
 from Bio.PDB.StructureBuilder import StructureBuilder
-from pdbecif.mmcif_io import MMCIF2Dict
-import openbabel as ob
-
+from gemmi import cif
+from openbabel import openbabel as ob
 
 # region common
 
@@ -32,7 +31,7 @@ def _get_b_factor(atom_sites, i):
 def _get_ins_code(atom_sites, i):
     return (
         " "
-        if atom_sites["pdbx_PDB_ins_code"][i] in (".", "?")
+        if not atom_sites["pdbx_PDB_ins_code"][i]
         else atom_sites["pdbx_PDB_ins_code"][i]
     )
 
@@ -42,7 +41,7 @@ def _format_formal_charge(atom_sites, i):
         return 0
 
     charge = atom_sites["pdbx_formal_charge"][i]
-    return 0 if charge in ("?", ".") else int(charge)
+    return 0 if not charge else int(charge)
 
 
 def _trim_models(atom_site):
@@ -67,8 +66,6 @@ def _trim_models(atom_site):
 
 # endregion common
 
-
-# region openbabel
 def read_mmcif_to_openbabel(path):
     """Read in mmcif structure to to the openbabel.
 
@@ -84,25 +81,26 @@ def read_mmcif_to_openbabel(path):
     if not os.path.isfile(path):
         raise IOError("File {} not found".format(path))
 
-    parsed = MMCIF2Dict().parse(path)
-    mol = _parse_atom_site_openbabel(list(parsed.values())[0])
+    doc = cif.read(path)
+    cif_block = doc.sole_block()
+    mol = _parse_atom_site_openbabel(cif_block)
 
     return mol
 
 
-def _parse_atom_site_openbabel(parsed):
+def _parse_atom_site_openbabel(cif_block):
     """Parse _atom_site record to OBMolecule
 
     Args:
-        parsed (dict of str): Parsed mmcif file.
+        cif_block (gemmi.cif.Block): Parsed mmcif file.
 
     Returns:
         [OBMol]: openbabel representation of the protein structure.
     """
-    perceived_atom_site = parsed["_atom_site"]
+    perceived_atom_site = cif_block.get_mmcif_category("_atom_site.")
     atom_site = _trim_models(perceived_atom_site)
 
-    table = ob.OBElementTable()
+    # table = ob.OBElementTable()
     last_res_id = None
     last_res_name = None
     last_chain_id = None
@@ -136,46 +134,44 @@ def _parse_atom_site_openbabel(parsed):
             res.SetName(atom_site["label_comp_id"][i])
             res.SetInsertionCode(ins_code)
 
-        _init_openbabel_atom(table, mol, res, atom_site, i)
+        _init_openbabel_atom(mol, res, atom_site, i)
 
     resdat = ob.OBResidueData()
-    resdat.AssignBonds(mol, ob.OBBitVec())
+    resdat.AssignBonds(mol)
     mol.ConnectTheDots()
     mol.PerceiveBondOrders()
 
-    if "_struct_conn" in parsed:
-        parse_struct_conn_bonds(mol, parsed)
+
+    if "_struct_conn." in cif_block.get_mmcif_category_names():
+        parse_struct_conn_bonds(mol, cif_block)
 
     mol.EndModify()
+
 
     return mol
 
 
-def parse_struct_conn_bonds(mol, mmcif_dict):
+def parse_struct_conn_bonds(mol, cif_block):
     """Add bonds from _struct_conn to the ob molecule.
 
     Args:
         mol (ob.OBMol): OpenBabel molecule object
-        mmcif_dict (dict of str): Parsed mmcif file category.
+        cif_block (gemmi.cif.Block): Parsed mmcif file Block object.
     """
-    pivot = list(mmcif_dict["_struct_conn"].keys())[0]
-
-    mmcif_dict["_struct_conn"] = (
-        mmcif_dict["_struct_conn"]
-        if isinstance(mmcif_dict["_struct_conn"][pivot], list)
-        else {k: [v] for k, v in mmcif_dict["_struct_conn"].items()}
-    )
-
-    for i in range(len(mmcif_dict["_struct_conn"][pivot])):
-        __process_struct_conn(mol, mmcif_dict, i)
+    
+    struct_conn = cif_block.get_mmcif_category("_struct_conn.")
+    pivot = list(struct_conn.keys())[0]
+    
+    for i in range(len(struct_conn[pivot])):
+        __process_struct_conn(mol, cif_block, i)
 
 
-def __process_struct_conn(mol, mmcif_dict, index):
+def __process_struct_conn(mol, cif_block, index):
     """Process a single entry in the mmcif_dict
 
     Args:
         mol (ob.OBMol): Openbabel molecule object
-        mmcif_dict (dict of str): Parsed mmcif file category.
+        cif_block (gemmi.cif.Block): Parsed mmcif Block object.
         index (int): Position in the struct_conn category
 
     Returns:
@@ -194,8 +190,8 @@ def __process_struct_conn(mol, mmcif_dict, index):
 
         return 0
 
-    struct_conn = mmcif_dict["_struct_conn"]
-    atom_sites = mmcif_dict["_atom_site"]
+    struct_conn = cif_block.get_mmcif_category("_struct_conn.")
+    atom_sites = cif_block.get_mmcif_category("_atom_site.")
 
     res_a = (
         struct_conn["ptnr1_auth_asym_id"][index],
@@ -236,12 +232,12 @@ def __add_bond_to_openbabel(mol, atom_id_a, atom_id_b):
     b.SetBondOrder(1)
 
 
-def _init_openbabel_atom(table, mol, res, atom_sites, i):
+def _init_openbabel_atom(mol, res, atom_sites, i):
     """Initialize openbabel atom
 
     Args:
-        table (OBElementTable): Element table to translate element type
-            to element numbers.
+        # table (OBElementTable): Element table to translate element type
+        #     to element numbers.
         mol (ob.OBMol): Molecule the atom will be added to.
         res (OBResidue): Residue the atom will be added to.
         atom_sites (dict of str): Parsed mmcif structure of the input file.
@@ -257,10 +253,13 @@ def _init_openbabel_atom(table, mol, res, atom_sites, i):
         float(atom_sites["Cartn_y"][i]),
         float(atom_sites["Cartn_z"][i]),
     )
-    atomic_num = table.GetAtomicNum(atom_sites["type_symbol"][i])
+    # atomic_num = table.GetAtomicNum(atom_sites["type_symbol"][i])
+    type_symbol = atom_sites["type_symbol"][i]
+    element = f'{type_symbol[0]}{type_symbol[1].lower()}' if len(type_symbol) == 2 else type_symbol
+
+    atomic_num = ob.GetAtomicNum(element)
     atom.SetAtomicNum(atomic_num)
     atom.SetFormalCharge(_format_formal_charge(atom_sites, i))
-
     res.AddAtom(atom)
     res.SetHetAtom(atom, atom_sites["group_PDB"][i] == "HETATM")
     res.SetSerialNum(atom, int(atom_sites["id"][i]))
@@ -276,11 +275,10 @@ def _init_openbabel_atom(table, mol, res, atom_sites, i):
 #     fp.SetOrigin('mmcif')
 #     atom.SetData(fp)
 
-# endregion
+# end region
 
 
 # region Biopython
-
 
 def read_mmcif_to_biopython(path):
     """Read in mmcif protein structure and report its Biopython structure
@@ -298,14 +296,20 @@ def read_mmcif_to_biopython(path):
         raise IOError("File {} not found".format(path))
 
     structure_builder = StructureBuilder()
-    parsed = MMCIF2Dict().parse(path)
+    doc = cif.read(path)
+    cif_block = doc.sole_block()
 
     file_name = os.path.basename(path).split(".")[0]
-    structure_id = next((x for x in parsed), file_name).lower()
+    
+    if '_entry.' in cif_block.get_mmcif_category_names():
+        structure_id = cif_block.find_value('_entry.id').lower()
+    else:
+        structure_id = file_name.split('_')[0].lower()
+    
     structure_builder.init_structure(structure_id)
 
     try:
-        perceived_atom_site = list(parsed.values())[0]["_atom_site"]
+        perceived_atom_site = cif_block.get_mmcif_category("_atom_site.")
         _atom_site = _trim_models(perceived_atom_site)
         _parse_atom_site_biopython(_atom_site, structure_builder)
     except KeyError:
@@ -352,7 +356,7 @@ def _init_biopython_atom(builder, atom_sites, i):
             _get_b_factor(atom_sites, i),
             float(atom_sites["occupancy"][i]),
             " "
-            if atom_sites["label_alt_id"][i] == "."
+            if not atom_sites["label_alt_id"][i]
             else atom_sites["label_alt_id"][i],
             atom_sites["label_atom_id"][i],
             int(atom_sites["id"][i]),
@@ -371,7 +375,7 @@ def _init_biopython_atom(builder, atom_sites, i):
             _get_b_factor(atom_sites, i),
             float(atom_sites["occupancy"][i]),
             " "
-            if atom_sites["label_alt_id"][i] == "."
+            if not atom_sites["label_alt_id"][i]
             else atom_sites["label_alt_id"][i],
             atom_sites["label_atom_id"][i],
             int(atom_sites["id"][i]),

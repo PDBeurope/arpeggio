@@ -8,7 +8,7 @@ import os
 import numpy
 from Bio import PDB
 from Bio.PDB.StructureBuilder import StructureBuilder
-from gemmi import cif
+import gemmi
 from openbabel import openbabel as ob
 
 # region common
@@ -44,24 +44,24 @@ def _format_formal_charge(atom_sites, i):
     return 0 if not charge else int(charge)
 
 
-def _trim_models(atom_site):
-    """Trim all the other models but the first one from the mmcif structure
-    They are not used in the calculation and causes problems in Openbabel.
+# def _trim_models(atom_site):
+#     """Trim all the other models but the first one from the mmcif structure
+#     They are not used in the calculation and causes problems in Openbabel.
 
-    Args:
-        atom_site (dict): Parsed _atom_site category
+#     Args:
+#         atom_site (dict): Parsed _atom_site category
 
-    Returns:
-        dict: first model from the _atom_site
-    """
-    output = {}
-    pivot = atom_site["pdbx_PDB_model_num"][0]
-    length = sum(x == pivot for x in atom_site["pdbx_PDB_model_num"])
+#     Returns:
+#         dict: first model from the _atom_site
+#     """
+#     output = {}
+#     pivot = atom_site["pdbx_PDB_model_num"][0]
+#     length = sum(x == pivot for x in atom_site["pdbx_PDB_model_num"])
 
-    for k, v in atom_site.items():
-        output[k] = v[:length]
+#     for k, v in atom_site.items():
+#         output[k] = v[:length]
 
-    return output
+#     return output
 
 
 # endregion common
@@ -81,8 +81,15 @@ def read_mmcif_to_openbabel(path):
     if not os.path.isfile(path):
         raise IOError("File {} not found".format(path))
 
-    doc = cif.read(path)
-    cif_block = doc.sole_block()
+    st = gemmi.read_structure(path, merge_chain_parts=True)
+    
+    # Trim all the other models but the first one from the mmcif structure
+    # They are not used in the calculation and causes problems in Openbabel.
+    del st[1:]
+    st.remove_alternative_conformations()
+    groups = gemmi.MmcifOutputGroups(True)
+    groups.group_pdb = True
+    cif_block = st.make_mmcif_block(groups)
     mol = _parse_atom_site_openbabel(cif_block)
 
     return mol
@@ -97,8 +104,9 @@ def _parse_atom_site_openbabel(cif_block):
     Returns:
         [OBMol]: openbabel representation of the protein structure.
     """
-    perceived_atom_site = cif_block.get_mmcif_category("_atom_site.")
-    atom_site = _trim_models(perceived_atom_site)
+    atom_site = cif_block.get_mmcif_category("_atom_site.")
+    # perceived_atom_site = cif_block.get_mmcif_category("_atom_site.")
+    # atom_site = _trim_models(perceived_atom_site)
 
     # table = ob.OBElementTable()
     last_res_id = None
@@ -295,9 +303,13 @@ def read_mmcif_to_biopython(path):
     if not os.path.isfile(path):
         raise IOError("File {} not found".format(path))
 
+    st = gemmi.read_structure(path, merge_chain_parts=True)
+    del st[1:]
+    st.remove_alternative_conformations()
+    groups = gemmi.MmcifOutputGroups(True)
+    groups.group_pdb = True
+    cif_block = st.make_mmcif_block(groups)
     structure_builder = StructureBuilder()
-    doc = cif.read(path)
-    cif_block = doc.sole_block()
 
     file_name = os.path.basename(path).split(".")[0]
     
@@ -309,8 +321,9 @@ def read_mmcif_to_biopython(path):
     structure_builder.init_structure(structure_id)
 
     try:
-        perceived_atom_site = cif_block.get_mmcif_category("_atom_site.")
-        _atom_site = _trim_models(perceived_atom_site)
+        _atom_site = cif_block.get_mmcif_category("_atom_site.")
+        # perceived_atom_site = cif_block.get_mmcif_category("_atom_site.")
+        # _atom_site = _trim_models(perceived_atom_site)
         _parse_atom_site_biopython(_atom_site, structure_builder)
     except KeyError:
         raise ValueError("The cif file does not contain _atom_site record")

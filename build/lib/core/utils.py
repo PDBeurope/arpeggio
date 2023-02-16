@@ -7,7 +7,7 @@ import os
 import platform
 
 import numpy as np
-import openbabel as ob
+from openbabel import openbabel as ob
 from Bio.PDB.Atom import Atom
 from Bio.PDB.Residue import Residue
 

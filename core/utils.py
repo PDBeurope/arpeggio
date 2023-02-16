@@ -622,12 +622,12 @@ def get_single_bond_neighbour(ob_atom):
 
     for bond in ob.OBAtomBondIter(ob_atom):
 
-        if not bond.IsSingle():
+        if not (bond.GetBondOrder()==1 and not bond.IsAromatic()):
             continue
 
         current_neighbour = bond.GetNbrAtom(ob_atom)
 
-        if current_neighbour.IsHydrogen():
+        if current_neighbour.GetAtomicNum() == 1:
             continue
 
         return current_neighbour
