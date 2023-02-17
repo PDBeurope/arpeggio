@@ -69,7 +69,7 @@ e.g.
 
 Use `arpeggio -h` for available options.
 
-Arpeggio doesn't do any checking of your PDB structure, other than what BioPython does by default. Alternate locations and missing density are not explicitly accounted for and may result in anomalous results. Please use with caution.
+Arpeggio does minimum processing of your PDB structure. In case of alternate conformers, only the first conformer is used. Missing density are not explicitly accounted for and may result in anomalous results. Please use with caution.
 
 ## Output
 
