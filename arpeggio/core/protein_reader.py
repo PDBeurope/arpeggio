@@ -221,8 +221,6 @@ def _init_openbabel_atom(mol, res, atom_sites, i):
     """Initialize openbabel atom
 
     Args:
-        # table (OBElementTable): Element table to translate element type
-        #     to element numbers.
         mol (ob.OBMol): Molecule the atom will be added to.
         res (OBResidue): Residue the atom will be added to.
         atom_sites (dict of str): Parsed mmcif structure of the input file.
