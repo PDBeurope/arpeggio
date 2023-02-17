@@ -43,7 +43,7 @@ If you need to use Arpeggio programmatically or to run for many structures:
 The easiest way to set up with Arpeggio is using [Conda](https://docs.conda.io/en/latest/). In your conda environment run the two following commands:
 
 ```bash
-conda install -c openbabel openbabel
+conda install -c conda-forge openbabel
 pip install git+https://github.com/PDBeurope/arpeggio.git@master#egg=arpeggio
 ```
 
