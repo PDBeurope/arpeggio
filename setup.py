@@ -31,7 +31,7 @@ setup(
     ],
     zip_safe=False,
     include_package_data=True,
-    install_requires=["pdbecif>=1.5", "numpy", "biopython"],
+    install_requires=["numpy", "biopython"],
     extras_require={
         "tests": ["pytest", "pytest-cov"]
     },
