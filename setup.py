@@ -31,7 +31,7 @@ setup(
     ],
     zip_safe=False,
     include_package_data=True,
-    install_requires=["numpy", "biopython"],
+    install_requires=["gemmi","numpy", "biopython"],
     extras_require={
         "tests": ["pytest", "pytest-cov"]
     },
