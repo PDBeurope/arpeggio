@@ -10,6 +10,7 @@ from Bio import PDB
 from Bio.PDB.StructureBuilder import StructureBuilder
 import gemmi
 from openbabel import openbabel as ob
+from arpeggio.core import config 
 
 # region common
 
@@ -60,13 +61,12 @@ def read_mmcif_to_openbabel(path):
     """
     if not os.path.isfile(path):
         raise IOError("File {} not found".format(path))
-
+    
     st = gemmi.read_structure(path, merge_chain_parts=True)
     
     # Trim all the other models but the first one from the mmcif structure
     # They are not used in the calculation and causes problems in Openbabel.
     del st[1:]
-    st.remove_alternative_conformations()
     groups = gemmi.MmcifOutputGroups(True)
     groups.group_pdb = True
     cif_block = st.make_mmcif_block(groups)
@@ -272,7 +272,6 @@ def read_mmcif_to_biopython(path):
 
     st = gemmi.read_structure(path, merge_chain_parts=True)
     del st[1:]
-    st.remove_alternative_conformations()
     groups = gemmi.MmcifOutputGroups(True)
     groups.group_pdb = True
     cif_block = st.make_mmcif_block(groups)
@@ -411,5 +410,32 @@ def _parse_atom_site_biopython(atom_sites, builder):
 
         _init_biopython_atom(builder, atom_sites, i)
 
+
+
+def get_component_types(path):
+
+    if not os.path.isfile(path):
+        raise IOError("File {} not found".format(path))
+    
+    cif_block = gemmi.cif.read(path).sole_block()
+    if '_chem_comp.' in cif_block.get_mmcif_category_names():
+        chem_comp = cif_block.get_mmcif_category('_chem_comp.')
+        component_types = {}
+        for i in range(len(chem_comp['id'])):
+            cmp_type  = config.ComponentType.from_chem_comp_type(chem_comp['type'][i])
+            if not cmp_type == config.ComponentType(5).name:
+                component_types[chem_comp['id'][i]] = cmp_type
+            else:
+                if chem_comp['name'][i].upper() == 'WATER':
+                    component_types[chem_comp['id'][i]] = config.ComponentType(8).name
+                else:
+                    component_types[chem_comp['id'][i]] = config.ComponentType(7).name
+
+        return component_types
+    
+    else:
+        raise ValueError('Missing _chem_comp. category in mmcif')
+
+    
 
 # endregion
