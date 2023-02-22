@@ -6,6 +6,7 @@ import os
 from functools import reduce
 
 import numpy as np
+import gemmi
 from openbabel import openbabel as ob
 from Bio.PDB import NeighborSearch
 from Bio.PDB.Atom import DisorderedAtom
@@ -64,6 +65,9 @@ class InteractionComplex:
         self.ns = None  # neighbourhood search
         self.ob_to_bio = {}  # openbabel to biopython atom mapping
         self.bio_to_ob = {}  # biopython to openbabel atom mapping
+
+        # chem_comp_type info
+        self.component_types = protein_reader.get_component_types(filename)
 
         # helper structures
         self.selection = []
@@ -179,7 +183,9 @@ class InteractionComplex:
         for contact in self.atom_contacts:
             result_entry = {}
             result_entry['bgn'] = utils.make_pymol_json(contact.bgn_atom)
+            result_entry['bgn']['label_comp_type'] = self.component_types[utils.get_residue_name(contact.bgn_atom)]
             result_entry['end'] = utils.make_pymol_json(contact.end_atom)
+            result_entry['end']['label_comp_type'] = self.component_types[utils.get_residue_name(contact.end_atom)]
             result_entry['type'] = 'atom-atom'
             result_entry['distance'] = round(np.float64(contact.distance), 2)
             result_entry['contact'] = [k for k, v in zip(contacts, contact.sifts) if v == 1]
@@ -188,19 +194,19 @@ class InteractionComplex:
             result_bag.append(result_entry)
 
         for contact in self.plane_plane_contacts:
-            result_entry = _prepare_plane_plane_contact_for_export(contact, 'plane-plane')
+            result_entry = self._prepare_plane_plane_contact_for_export(contact, 'plane-plane')
             result_bag.append(result_entry)
 
         for contact in self.atom_plane_contacts:
-            result_entry = _prepare_atom_plane_contact_for_export(contact, 'atom-plane')
+            result_entry = self._prepare_atom_plane_contact_for_export(contact, 'atom-plane')
             result_bag.append(result_entry)
 
         for contact in self.group_group_contacts:
-            result_entry = _prepare_plane_plane_contact_for_export(contact, 'group-group')
+            result_entry = self._prepare_plane_plane_contact_for_export(contact, 'group-group')
             result_bag.append(result_entry)
 
         for contact in self.group_plane_contacts:
-            result_entry = _prepare_plane_plane_contact_for_export(contact, 'group-plane')
+            result_entry = self._prepare_plane_plane_contact_for_export(contact, 'group-plane')
             result_bag.append(result_entry)
 
         return result_bag
@@ -1888,15 +1894,12 @@ class InteractionComplex:
 
             # `http://openbabel.org/api/2.3/classOpenBabel_1_1OBAtom.shtml`
             # CURRENT NUMBER OF EXPLICIT CONNECTIONS
-            # valence = ob_atom.GetValence()
             valence = ob_atom.GetExplicitDegree()
 
             # MAXIMUM NUMBER OF CONNECTIONS EXPECTED
-            # implicit_valence = ob_atom.GetImplicitValence()
             implicit_valence = ob_atom.GetImplicitHCount()
 
             # BOND ORDER
-            # bond_order = ob_atom.BOSum()
             bond_order = ob_atom.GetExplicitValence()
 
             # NUMBER OF BOUND HYDROGENS
@@ -2057,53 +2060,61 @@ class InteractionComplex:
 
         return mol
 
+    def _prepare_plane_plane_contact_for_export(self, contact, contact_type):
+        """Convert internal representation of plane-plane or group-group
+        type of contacts into json for export.
+
+        Args:
+            contact (PlanePlaneContact): contact
+            contact_type (str): sring distinguising between plane-plane and
+                group-group type of contact
+
+        Returns:
+            :dict: of str : json-like representation of the contact
+        """
+        result_entry = {}
+        result_entry['bgn'] = utils.make_pymol_json(contact.bgn_res)
+        result_entry['bgn']['label_comp_type'] = self.component_types[utils.get_residue_name(contact.bgn_res)]
+        result_entry['bgn']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.bgn_res_atoms)
+        result_entry['end'] = utils.make_pymol_json(contact.end_res)
+        result_entry['end']['label_comp_type'] = self.component_types[utils.get_residue_name(contact.end_res)]
+        result_entry['end']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
+        result_entry['type'] = contact_type
+        result_entry['distance'] = round(np.float64(contact.distance), 2)
+        result_entry['contact'] = contact.contact_type
+        result_entry['interacting_entities'] = contact.text
+
+        return result_entry
+
+
+    def _prepare_atom_plane_contact_for_export(self, contact, contact_type):
+        """Convert internal representation of atom-plane or atom-group
+        type of contacts into json for export.
+
+        Args:
+            contact (AtomPlaneContact): contact
+            contact_type (str): string distinguishing between atom-plane and
+                atom-group type of contact
+
+        Returns:
+            :dict: of str: json-like representation of the contact
+        """
+        result_entry = {}
+        result_entry['bgn'] = utils.make_pymol_json(contact.bgn_atom)
+        result_entry['bgn']['label_comp_type'] = self.component_types[utils.get_residue_name(contact.bgn_atom)]
+        result_entry['end'] = utils.make_pymol_json(contact.end_res)
+        result_entry['end']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
+        result_entry['end']['label_comp_type'] = self.component_types[utils.get_residue_name(contact.end_res)]
+        result_entry['type'] = contact_type
+        result_entry['distance'] = round(np.float64(contact.distance), 2)
+        result_entry['contact'] = contact.sifts
+        result_entry['interacting_entities'] = contact.text
+
+        return result_entry
+
     # endregion
 
 
-def _prepare_plane_plane_contact_for_export(contact, contact_type):
-    """Convert internal representation of plane-plane or group-group
-    type of contacts into json for export.
-
-    Args:
-        contact (PlanePlaneContact): contact
-        contact_type (str): sring distinguising between plane-plane and
-            group-group type of contact
-
-    Returns:
-        :dict: of str : json-like representation of the contact
-    """
-    result_entry = {}
-    result_entry['bgn'] = utils.make_pymol_json(contact.bgn_res)
-    result_entry['bgn']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.bgn_res_atoms)
-    result_entry['end'] = utils.make_pymol_json(contact.end_res)
-    result_entry['end']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
-    result_entry['type'] = contact_type
-    result_entry['distance'] = round(np.float64(contact.distance), 2)
-    result_entry['contact'] = contact.contact_type
-    result_entry['interacting_entities'] = contact.text
-
-    return result_entry
 
 
-def _prepare_atom_plane_contact_for_export(contact, contact_type):
-    """Convert internal representation of atom-plane or atom-group
-    type of contacts into json for export.
 
-    Args:
-        contact (AtomPlaneContact): contact
-        contact_type (str): string distinguishing between atom-plane and
-            atom-group type of contact
-
-    Returns:
-        :dict: of str: json-like representation of the contact
-    """
-    result_entry = {}
-    result_entry['bgn'] = utils.make_pymol_json(contact.bgn_atom)
-    result_entry['end'] = utils.make_pymol_json(contact.end_res)
-    result_entry['end']['auth_atom_id'] = reduce(lambda l, m: f'{l},{m}', contact.end_res_atoms)
-    result_entry['type'] = contact_type
-    result_entry['distance'] = round(np.float64(contact.distance), 2)
-    result_entry['contact'] = contact.sifts
-    result_entry['interacting_entities'] = contact.text
-
-    return result_entry
