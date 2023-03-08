@@ -1,18 +1,9 @@
-# Disclaimer
 
-This is a slightly refactored version of the original code by Harry Jubb. Main changes are:
+# arpeggio
 
-* Python 3 support
-* Modular architecture to make Arpeggio PIP installable.
-* Support for mmCIF format to process also larger structures.
-* Results in JSON format.
-* Few bug fixes
+`arpeggio` is a library, that can be used to calculate interatomic contacts in a protein based on the rules defined in [CREDO](https://pubmed.ncbi.nlm.nih.gov/19207418/). This library only supports protein structures in mmCIF format.
 
-# Outline
-
-Arpeggio calculates interatomic contacts based on the rules defined in [CREDO](http://marid.bioc.cam.ac.uk/credo). The program is freely available and requires only Open Source dependencies.
-
-If you make use of Arpeggio, please cite the following article:
+If you make use of `arpeggio`, please cite the following article:
 
 Harry C Jubb, Alicia P Higueruelo, Bernardo Ochoa-Montaño, Will R Pitt, David B Ascher, Tom L Blundell,
 [Arpeggio: A Web Server for Calculating and Visualising Interatomic Interactions in Protein Structures](https://doi.org/10.1016/j.jmb.2016.12.004).
@@ -22,44 +13,42 @@ Volume 429, Issue 3,
 Pages 365-371,
 ISSN 0022-2836,
 
+# Disclaimer
+
+This is a refactored version of the original [arpeggio](https://github.com/harryjubb/arpeggio)by Harry Jubb. Main changes are:
+
+* Python 3 support
+* Modular architecture to make `arpeggio` PIP installable.
+* Support for mmCIF format to process also larger structures.
+* Results in JSON format.
+
+`arpeggio` doesn't do any processing of input protein structure, other than what BioPython does by default. Alternate locations and missing density are not explicitly accounted for and may result in anomalous results. Please use with caution.
+
 # Getting Started
 
 ## Web Interface
 
-If you would like to run original version of Arpeggio on a small number of individual structures, the easiest way to get started is to use the [web interface](http://biosig.unimelb.edu.au/arpeggioweb/).
+If you would like to run original version of arpeggio on a small number of individual structures, the easiest way to get started is to use the [web interface](http://biosig.unimelb.edu.au/arpeggioweb/).
 
-## Dependencies
 
-Arpeggio is written in Python and currently has the following dependencies:
+## Installation
 
-* Python (v3.6)
-* Numpy
-* BioPython (>= v1.60)
-* Open Babel 3.0 (with Python bindings)
-* gemmi
-
-If you need to use Arpeggio programmatically or to run for many structures:
-
-The easiest way to set up with Arpeggio is using [Conda](https://docs.conda.io/en/latest/). In your conda environment run the two following commands:
+The easiest way to set up arpeggio is using [Conda](https://docs.conda.io/en/latest/). Create a conda environment and install arpeggio dependencies:
 
 ```bash
-conda install -c conda-forge openbabel
+conda create -n arpeggio-env python=3.9
+conda activate arpeggio-env
 pip install git+https://github.com/PDBeurope/arpeggio.git@master#egg=arpeggio
 ```
 
-To create conda environment please use e.g. the following command:
+## Dependencies
 
-```bash
-conda create conda -n arpeggio-env python=3.9
-```
+* [Open Babel](https://openbabel.org) >= 3.0.0
+* [Biopython](https://biopython.org) >= 1.80
+* [gemmi](https://gemmi.readthedocs.io/en/latest/index.html) >= 0.5.8
 
-and activate it:
 
-```bash
-conda activate arpeggio-env
-```
-
-## Running
+## Running arpeggio
 
 `arpeggio 1tqn_h.cif [options]`
 
@@ -69,11 +58,11 @@ e.g.
 
 Use `arpeggio -h` for available options.
 
-Arpeggio doesn't do any checking of your PDB structure, other than what BioPython does by default. Alternate locations and missing density are not explicitly accounted for and may result in anomalous results. Please use with caution.
+
 
 ## Output
 
-The only output presently available is in the JSON format with all the contacts given.
+All the identified interactions are written in a JSON file.
 
 ### Interactions
 
@@ -140,6 +129,7 @@ Follows nomenclature established by [Chakrabarti and Bhattacharyya (2007)](https
             "auth_atom_id": "CB",
             "auth_seq_id": 313,
             "label_comp_id": "VAL",
+            "label_comp_type": "P",
             "pdbx_PDB_ins_code": " "
         },
         "contact": [
@@ -152,6 +142,7 @@ Follows nomenclature established by [Chakrabarti and Bhattacharyya (2007)](https
             "auth_atom_id": "CBB",
             "auth_seq_id": 508,
             "label_comp_id": "HEM",
+            "label_comp_type": "B",
             "pdbx_PDB_ins_code": " "
         },
         "interacting_entities": "INTER",
@@ -168,6 +159,7 @@ Follows nomenclature established by [Chakrabarti and Bhattacharyya (2007)](https
             "auth_atom_id": "O",
             "auth_seq_id": 523,
             "label_comp_id": "HOH",
+            "label_comp_type": "W",
             "pdbx_PDB_ins_code": " "
         },
         "contact": [
@@ -179,6 +171,7 @@ Follows nomenclature established by [Chakrabarti and Bhattacharyya (2007)](https
             "auth_atom_id": "C1A,C2A,C3A,C4A,NA",
             "auth_seq_id": 508,
             "label_comp_id": "HEM",
+            "label_comp_type": "B",
             "pdbx_PDB_ins_code": " "
         },
         "interacting_entities": "INTER",
@@ -195,6 +188,7 @@ Follows nomenclature established by [Chakrabarti and Bhattacharyya (2007)](https
             "auth_atom_id": "C1B,C2B,C3B,C4B,NB",
             "auth_seq_id": 508,
             "label_comp_id": "HEM",
+            "label_comp_type": "B",
             "pdbx_PDB_ins_code": " "
         },
         "contact": [
@@ -207,6 +201,7 @@ Follows nomenclature established by [Chakrabarti and Bhattacharyya (2007)](https
             "auth_atom_id": "CD1,CD2,CE1,CE2,CG,CZ",
             "auth_seq_id": 435,
             "label_comp_id": "PHE",
+            "label_comp_type": "P",
             "pdbx_PDB_ins_code": " "
         },
         "interacting_entities": "INTER",
@@ -223,6 +218,7 @@ Follows nomenclature established by [Chakrabarti and Bhattacharyya (2007)](https
             "auth_atom_id": "C,CA,N,O",
             "auth_seq_id": 308,
             "label_comp_id": "GLU",
+            "label_comp_type": "P",
             "pdbx_PDB_ins_code": " "
         },
         "contact": [
@@ -234,6 +230,7 @@ Follows nomenclature established by [Chakrabarti and Bhattacharyya (2007)](https
             "auth_atom_id": "C,CA,N,O",
             "auth_seq_id": 310,
             "label_comp_id": "THR",
+            "label_comp_type": "P",
             "pdbx_PDB_ins_code": " "
         },
         "interacting_entities": "INTRA_BINDING_SITE",
