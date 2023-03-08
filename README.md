@@ -15,7 +15,7 @@ ISSN 0022-2836,
 
 # Disclaimer
 
-This is a refactored version of the original [arpeggio](https://github.com/harryjubb/arpeggio)by Harry Jubb. Main changes are:
+This is a refactored version of the original [arpeggio](https://github.com/harryjubb/arpeggio) by Harry Jubb. Main changes are:
 
 * Python 3 support
 * Modular architecture to make `arpeggio` PIP installable.
