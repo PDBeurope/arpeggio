@@ -7,10 +7,9 @@ import os
 import platform
 
 import numpy as np
-import openbabel as ob
+from openbabel import openbabel as ob
 from Bio.PDB.Atom import Atom
 from Bio.PDB.Residue import Residue
-
 from arpeggio.core import SelectionError, SiftMatchError, config
 
 # region general
@@ -527,6 +526,7 @@ def selection_parser(selection_list, atom_list):
     return list(final_atom_list)
 
 
+
 def make_pymol_json(entity):
     '''
     Feed me a BioPython atom or BioPython residue.
@@ -622,12 +622,12 @@ def get_single_bond_neighbour(ob_atom):
 
     for bond in ob.OBAtomBondIter(ob_atom):
 
-        if not bond.IsSingle():
+        if not (bond.GetBondOrder()==1 and not bond.IsAromatic()):
             continue
 
         current_neighbour = bond.GetNbrAtom(ob_atom)
 
-        if current_neighbour.IsHydrogen():
+        if current_neighbour.GetAtomicNum() == 1:
             continue
 
         return current_neighbour
@@ -743,3 +743,33 @@ def get_angle(point_a, point_b, point_c):
         angle = np.pi
 
     return angle
+
+
+def get_residue_name(entity):
+    """
+    Returns the name of residue
+
+    Args:
+        entity (Atom/Residue): Atom or Residue objects from BioPython
+    
+    Returns:
+        str: Name of the residue
+    """
+
+    if isinstance(entity, Atom):
+        residue = entity.get_parent()
+        return residue.get_resname()
+    
+    elif isinstance(entity, Residue):
+        return entity.get_resname()
+    
+    else:
+        raise TypeError('Cannot return Residue from from non-Atom/non-Residue object.')
+    
+        
+
+
+
+
+
+

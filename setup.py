@@ -21,6 +21,7 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.9",
         "Operating System :: Unix",
         "Operating System :: MacOS",
         "Operating System :: POSIX",
@@ -31,7 +32,7 @@ setup(
     ],
     zip_safe=False,
     include_package_data=True,
-    install_requires=["pdbecif>=1.5", "numpy", "biopython"],
+    install_requires=["gemmi","numpy", "biopython"],
     extras_require={
         "tests": ["pytest", "pytest-cov"]
     },

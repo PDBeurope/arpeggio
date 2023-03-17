@@ -1,4 +1,6 @@
 from collections import OrderedDict
+from enum import IntEnum
+
 
 DEFAULT_SIFT = OrderedDict()
 
@@ -1137,3 +1139,61 @@ RESIDUE_SIFT_HEADER = [
     'residue_ring_amide_inter_integer',
     'residue_amide_amide_inter_integer'
 ]
+
+class ComponentType(IntEnum):
+
+    """
+    An enumeration for 'label_comp_type' in interaction.json
+    """
+
+    P = 1 # Polypeptide
+    D = 2 # Polydeoxyribonucleotide
+    R = 3 # Polyribonucleotide
+    S = 4 # Polysaccharide
+    N = 5 # Non-polymer
+    O = 6 # Other categories
+    B = 7 # Bound Molecule
+    W = 8 # Water 
+
+    @staticmethod
+    def from_chem_comp_type(type: str):
+        """
+        Maps "_chem_comp.type to ComponentType"
+
+        Args:
+            type (str): _chem_comp.type from mmmcif
+
+        Returns:
+            str: ComponentType 
+        """
+        component_types = {'D-BETA-PEPTIDE, C-GAMMA LINKING': 1,
+                    'D-GAMMA-PEPTIDE, C-DELTA LINKING': 1,
+                    'D-PEPTIDE COOH CARBOXY TERMINUS': 1,
+                    'D-PEPTIDE NH3 AMINO TERMINUS': 1,
+                    'D-PEPTIDE LINKING': 1,
+                    'D-SACCHARIDE': 4,
+                    'D-SACCHARIDE, ALPHA LINKING': 4,
+                    'D-SACCHARIDE, BETA LINKING': 4,
+                    'DNA OH 3 PRIME TERMINUS': 2,
+                    'DNA OH 5 PRIME TERMINUS': 2,
+                    'DNA LINKING': 2,
+                    'L-DNA LINKING': 2,
+                    'L-RNA LINKING': 3,
+                    'L-BETA-PEPTIDE, C-GAMMA LINKING': 1,
+                    'L-GAMMA-PEPTIDE, C-DELTA LINKING': 1,
+                    'L-PEPTIDE COOH CARBOXY TERMINUS': 1,
+                    'L-PEPTIDE NH3 AMINO TERMINUS': 1,
+                    'L-PEPTIDE LINKING': 1,
+                    'L-SACCHARIDE': 4,
+                    'L-SACCHARIDE, ALPHA LINKING': 4,
+                    'L-SACCHARIDE, BETA LINKING': 4,
+                    'RNA OH 3 PRIME TERMINUS': 3,
+                    'RNA OH 5 PRIME TERMINUS': 3,
+                    'RNA LINKING': 3,
+                    'NON-POLYMER': 5,
+                    'OTHER': 6,
+                    'PEPTIDE LINKING': 1,
+                    'PEPTIDE-LIKE': 1,
+                    'SACCHARIDE': 4
+                    }
+        return ComponentType(component_types[type.upper()]).name
