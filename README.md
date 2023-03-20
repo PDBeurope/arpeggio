@@ -1,5 +1,7 @@
 
-# arpeggio
+# PDBe Arpeggio
+
+This repository contains a refactored and expanded version of the Arpeggio tool, modified and maintained by the [PDBe team](https://pdbe.org) to use as part of their weekly PDB release process.
 
 `arpeggio` is a library, that can be used to calculate interatomic contacts in a protein based on the rules defined in [CREDO](https://pubmed.ncbi.nlm.nih.gov/19207418/). This library only supports protein structures in mmCIF format.
 
