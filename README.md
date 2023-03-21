@@ -38,7 +38,7 @@ If you would like to run original version of arpeggio on a small number of indiv
 The easiest way to set up arpeggio is using [Conda](https://docs.conda.io/en/latest/). Create a conda environment and install arpeggio dependencies:
 
 ```bash
-conda create -n arpeggio-env python=3.9
+conda create -n arpeggio-env python=3.9 -c conda-forge gemmi openbabel biopython
 conda activate arpeggio-env
 pip install git+https://github.com/PDBeurope/arpeggio.git@master#egg=arpeggio
 ```
