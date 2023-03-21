@@ -3,9 +3,9 @@
 
 This repository contains a refactored and expanded version of the Arpeggio tool, modified and maintained by the [PDBe team](https://pdbe.org) to use as part of their weekly PDB release process.
 
-`arpeggio` is a library, that can be used to calculate interatomic contacts in a protein based on the rules defined in [CREDO](https://pubmed.ncbi.nlm.nih.gov/19207418/). This library only supports protein structures in mmCIF format.
+`pdbe-arpeggio` is a python library, that can be used to calculate interatomic contacts in a protein based on the rules defined in [CREDO](https://pubmed.ncbi.nlm.nih.gov/19207418/). This library only supports protein structures in mmCIF format.
 
-If you make use of `arpeggio`, please cite the following article:
+If you make use of `pdbe-arpeggio`, please cite the following article:
 
 Harry C Jubb, Alicia P Higueruelo, Bernardo Ochoa-Montaño, Will R Pitt, David B Ascher, Tom L Blundell,
 [Arpeggio: A Web Server for Calculating and Visualising Interatomic Interactions in Protein Structures](https://doi.org/10.1016/j.jmb.2016.12.004).
@@ -24,7 +24,7 @@ This is a refactored version of the original [arpeggio](https://github.com/harry
 * Support for mmCIF format to process also larger structures.
 * Results in JSON format.
 
-`arpeggio` doesn't do any processing of input protein structure, other than what BioPython does by default. Alternate locations and missing density are not explicitly accounted for and may result in anomalous results. Please use with caution.
+`pdbe-arpeggio` doesn't do any processing of input protein structure, other than what BioPython does by default. Alternate locations and missing density are not explicitly accounted for and may result in anomalous results. Please use with caution.
 
 # Getting Started
 
@@ -40,7 +40,7 @@ The easiest way to set up arpeggio is using [Conda](https://docs.conda.io/en/lat
 ```bash
 conda create -n arpeggio-env python=3.9 -c conda-forge gemmi openbabel biopython
 conda activate arpeggio-env
-pip install git+https://github.com/PDBeurope/arpeggio.git@master#egg=arpeggio
+pip install pdbe-arpeggio
 ```
 
 ## Dependencies
@@ -52,13 +52,13 @@ pip install git+https://github.com/PDBeurope/arpeggio.git@master#egg=arpeggio
 
 ## Running arpeggio
 
-`arpeggio 1tqn_h.cif [options]`
+`pdbe-arpeggio 1tqn_h.cif [options]`
 
 e.g. 
 
-`arpeggio -s /A/508/ -o out/ 1tqn_h.cif`
+`pdbe-arpeggio -s /A/508/ -o out/ 1tqn_h.cif`
 
-Use `arpeggio -h` for available options.
+Use `pdbe-arpeggio -h` for available options.
 
 
 
