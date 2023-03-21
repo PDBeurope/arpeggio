@@ -5,6 +5,8 @@ setup(
     name="arpeggio",
     version=arpeggio.__version__,
     description="Arpeggio calculates interatomic contacts based on the rules defined in CREDO.",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
     project_urls={
         "Source code": "https://github.com/PDBeurope/arpeggio",
         "Documentation": "https://github.com/PDBeurope/arpeggio",
