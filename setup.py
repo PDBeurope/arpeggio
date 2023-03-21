@@ -39,6 +39,6 @@ setup(
         "tests": ["pytest", "pytest-cov"]
     },
     entry_points={
-        "console_scripts": ["arpeggio=arpeggio.scripts.process_protein_cli:main"]
+        "console_scripts": ["pdbe-arpeggio=arpeggio.scripts.process_protein_cli:main"]
     },
 )
