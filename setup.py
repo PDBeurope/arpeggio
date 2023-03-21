@@ -2,7 +2,7 @@ from setuptools import setup, find_namespace_packages
 import arpeggio
 
 setup(
-    name="arpeggio",
+    name="pdbe-arpeggio",
     version=arpeggio.__version__,
     description="Arpeggio calculates interatomic contacts based on the rules defined in CREDO.",
     long_description=open("README.md").read(),
