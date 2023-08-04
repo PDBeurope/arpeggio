@@ -1153,7 +1153,8 @@ class ComponentType(IntEnum):
     N = 5 # Non-polymer
     O = 6 # Other categories
     B = 7 # Bound Molecule
-    W = 8 # Water 
+    W = 8 # Water
+    M = 9 # Missing label_comp_type 
 
     @staticmethod
     def from_chem_comp_type(type: str):

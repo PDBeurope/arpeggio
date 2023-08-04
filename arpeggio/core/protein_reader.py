@@ -422,14 +422,18 @@ def get_component_types(path):
         chem_comp = cif_block.get_mmcif_category('_chem_comp.')
         component_types = {}
         for i in range(len(chem_comp['id'])):
-            cmp_type  = config.ComponentType.from_chem_comp_type(chem_comp['type'][i])
-            if not cmp_type == config.ComponentType(5).name:
-                component_types[chem_comp['id'][i]] = cmp_type
-            else:
-                if chem_comp['name'][i].upper() == 'WATER':
-                    component_types[chem_comp['id'][i]] = config.ComponentType(8).name
+            chem_comp_type = chem_comp['type'][i]
+            if chem_comp_type:
+                comp_type  = config.ComponentType.from_chem_comp_type(chem_comp_type.upper())
+                if not comp_type == config.ComponentType(5).name:
+                    component_types[chem_comp['id'][i]] = comp_type
                 else:
-                    component_types[chem_comp['id'][i]] = config.ComponentType(7).name
+                    if chem_comp['name'][i].upper() == 'WATER':
+                        component_types[chem_comp['id'][i]] = config.ComponentType(8).name
+                    else:
+                        component_types[chem_comp['id'][i]] = config.ComponentType(7).name
+            else:
+                component_types[chem_comp['id'][i]] = config.ComponentType(9).name
 
         return component_types
     
