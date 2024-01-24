@@ -17,10 +17,8 @@ permissions:
   contents: read
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python
@@ -33,7 +31,21 @@ jobs:
           pip install build
       - name: Build package
         run: python -m build
+      - name: Archive the package
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
       - name: Publish package
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository-url: https://pypi.org/project/pdbe-arpeggio/
+          repository-url: https://upload.pypi.org/legacy/
