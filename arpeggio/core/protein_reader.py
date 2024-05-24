@@ -428,7 +428,7 @@ def get_component_types(path):
                 if not comp_type == config.ComponentType(5).name:
                     component_types[chem_comp['id'][i]] = comp_type
                 else:
-                    if chem_comp['name'][i].upper() == 'WATER':
+                    if chem_comp['id'][i].upper() == 'HOH' or chem_comp['id'][i].upper() == 'DOD':
                         component_types[chem_comp['id'][i]] = config.ComponentType(8).name
                     else:
                         component_types[chem_comp['id'][i]] = config.ComponentType(7).name
